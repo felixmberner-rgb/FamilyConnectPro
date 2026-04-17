@@ -699,10 +699,14 @@
 
                         // Background Service Worker registrieren (zwingend für Pushes im Hintergrund)
                         if ('serviceWorker' in navigator) {
-                            const urlParams = `?apiKey=${config.apiKey}&projectId=${config.projectId}&senderId=${config.messagingSenderId}&appId=${config.appId}`;
-                            navigator.serviceWorker.register('./firebase-messaging-sw.js' + urlParams)
-                                .then(() => console.log("Hintergrund-Dienst (SW) gestartet!"))
-                                .catch(err => console.error("SW Fehler:", err));
+                            try {
+                                const urlParams = `?apiKey=${config.apiKey}&projectId=${config.projectId}&senderId=${config.messagingSenderId}&appId=${config.appId}`;
+                                navigator.serviceWorker.register('/firebase-messaging-sw.js' + urlParams)
+                                    .then(() => console.log("Hintergrund-Dienst (SW) gestartet!"))
+                                    .catch(err => console.warn("SW Fehler (Normal in der Vorschau):", err));
+                            } catch (swErr) {
+                                console.warn("SW Registrierung übersprungen (Normal in der Vorschau):", swErr);
+                            }
                         }
 
                         if (typeof window !== 'undefined' && 'Notification' in window) {
