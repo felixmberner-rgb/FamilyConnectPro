@@ -37,7 +37,7 @@
         // =====================================================================
         // 🛡️ HIER DEINEN RECAPTCHA SCHLÜSSEL EINTRAGEN 🛡️
         // =====================================================================
-        const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
+        const RECAPTCHA_SITE_KEY = "DEIN_SCHLUESSEL_HIER_EINFUEGEN";
         // =====================================================================
 
         let app, db, auth, messaging;
@@ -187,7 +187,6 @@
                       onClick={() => {
                         if(navigator.vibrate) navigator.vibrate(10);
                         setActiveTab(tab.id);
-                        window.history.replaceState({}, document.title, "/");
                       }}
                       className="flex-1 relative z-10 flex items-center justify-center h-full active:scale-90 transition-transform"
                     >
@@ -597,7 +596,7 @@
               >
                 <div className="text-center w-full">
                   <h1 className="text-[28px] font-extrabold text-black tracking-tight leading-none">
-                    {activeTab === 'home' && currentFamily.name}
+                    {activeTab === 'home' && `Familie ${currentFamily.name}`}
                     {activeTab === 'history' && 'Verlauf'}
                     {activeTab === 'settings' && 'Einstellungen'}
                   </h1>
