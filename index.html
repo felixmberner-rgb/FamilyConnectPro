@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -44,7 +45,8 @@
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
         // =====================================================================
 
-        let db, auth, messaging;
+        // HIER WAR DER FEHLER: "app" fehlte in dieser Liste!
+        let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
 
         const generateFamilyId = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -116,19 +118,28 @@
         // --- Config Loader ---
         function ConfigLoader({ onConfigLoaded }) {
             const [error, setError] = useState("");
+            
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
-                        const config = JSON.parse(event.target.result);
-                        const firebaseData = config.firebaseConfig ? config.firebaseConfig : config;
-                        if (!firebaseData || !firebaseData.apiKey) throw new Error("Ungültiges Dateiformat. apiKey fehlt.");
+                        const parsed = JSON.parse(event.target.result);
+                        const firebaseData = parsed.firebaseConfig || parsed;
+                        
+                        if (!firebaseData || !firebaseData.apiKey) {
+                            throw new Error("Ungültige JSON-Datei. Firebase 'apiKey' fehlt.");
+                        }
+                        
                         localStorage.setItem('firebaseConfig', JSON.stringify(firebaseData));
                         onConfigLoaded(firebaseData);
-                    } catch (err) { setError("Fehler: " + err.message); }
+                    } catch (err) { 
+                        setError("Fehler: " + err.message); 
+                    }
                 };
+                reader.onerror = () => setError("Fehler beim Lesen der Datei.");
                 reader.readAsText(file);
             };
 
@@ -138,9 +149,16 @@
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-blue-500 mx-auto mb-4" />
                         <h1 className="text-3xl font-bold tracking-tight">System Setup</h1>
                         <p className="text-gray-400 text-sm leading-relaxed px-4">Bitte lade deine <span className="font-mono text-blue-400">config.json</span> hoch.</p>
-                        {error && <p className="text-red-400 text-xs font-semibold">{error}</p>}
+                        {error && <p className="text-red-400 text-xs font-semibold bg-red-500/10 p-3 rounded-lg border border-red-500/20">{error}</p>}
+                        
                         <label className="inline-block w-full bg-blue-600 py-4 rounded-2xl font-bold active:scale-95 transition-all cursor-pointer mt-8">
-                            Konfiguration laden<input type="file" accept=".json" onChange={handleFileUpload} />
+                            Konfiguration laden
+                            <input 
+                                type="file" 
+                                accept=".json" 
+                                onChange={handleFileUpload} 
+                                onClick={(e) => { e.target.value = null; }} 
+                            />
                         </label>
                     </div>
                 </div>
@@ -282,11 +300,13 @@
           // 3. Foreground Push Listener (Wenn die App geöffnet ist)
           useEffect(() => {
               if (messaging) {
-                  const unsub = messaging.onMessage((payload) => {
-                      if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
-                      showAlert(payload.notification?.title || "Neuer Ruf", payload.notification?.body || "");
-                  });
-                  return () => unsub();
+                  try {
+                      const unsub = messaging.onMessage((payload) => {
+                          if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
+                          showAlert(payload.notification?.title || "Neuer Ruf", payload.notification?.body || "");
+                      });
+                      return () => unsub();
+                  } catch(e) { console.warn("Meldungs-Listener Fehler:", e); }
               }
           }, []);
 
@@ -794,58 +814,83 @@
                 const saved = localStorage.getItem('firebaseConfig');
                 return saved ? JSON.parse(saved) : null;
             });
-            const [isReady, setIsReady] = useState(false);
+            const [status, setStatus] = useState("booting"); // booting, config-needed, error, ready
+            const [errorMsg, setErrorMsg] = useState("");
 
             useEffect(() => {
-                if (config) {
-                    try {
-                        if (!firebase.apps.length) {
-                            app = firebase.initializeApp(config);
-                        } else {
-                            app = firebase.app();
-                        }
-                        
-                        if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
-                            firebase.appCheck().activate(
-                                RECAPTCHA_SITE_KEY,
-                                true
-                            );
-                        }
-
-                        db = firebase.firestore();
-                        auth = firebase.auth();
-
-                        if (typeof window !== 'undefined' && 'Notification' in window) {
-                            try { messaging = firebase.messaging(); } catch (e) { console.log("Messaging init übersprungen."); }
-                        }
-
-                        if ('serviceWorker' in navigator) {
-                            try {
-                                const urlParams = `?apiKey=${config.apiKey}&projectId=${config.projectId}&senderId=${config.messagingSenderId}&appId=${config.appId}`;
-                                navigator.serviceWorker.register('./firebase-messaging-sw.js' + urlParams)
-                                    .then(() => console.log("Hintergrund-Dienst (SW) gestartet!"))
-                                    .catch(err => console.warn("SW Fehler:", err));
-                            } catch (swErr) {
-                                console.warn("SW Registrierung fehlgeschlagen:", swErr);
-                            }
-                        }
-
-                        setIsReady(true);
-                    } catch (e) {
-                        console.error("Firebase Init Fehler:", e);
-                        localStorage.removeItem('firebaseConfig'); 
-                        setConfig(null);
+                if (!config) {
+                    setStatus("config-needed");
+                    return;
+                }
+                
+                setStatus("booting");
+                
+                try {
+                    if (!firebase.apps.length) {
+                        app = firebase.initializeApp(config);
+                    } else {
+                        app = firebase.app();
                     }
+                    
+                    // AppCheck aktivieren
+                    if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
+                        try {
+                            firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true);
+                        } catch (e) { console.warn("AppCheck Warnung:", e); }
+                    }
+
+                    db = firebase.firestore();
+                    auth = firebase.auth();
+
+                    if (typeof window !== 'undefined' && 'Notification' in window) {
+                        try { messaging = firebase.messaging(); } catch (e) { console.log("Messaging übersprungen."); }
+                    }
+
+                    if ('serviceWorker' in navigator) {
+                        try {
+                            const urlParams = `?apiKey=${config.apiKey}&projectId=${config.projectId}&senderId=${config.messagingSenderId}&appId=${config.appId}`;
+                            navigator.serviceWorker.register('./firebase-messaging-sw.js' + urlParams)
+                                .then(() => console.log("Hintergrund-Dienst (SW) gestartet!"))
+                                .catch(err => console.warn("SW Fehler:", err));
+                        } catch (swErr) {
+                            console.warn("SW Registrierung fehlgeschlagen:", swErr);
+                        }
+                    }
+
+                    setStatus("ready");
+                } catch (e) {
+                    console.error("Firebase Init Fehler:", e);
+                    setErrorMsg("Verbindungsfehler: " + e.message);
+                    setStatus("error");
                 }
             }, [config]);
 
-            if (!config) return <ConfigLoader onConfigLoaded={setConfig} />;
-            if (!isReady) return (
-               <div className="h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
-                  <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
-                  <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">System hochfahren</p>
-               </div>
-            );
+            if (status === "config-needed") return <ConfigLoader onConfigLoaded={setConfig} />;
+            
+            if (status === "error") {
+                return (
+                    <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-8 text-center">
+                        <Icon name="ShieldCheck" size={64} className="text-red-500 mb-4" />
+                        <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
+                        <p className="text-red-400 text-sm mb-8 font-mono bg-red-500/10 p-4 rounded-xl border border-red-500/20">{errorMsg}</p>
+                        <button 
+                            onClick={() => { localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }}
+                            className="bg-white/10 px-6 py-3 rounded-xl font-bold active:scale-95"
+                        >
+                            Neue Config laden
+                        </button>
+                    </div>
+                );
+            }
+
+            if (status === "booting") {
+                return (
+                   <div className="h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
+                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
+                      <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">System hochfahren</p>
+                   </div>
+                );
+            }
             
             return <App />;
         }
@@ -855,3 +900,6 @@
     </script>
 </body>
 </html>
+
+
+```
