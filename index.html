@@ -51,14 +51,14 @@
         } from 'lucide-react';
         import { initializeApp } from 'firebase/app';
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
         import { getMessaging, getToken } from 'firebase/messaging';
         import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
         // =====================================================================
         // 🛡️ HIER DEINEN RECAPTCHA SCHLÜSSEL EINTRAGEN 🛡️
         // =====================================================================
-        const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
+        const RECAPTCHA_SITE_KEY = "DEIN_SCHLUESSEL_HIER_EINFUEGEN";
         // =====================================================================
 
         // Globale Firebase-Instanzen (werden in Root initialisiert)
@@ -220,6 +220,40 @@
             return () => unsubscribe();
           }, [firebaseUser, currentFamily?.id, currentUser?.name]);
 
+          const loadFamilyData = async (familyId, userName) => {
+              try {
+                  const docSnap = await getDoc(getFamilyDocRef(familyId));
+                  if (!docSnap.exists()) throw new Error("Familie existiert nicht.");
+                  
+                  const data = docSnap.data();
+                  const member = data.members.find(m => m.name.trim().toLowerCase() === userName.trim().toLowerCase());
+                  
+                  if (!member) throw new Error("Benutzername nicht gefunden.");
+                  
+                  setCurrentFamily(data);
+                  setCurrentUser(member);
+                  if (member.fcmToken) setPushStatus('Aktiviert ✅');
+              } catch (e) {
+                  console.error("Ladefehler:", e);
+                  handleLogout(); // Falls ID veraltet ist
+              } finally {
+                  setAuthLoading(false);
+              }
+          };
+
+          // 3. Auto-Login prüfen, wenn Firebase User da ist
+          useEffect(() => {
+              if (firebaseUser) {
+                  const savedFamilyId = localStorage.getItem('familyId');
+                  const savedName = localStorage.getItem('userName');
+                  if (savedFamilyId && savedName) {
+                      loadFamilyData(savedFamilyId, savedName);
+                  } else {
+                      setAuthLoading(false);
+                  }
+              }
+          }, [firebaseUser]);
+
           // --- Auth Handlers ---
           const handleCreateFamily = async () => {
             setAuthError('');
@@ -234,6 +268,8 @@
             };
             try {
               await setDoc(getFamilyDocRef(newId), familyData);
+              localStorage.setItem('familyId', newId);
+              localStorage.setItem('userName', memberNameInput);
               setCurrentFamily(familyData); setCurrentUser(familyData.members[0]);
             } catch (err) { setAuthError('Fehler beim Erstellen.'); }
           };
@@ -249,9 +285,13 @@
                 return setAuthError('Name existiert. Bitte einloggen.');
               }
               const newUser = { name: memberNameInput, password: passwordInput, fcmToken: '', voiceMonkeyMeal: '', voiceMonkeyOther: '' };
-              const updatedData = { ...data, members: [...data.members, newUser] };
-              await setDoc(getFamilyDocRef(familyIdInput), updatedData);
-              setCurrentFamily(updatedData); setCurrentUser(newUser);
+              const updatedMembers = [...data.members, newUser];
+              await updateDoc(getFamilyDocRef(familyIdInput), { members: updatedMembers });
+              
+              localStorage.setItem('familyId', form.familyId);
+              localStorage.setItem('userName', memberNameInput);
+              setCurrentFamily({ ...data, members: updatedMembers }); 
+              setCurrentUser(newUser);
             } catch (err) { setAuthError('Fehler beim Beitreten.'); }
           };
 
@@ -268,7 +308,11 @@
                 if (member) { foundFamily = data; foundMember = member; }
               });
               if (!foundFamily) return setAuthError('Falsche Daten oder Nutzer fehlt.');
-              setCurrentFamily(foundFamily); setCurrentUser(foundMember);
+              
+              localStorage.setItem('familyId', foundFamily.id);
+              localStorage.setItem('userName', foundMember.name);
+              setCurrentFamily(foundFamily); 
+              setCurrentUser(foundMember);
               if (foundMember.fcmToken) setPushStatus('Aktiviert ✅');
             } catch (err) { setAuthError('Fehler bei der Anmeldung.'); }
           };
@@ -276,13 +320,15 @@
           const handleLogout = () => {
             setCurrentFamily(null); setCurrentUser(null);
             setPasswordInput(''); setAuthMode('login'); setPushStatus('Nicht konfiguriert');
+            localStorage.removeItem('familyId');
+            localStorage.removeItem('userName');
           };
 
           // --- Push Notification Setup (FCM) ---
           const requestPushPermission = async () => {
             if (!messaging) return alert("Push wird auf diesem Gerät nicht unterstützt (Safari auf dem Home-Bildschirm speichern!).");
-            if (!currentFamily.vapidKey) {
-              return alert("Dem System fehlt der VAPID Key. Der Admin muss diesen im Setup-Tab ganz unten eintragen.");
+            if (!currentFamily.vapidKey || currentFamily.vapidKey.trim() === '') {
+              return alert("Dem System fehlt der VAPID Key. Der Admin muss diesen im Setup-Tab eintragen.");
             }
             
             setPushStatus('Wird angefragt...');
@@ -290,12 +336,16 @@
               const permission = await Notification.requestPermission();
               if (permission === 'granted') {
                 try {
-                  const token = await getToken(messaging, { vapidKey: currentFamily.vapidKey });
+                  const reg = await navigator.serviceWorker.ready;
+                  const token = await getToken(messaging, { 
+                      vapidKey: currentFamily.vapidKey.trim(),
+                      serviceWorkerRegistration: reg 
+                  });
                   if (token) {
                     const updatedMembers = currentFamily.members.map(m => 
                       m.name === currentUser.name ? { ...m, fcmToken: token } : m
                     );
-                    await setDoc(getFamilyDocRef(currentFamily.id), { ...currentFamily, members: updatedMembers });
+                    await updateDoc(getFamilyDocRef(currentFamily.id), { members: updatedMembers });
                     setPushStatus('Aktiviert ✅');
                     if(navigator.vibrate) navigator.vibrate(50);
                     alert("Erfolgreich! Dein Gerät empfängt jetzt Push-Nachrichten.");
@@ -306,7 +356,7 @@
                 } catch (tokenErr) {
                   console.error("Token Error:", tokenErr);
                   setPushStatus('Zertifikat-Fehler');
-                  alert("Fehler beim Token: Entweder ist der VAPID Key falsch, oder die App muss neu geladen werden.");
+                  alert("Fehler beim Token: Überprüfe den VAPID Key. Stelle sicher, dass keine Leerzeichen am Anfang oder Ende sind.");
                 }
               } else { 
                 setPushStatus('Abgelehnt ❌'); 
@@ -327,7 +377,7 @@
             const reasonObj = REASONS.find(r => r.id === selectedReason);
             const targets = currentFamily.members.filter(m => selectedMembers.includes(m.name));
             
-            // 1. Trigger Voice Monkey (Alexa) mit Logik für Mahlzeiten vs. Andere
+            // 1. Trigger Voice Monkey (Alexa)
             targets.forEach(target => {
               const url = reasonObj.category === 'meal' ? target.voiceMonkeyMeal : target.voiceMonkeyOther;
               if (url && url.trim() !== '') {
@@ -346,8 +396,7 @@
             };
 
             try {
-              await setDoc(getFamilyDocRef(currentFamily.id), {
-                ...currentFamily,
+              await updateDoc(getFamilyDocRef(currentFamily.id), {
                 history: [newHistoryItem, ...(currentFamily.history || [])].slice(0, 50)
               });
               if(navigator.vibrate) navigator.vibrate([30, 50, 30]);
@@ -372,22 +421,19 @@
             });
 
             try {
-              await setDoc(getFamilyDocRef(currentFamily.id), {
-                ...currentFamily,
-                history: updatedHistory
-              });
+              await updateDoc(getFamilyDocRef(currentFamily.id), { history: updatedHistory });
             } catch (err) { console.error("Ack err:", err); }
           };
 
           const saveSettings = async (key, value) => {
             const updatedMembers = currentFamily.members.map(m => 
-              m.name === currentUser.name ? { ...m, [key]: value } : m
+              m.name === currentUser.name ? { ...m, [key]: value.trim() } : m
             );
-            await setDoc(getFamilyDocRef(currentFamily.id), { ...currentFamily, members: updatedMembers });
+            await updateDoc(getFamilyDocRef(currentFamily.id), { members: updatedMembers });
           };
 
           const saveAdminSettings = async (key, value) => {
-            await setDoc(getFamilyDocRef(currentFamily.id), { ...currentFamily, [key]: value });
+            await updateDoc(getFamilyDocRef(currentFamily.id), { [key]: value.trim() });
           };
 
           // --- UI Render ---
@@ -698,14 +744,15 @@
                         }
 
                         // Background Service Worker registrieren (zwingend für Pushes im Hintergrund)
+                        // WICHTIG: Relativer Pfad ./firebase-messaging-sw.js für GitHub Pages
                         if ('serviceWorker' in navigator) {
                             try {
                                 const urlParams = `?apiKey=${config.apiKey}&projectId=${config.projectId}&senderId=${config.messagingSenderId}&appId=${config.appId}`;
-                                navigator.serviceWorker.register('/firebase-messaging-sw.js' + urlParams)
+                                navigator.serviceWorker.register('./firebase-messaging-sw.js' + urlParams)
                                     .then(() => console.log("Hintergrund-Dienst (SW) gestartet!"))
-                                    .catch(err => console.warn("SW Fehler (Normal in der Vorschau):", err));
+                                    .catch(err => console.warn("SW Fehler:", err));
                             } catch (swErr) {
-                                console.warn("SW Registrierung übersprungen (Normal in der Vorschau):", swErr);
+                                console.warn("SW Registrierung fehlgeschlagen:", swErr);
                             }
                         }
 
