@@ -10,24 +10,17 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & Babel -->
+    <!-- React & Babel (UMD Versionen für maximale Stabilität) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- ES Module Imports für den modernen React-Code -->
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@18.2.0",
-            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.292.0",
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
-            "firebase/messaging": "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js",
-            "firebase/app-check": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js"
-        }
-    }
-    </script>
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
 
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #F2F2F7; margin: 0; }
@@ -41,19 +34,9 @@
 <body class="text-black antialiased overflow-hidden">
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
-        import React, { useState, useEffect } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { 
-          Bell, Clock, Settings, Coffee, Utensils, UtensilsCrossed, Moon, 
-          MessageCircle, Film, Gamepad2, Check, LogOut, ShieldCheck, 
-          Smartphone, Speaker, CheckCircle2, Key, Trash2 
-        } from 'lucide-react';
-        import { initializeApp } from 'firebase/app';
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
-        import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
 
         // =====================================================================
         // 🛡️ HIER DEINEN RECAPTCHA SCHLÜSSEL EINTRAGEN 🛡️
@@ -61,11 +44,49 @@
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
         // =====================================================================
 
-        let app, auth, db, messaging;
+        let db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
 
         const generateFamilyId = () => Math.floor(100000 + Math.random() * 900000).toString();
-        const getFamilyDocRef = (familyId) => doc(db, 'artifacts', appId, 'public', 'data', 'families', familyId);
+        const getFamilyDocRef = (familyId) => db.doc(`artifacts/${appId}/public/data/families/${familyId}`);
+
+        // --- Absturzsichere SVG Icons ---
+        const ICONS = {
+          Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+          Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+          Settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+          Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
+          Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+          UtensilsCrossed: '<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',
+          Moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+          MessageCircle: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+          Film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+          Gamepad2: '<line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>',
+          Check: '<polyline points="20 6 9 17 4 12"/>',
+          LogOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+          ShieldCheck: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+          Smartphone: '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+          Speaker: '<rect width="16" height="20" x="4" y="2" rx="2"/><circle cx="12" cy="14" r="4"/><line x1="12" x2="12.01" y1="6" y2="6"/>',
+          CheckCircle2: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+          Key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
+          Trash2: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>'
+        };
+
+        const Icon = ({ name, size = 24, strokeWidth = 2, className = "" }) => {
+            return React.createElement('svg', {
+                xmlns: "http://www.w3.org/2000/svg",
+                width: size,
+                height: size,
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: strokeWidth,
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                className: className,
+                dangerouslySetInnerHTML: { __html: ICONS[name] }
+            });
+        };
 
         // --- Custom Modal ---
         function Modal({ data, onClose }) {
@@ -114,7 +135,7 @@
             return (
                 <div className="h-screen flex flex-col items-center justify-center p-8 bg-black text-white">
                     <div className="w-full max-w-sm text-center space-y-6">
-                        <ShieldCheck size={96} strokeWidth={1.5} className="text-blue-500 mx-auto mb-4" />
+                        <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-blue-500 mx-auto mb-4" />
                         <h1 className="text-3xl font-bold tracking-tight">System Setup</h1>
                         <p className="text-gray-400 text-sm leading-relaxed px-4">Bitte lade deine <span className="font-mono text-blue-400">config.json</span> hoch.</p>
                         {error && <p className="text-red-400 text-xs font-semibold">{error}</p>}
@@ -129,9 +150,9 @@
         // --- Mathematisch perfekte Tab Bar ---
         const LiquidTabBar = ({ activeTab, setActiveTab }) => {
           const tabs = [
-            { id: 'home', icon: Bell },
-            { id: 'history', icon: Clock },
-            { id: 'settings', icon: Settings }
+            { id: 'home', icon: 'Bell' },
+            { id: 'history', icon: 'Clock' },
+            { id: 'settings', icon: 'Settings' }
           ];
 
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
@@ -152,7 +173,6 @@
                 </div>
                 
                 {tabs.map((tab) => {
-                  const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
                   return (
                     <button 
@@ -164,6 +184,7 @@
                       className="flex-1 relative z-10 flex items-center justify-center h-full active:scale-90 transition-transform"
                     >
                       <Icon 
+                        name={tab.icon}
                         size={isActive ? 24 : 22} 
                         strokeWidth={isActive ? 2.5 : 2}
                         className={`transition-colors duration-300 ${isActive ? 'text-[#007AFF]' : 'text-gray-400'}`} 
@@ -198,14 +219,14 @@
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
           const REASONS = [
-            { id: 'breakfast', label: 'Frühstück', icon: Coffee, category: 'meal' },
-            { id: 'lunch', label: 'Mittagessen', icon: Utensils, category: 'meal' },
-            { id: 'coffee', label: 'Kaffee', icon: UtensilsCrossed, category: 'meal' },
-            { id: 'dinner', label: 'Abendessen', icon: Moon, category: 'meal' },
-            { id: 'table', label: 'Tischdecken', icon: Utensils, category: 'push_only' }, // Neuer Grund
-            { id: 'message', label: 'Kommen', icon: MessageCircle, category: 'other' },
-            { id: 'movie', label: 'Film', icon: Film, category: 'other' },
-            { id: 'game', label: 'Spielen', icon: Gamepad2, category: 'other' },
+            { id: 'breakfast', label: 'Frühstück', icon: 'Coffee', category: 'meal' },
+            { id: 'lunch', label: 'Mittagessen', icon: 'Utensils', category: 'meal' },
+            { id: 'coffee', label: 'Kaffee', icon: 'UtensilsCrossed', category: 'meal' },
+            { id: 'dinner', label: 'Abendessen', icon: 'Moon', category: 'meal' },
+            { id: 'table', label: 'Tischdecken', icon: 'Utensils', category: 'push_only' },
+            { id: 'message', label: 'Kommen', icon: 'MessageCircle', category: 'other' },
+            { id: 'movie', label: 'Film', icon: 'Film', category: 'other' },
+            { id: 'game', label: 'Spielen', icon: 'Gamepad2', category: 'other' },
           ];
 
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ 
@@ -219,13 +240,13 @@
             const initAuth = async () => {
               try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                  await signInWithCustomToken(auth, __initial_auth_token);
-                } else { await signInAnonymously(auth); }
+                  await auth.signInWithCustomToken(__initial_auth_token);
+                } else { await auth.signInAnonymously(); }
               } catch (error) { console.error("Auth error:", error); }
             };
             initAuth();
 
-            const unsubscribe = onAuthStateChanged(auth, async (u) => {
+            const unsubscribe = auth.onAuthStateChanged(async (u) => {
               setFirebaseUser(u);
               if (u) {
                   const savedFamilyId = localStorage.getItem('familyId');
@@ -234,7 +255,6 @@
                       await loadFamilyData(savedFamilyId, savedName);
                   }
               }
-              // Verzögerung für weicheren Übergang (verhindert Flackern)
               setTimeout(() => setAppLoaded(true), 300);
             });
             return () => unsubscribe();
@@ -243,30 +263,26 @@
           // 2. Real-time DB Listener
           useEffect(() => {
             if (!firebaseUser || !currentFamily?.id) return;
-            const unsubscribe = onSnapshot(getFamilyDocRef(currentFamily.id), (docSnap) => {
-              if (docSnap.exists()) {
+            const unsubscribe = getFamilyDocRef(currentFamily.id).onSnapshot((docSnap) => {
+              if (docSnap.exists) {
                 const data = docSnap.data();
                 setCurrentFamily(data);
                 if (currentUser) {
                   const updatedUser = data.members.find(m => m.name === currentUser.name);
                   if (updatedUser) {
-          // 3. Auto-Login prüfen, wenn Firebase User da ist
-          useEffect(() => {
-              if (firebaseUser) {
-                  const savedFamilyId = localStorage.getItem('familyId');
-                  const savedName = localStorage.getItem('userName');
-                  if (savedFamilyId && savedName) {
-                      loadFamilyData(savedFamilyId, savedName);
-                  } else {
-                      setAuthLoading(false);
+                     setCurrentUser(updatedUser);
+                     if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
                   }
+                }
               }
-          }, [firebaseUser]);
+            });
+            return () => unsubscribe();
+          }, [firebaseUser, currentFamily?.id, currentUser?.name]);
 
-          // 4. Foreground Push Listener (Wenn die App geöffnet ist)
+          // 3. Foreground Push Listener (Wenn die App geöffnet ist)
           useEffect(() => {
               if (messaging) {
-                  const unsub = onMessage(messaging, (payload) => {
+                  const unsub = messaging.onMessage((payload) => {
                       if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
                       showAlert(payload.notification?.title || "Neuer Ruf", payload.notification?.body || "");
                   });
@@ -274,7 +290,22 @@
               }
           }, []);
 
-          // --- Auth Handlers ---
+          const loadFamilyData = async (familyId, userName) => {
+              try {
+                  const docSnap = await getFamilyDocRef(familyId).get();
+                  if (!docSnap.exists) throw new Error("Familie existiert nicht.");
+                  const data = docSnap.data();
+                  const member = data.members.find(m => m.name.trim().toLowerCase() === userName.trim().toLowerCase());
+                  if (!member) throw new Error("Benutzername nicht gefunden.");
+                  setCurrentFamily(data);
+                  setCurrentUser(member);
+                  if (member.fcmToken) setPushStatus('Aktiviert ✅');
+              } catch (e) {
+                  console.error("Ladefehler:", e);
+                  handleLogout(); 
+              }
+          };
+
           const handleCreateFamily = async () => {
             setAuthError('');
             if (!familyNameInput || !memberNameInput || !passwordInput) return setAuthError('Bitte alle Felder ausfüllen.');
@@ -287,7 +318,7 @@
               history: []
             };
             try {
-              await setDoc(getFamilyDocRef(newId), familyData);
+              await getFamilyDocRef(newId).set(familyData);
               localStorage.setItem('familyId', newId);
               localStorage.setItem('userName', memberNameInput);
               setCurrentFamily(familyData); setCurrentUser(familyData.members[0]);
@@ -298,15 +329,15 @@
             setAuthError('');
             if (!familyIdInput || !memberNameInput || !passwordInput) return setAuthError('Bitte alle Felder ausfüllen.');
             try {
-              const docSnap = await getDoc(getFamilyDocRef(familyIdInput));
-              if (!docSnap.exists()) return setAuthError('Familie nicht gefunden.');
+              const docSnap = await getFamilyDocRef(familyIdInput).get();
+              if (!docSnap.exists) return setAuthError('Familie nicht gefunden.');
               const data = docSnap.data();
               if (data.members.find(m => m.name.toLowerCase() === memberNameInput.toLowerCase())) {
                 return setAuthError('Name existiert. Bitte einloggen.');
               }
               const newUser = { name: memberNameInput, password: passwordInput, fcmToken: '', voiceMonkeyMeal: '', voiceMonkeyOther: '' };
               const updatedMembers = [...data.members, newUser];
-              await updateDoc(getFamilyDocRef(familyIdInput), { members: updatedMembers });
+              await getFamilyDocRef(familyIdInput).update({ members: updatedMembers });
               
               localStorage.setItem('familyId', form.familyId);
               localStorage.setItem('userName', memberNameInput);
@@ -319,8 +350,8 @@
             setAuthError('');
             if (!memberNameInput || !passwordInput) return setAuthError('Name und Passwort erforderlich.');
             try {
-              const familiesRef = collection(db, 'artifacts', appId, 'public', 'data', 'families');
-              const querySnapshot = await getDocs(familiesRef);
+              const familiesRef = db.collection(`artifacts/${appId}/public/data/families`);
+              const querySnapshot = await familiesRef.get();
               let foundFamily = null; let foundMember = null;
               querySnapshot.forEach((doc) => {
                 const data = doc.data();
@@ -354,7 +385,7 @@
               if (permission === 'granted') {
                 try {
                   const reg = await navigator.serviceWorker.ready;
-                  const token = await getToken(messaging, { 
+                  const token = await messaging.getToken({ 
                       vapidKey: currentFamily.vapidKey.trim(),
                       serviceWorkerRegistration: reg 
                   });
@@ -362,7 +393,7 @@
                     const updatedMembers = currentFamily.members.map(m => 
                       m.name === currentUser.name ? { ...m, fcmToken: token } : m
                     );
-                    await updateDoc(getFamilyDocRef(currentFamily.id), { members: updatedMembers });
+                    await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
                     setPushStatus('Aktiviert ✅');
                     if(navigator.vibrate) navigator.vibrate(50);
                     alert("Erfolgreich! Dein Gerät empfängt jetzt Push-Nachrichten.");
@@ -393,7 +424,6 @@
             const reasonObj = REASONS.find(r => r.id === selectedReason);
             const targets = currentFamily.members.filter(m => selectedMembers.includes(m.name));
             
-            // 1. Trigger Voice Monkey (außer bei push_only wie "Tischdecken")
             if (reasonObj.category !== 'push_only') {
                 targets.forEach(target => {
                   const url = reasonObj.category === 'meal' ? target.voiceMonkeyMeal : target.voiceMonkeyOther;
@@ -403,19 +433,17 @@
                 });
             }
 
-            // 2. Save History (Triggert die Cloud Function für Pushes)
-            // WICHTIG: Die Cloud-Function erwartet "targets"
             const newHistoryItem = {
               id: Date.now().toString(),
               timestamp: new Date().toISOString(),
               sender: currentUser.name,
               reason: reasonObj.label,
-              targets: selectedMembers, // Korrigiert für die Cloud Function!
+              targets: selectedMembers, 
               acknowledgedBy: [] 
             };
 
             try {
-              await updateDoc(getFamilyDocRef(currentFamily.id), {
+              await getFamilyDocRef(currentFamily.id).update({
                 history: [newHistoryItem, ...(currentFamily.history || [])].slice(0, 50)
               });
               if(navigator.vibrate) navigator.vibrate([30, 50, 30]);
@@ -438,13 +466,13 @@
               return item;
             });
             try {
-              await updateDoc(getFamilyDocRef(currentFamily.id), { history: updatedHistory });
+              await getFamilyDocRef(currentFamily.id).update({ history: updatedHistory });
             } catch (err) { console.error("Ack err:", err); }
           };
 
           const handleClearHistory = () => {
             showConfirm("Verlauf leeren", "Möchtest du den gesamten Verlauf für alle dauerhaft löschen?", async () => {
-                await updateDoc(getFamilyDocRef(currentFamily.id), { history: [] });
+                await getFamilyDocRef(currentFamily.id).update({ history: [] });
             }, true);
           };
 
@@ -452,18 +480,20 @@
             const updatedMembers = currentFamily.members.map(m => 
               m.name === currentUser.name ? { ...m, [key]: value.trim() } : m
             );
-            await updateDoc(getFamilyDocRef(currentFamily.id), { members: updatedMembers });
+            await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
           };
 
           const saveAdminSettings = async (key, value) => {
-            await updateDoc(getFamilyDocRef(currentFamily.id), { [key]: value.trim() });
+            await getFamilyDocRef(currentFamily.id).update({ [key]: value.trim() });
           };
 
-          // --- Splash Screen (verhindert Flackern) ---
+          const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
+
+          // --- Splash Screen ---
           if (!appLoaded) {
               return (
                   <div className="h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
-                     <ShieldCheck size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
+                     <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                      <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">Family Connect</p>
                   </div>
               );
@@ -478,7 +508,7 @@
                 <div className="bg-white/10 backdrop-blur-3xl border border-white/20 p-8 rounded-[40px] shadow-2xl w-full max-w-sm relative z-10">
                   <div className="flex justify-center mb-6">
                     <div className="w-20 h-20 bg-gradient-to-tr from-[#007AFF] to-[#5856D6] rounded-3xl flex items-center justify-center shadow-lg">
-                      <ShieldCheck size={40} className="text-white" />
+                      <Icon name="ShieldCheck" size={40} className="text-white" />
                     </div>
                   </div>
                   <h1 className="text-3xl font-bold text-center mb-8 tracking-tight">Family Hub</h1>
@@ -525,7 +555,6 @@
             <div className="h-screen bg-[#F2F2F7] font-sans select-none overflow-hidden flex flex-col relative">
               <Modal data={modal} onClose={() => setModal(null)} />
 
-              {/* Fester zentrierter Header außerhalb des Scroll-Containers */}
               <header className="flex-none pt-safe-top pt-14 pb-4 px-6 bg-white/90 ios-blur border-b border-gray-200/50 z-40 relative flex items-end justify-center">
                 <div className="text-center w-full">
                   <h1 className="text-[26px] font-extrabold text-black tracking-tight">
@@ -537,19 +566,16 @@
                     <p className="text-gray-500 font-medium mt-0.5 text-xs tracking-wide">ID: <span className="font-bold">{currentFamily.id}</span></p>
                   )}
                 </div>
-                {/* Verlauf leeren Button - Absolut rechts positioniert */}
                 {activeTab === 'history' && currentFamily.history?.length > 0 && (
                   <button onClick={handleClearHistory} className="absolute right-4 bottom-4 text-red-500 font-bold text-xs bg-red-50 px-3 py-1.5 rounded-full active:bg-red-100 transition-colors flex items-center gap-1.5 shadow-sm">
-                    <Trash2 size={14} /> Leeren
+                    <Icon name="Trash2" size={14} /> Leeren
                   </button>
                 )}
               </header>
 
-              {/* Flexibler Scroll-Container mit min-height für dauerhaftes Wischen */}
               <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36">
                 <div className="min-h-[calc(100%+1px)] pb-10">
                 
-                {/* --- HOME TAB --- */}
                 {activeTab === 'home' && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <section>
@@ -557,12 +583,11 @@
                       <div className="bg-white rounded-[28px] overflow-hidden shadow-sm border border-gray-100">
                         <div className="grid grid-cols-4 gap-y-4 p-4">
                           {REASONS.map((reason) => {
-                            const Icon = reason.icon;
                             const isSelected = selectedReason === reason.id;
                             return (
                               <div key={reason.id} onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setSelectedReason(reason.id); }} className="flex flex-col items-center cursor-pointer group relative">
                                 <div className={`w-[60px] h-[60px] rounded-2xl flex items-center justify-center mb-2 transition-all duration-300 ease-out transform ${isSelected ? 'bg-[#007AFF] text-white scale-105 shadow-md' : 'bg-[#F2F2F7] text-black group-active:scale-95'}`}>
-                                  <Icon size={26} strokeWidth={isSelected ? 2.5 : 2} />
+                                  <Icon name={reason.icon} size={26} strokeWidth={isSelected ? 2.5 : 2} />
                                 </div>
                                 <span className={`text-[11px] text-center font-bold transition-colors ${isSelected ? 'text-black' : 'text-gray-400'}`}>{reason.label}</span>
                               </div>
@@ -629,14 +654,12 @@
                   </div>
                 )}
 
-                {/* --- HISTORY TAB --- */}
                 {activeTab === 'history' && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {(!currentFamily.history || currentFamily.history.length === 0) ? (
                       <div className="text-center text-gray-400 font-medium mt-16">Keine Benachrichtigungen.</div>
                     ) : (
                       currentFamily.history.map((item) => {
-                        // Rückwärtskompatibel für alte Einträge (recipients) und neue (targets)
                         const targetList = item.targets || item.recipients || [];
                         const isRecipient = targetList.includes(currentUser.name);
                         const hasAcknowledged = item.acknowledgedBy?.includes(currentUser.name);
@@ -647,7 +670,7 @@
                           return (
                             <span key={name} className={`inline-flex items-center space-x-1 ${ack ? 'text-green-600 font-bold' : 'text-gray-500'}`}>
                               <span>{name}</span>
-                              {ack && <CheckCircle2 size={12} className="text-green-500 inline" />}
+                              {ack && <Icon name="CheckCircle2" size={12} className="text-green-500 inline" />}
                               {targetList.indexOf(name) !== targetList.length - 1 && <span className="text-gray-400 mr-1">,</span>}
                             </span>
                           );
@@ -657,7 +680,7 @@
                           <div key={item.id} className="bg-white p-5 rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col space-y-4">
                             <div className="flex items-center space-x-4">
                               <div className="bg-[#F2F2F7] text-[#007AFF] w-14 h-14 rounded-[20px] flex items-center justify-center flex-shrink-0">
-                                <Clock size={24} />
+                                <Icon name="Clock" size={24} />
                               </div>
                               <div className="flex-1">
                                 <p className="font-bold text-[18px] tracking-tight">{item.reason}</p>
@@ -680,7 +703,7 @@
                                 onClick={() => handleAcknowledge(item.id)}
                                 className="w-full bg-[#007AFF]/10 text-[#007AFF] font-bold py-3.5 rounded-[18px] active:scale-95 transition-all flex items-center justify-center space-x-2"
                               >
-                                <Check size={20} strokeWidth={3} />
+                                <Icon name="Check" size={20} strokeWidth={3} />
                                 <span>Bestätigen (Ich komme)</span>
                               </button>
                             )}
@@ -691,13 +714,12 @@
                   </div>
                 )}
 
-                {/* --- SETTINGS TAB --- */}
                 {activeTab === 'settings' && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     
                     {isAdmin && (
                        <section>
-                         <h2 className="text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Key size={14}/> Admin-Bereich</h2>
+                         <h2 className="text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Icon name="Key" size={14}/> Admin-Bereich</h2>
                          <div className="bg-white rounded-[28px] overflow-hidden shadow-sm border border-gray-100 p-5">
                            <p className="text-sm font-bold mb-1">Server Push Schlüssel (VAPID)</p>
                            <p className="text-xs text-gray-500 mb-3 leading-relaxed">Diesen Schlüssel bekommst du in der Firebase Konsole unter Project Settings &rarr; Cloud Messaging &rarr; Web Push certificates.</p>
@@ -714,7 +736,7 @@
                       <div className="bg-white rounded-[28px] overflow-hidden shadow-sm border border-gray-100">
                         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <div className="bg-blue-100 p-2 rounded-xl"><Smartphone size={20} className="text-blue-500"/></div>
+                            <div className="bg-blue-100 p-2 rounded-xl"><Icon name="Smartphone" size={20} className="text-blue-500"/></div>
                             <div>
                               <p className="font-bold text-[16px]">Apple Push</p>
                               <p className="text-[12px] text-gray-500 font-medium">Status: <span className={currentUser.fcmToken ? "text-green-500" : "text-orange-400"}>{pushStatus}</span></p>
@@ -727,7 +749,7 @@
                         
                         <div className="p-5 space-y-4">
                           <div className="flex items-center space-x-3 mb-2">
-                            <div className="bg-purple-100 p-2 rounded-xl"><Speaker size={20} className="text-purple-500"/></div>
+                            <div className="bg-purple-100 p-2 rounded-xl"><Icon name="Speaker" size={20} className="text-purple-500"/></div>
                             <p className="font-bold text-[16px]">Alexa Voice Monkey Links</p>
                           </div>
                           
@@ -751,7 +773,7 @@
                     </section>
                     
                     <button onClick={handleLogout} className="w-full bg-red-50 text-red-500 font-bold py-4 rounded-[24px] shadow-sm flex items-center justify-center space-x-2 active:scale-95 transition-transform border border-red-100">
-                      <LogOut size={20} />
+                      <Icon name="LogOut" size={20} />
                       <span className="text-[17px]">Abmelden</span>
                     </button>
                   </div>
@@ -760,7 +782,6 @@
                 </div>
               </main>
 
-              {/* Die neue Menüleiste außerhalb des Scroll-Containers */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
             </div>
           );
@@ -778,16 +799,24 @@
             useEffect(() => {
                 if (config) {
                     try {
-                        app = initializeApp(config);
-                        auth = getAuth(app);
-                        db = getFirestore(app);
+                        if (!firebase.apps.length) {
+                            app = firebase.initializeApp(config);
+                        } else {
+                            app = firebase.app();
+                        }
                         
-                        // Firebase App Check (reCAPTCHA) aktivieren
                         if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
-                            initializeAppCheck(app, {
-                                provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY),
-                                isTokenAutoRefreshEnabled: true
-                            });
+                            firebase.appCheck().activate(
+                                RECAPTCHA_SITE_KEY,
+                                true
+                            );
+                        }
+
+                        db = firebase.firestore();
+                        auth = firebase.auth();
+
+                        if (typeof window !== 'undefined' && 'Notification' in window) {
+                            try { messaging = firebase.messaging(); } catch (e) { console.log("Messaging init übersprungen."); }
                         }
 
                         if ('serviceWorker' in navigator) {
@@ -801,9 +830,6 @@
                             }
                         }
 
-                        if (typeof window !== 'undefined' && 'Notification' in window) {
-                            try { messaging = getMessaging(app); } catch (e) { console.log("Messaging init übersprungen."); }
-                        }
                         setIsReady(true);
                     } catch (e) {
                         console.error("Firebase Init Fehler:", e);
@@ -816,7 +842,7 @@
             if (!config) return <ConfigLoader onConfigLoaded={setConfig} />;
             if (!isReady) return (
                <div className="h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
-                  <ShieldCheck size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
+                  <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                   <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">System hochfahren</p>
                </div>
             );
