@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Family Connect Pro</title>
+    <meta name="apple-mobile-web-app-title" content="FamilyConnect">
+    <title>FamilyConnect</title>
+    
+    <!-- Hier wird dein Logo automatisch geladen, sobald die Datei apple-touch-icon.png im Ordner liegt -->
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -156,7 +160,7 @@
             );
         }
 
-        const LiquidTabBar = ({ activeTab, setActiveTab }) => {
+        const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
             { id: 'history', icon: 'Clock' },
@@ -166,7 +170,9 @@
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
 
           return (
-            <div className="fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 pb-safe">
+            <div 
+              className={`fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 pb-safe transition-all duration-300 ease-in-out ${isKeyboardOpen ? 'translate-y-24 opacity-0' : 'translate-y-0 opacity-100'}`}
+            >
               <div className="pointer-events-auto bg-white/95 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 rounded-full p-1.5 flex items-center justify-between w-full max-w-[220px] relative h-[60px]">
                 
                 <div 
@@ -210,6 +216,7 @@
           const [currentFamily, setCurrentFamily] = useState(null);
           const [currentUser, setCurrentUser] = useState(null);
           const [modal, setModal] = useState(null);
+          const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
           
           const [authMode, setAuthMode] = useState('login');
           const [familyIdInput, setFamilyIdInput] = useState('');
@@ -244,6 +251,26 @@
             onCancel: () => setModal(null) 
           });
 
+          // Tastatur-Erkennung für iOS & Safari
+          useEffect(() => {
+            const handleFocusIn = (e) => {
+              if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                setIsKeyboardOpen(true);
+              }
+            };
+            const handleFocusOut = () => {
+              setIsKeyboardOpen(false);
+            };
+
+            window.addEventListener('focusin', handleFocusIn);
+            window.addEventListener('focusout', handleFocusOut);
+
+            return () => {
+              window.removeEventListener('focusin', handleFocusIn);
+              window.removeEventListener('focusout', handleFocusOut);
+            };
+          }, []);
+
           // 1. Initialisierung
           useEffect(() => {
             const initAuth = async () => {
@@ -267,7 +294,7 @@
             return () => unsubscribe();
           }, []);
 
-          // 2. Real-time DB Listener mit Auto-Logout bei Löschung
+          // 2. Real-time DB Listener
           useEffect(() => {
             if (!firebaseUser) return;
             const familyId = localStorage.getItem('familyId');
@@ -330,6 +357,22 @@
               }
           }, []);
 
+          const loadFamilyData = async (familyId, userName) => {
+              try {
+                  const docSnap = await getFamilyDocRef(familyId).get();
+                  if (!docSnap.exists) throw new Error("Familie existiert nicht.");
+                  const data = docSnap.data();
+                  const member = data.members.find(m => m.name.trim().toLowerCase() === userName.trim().toLowerCase());
+                  if (!member) throw new Error("Benutzername nicht gefunden.");
+                  setCurrentFamily(data);
+                  setCurrentUser(member);
+                  if (member.fcmToken) setPushStatus('Aktiviert ✅');
+              } catch (e) {
+                  console.error("Ladefehler:", e);
+                  handleLogout(); 
+              }
+          };
+
           const handleCreateFamily = async () => {
             setAuthError('');
             if (!familyNameInput || !memberNameInput || !passwordInput) return setAuthError('Bitte alle Felder ausfüllen.');
@@ -344,7 +387,6 @@
               await getFamilyDocRef(newId).set(familyData);
               localStorage.setItem('familyId', newId);
               localStorage.setItem('userName', memberNameInput);
-              // Setzen wird vom onSnapshot übernommen
             } catch (err) { setAuthError('Fehler beim Erstellen.'); }
           };
 
@@ -383,11 +425,9 @@
               
               localStorage.setItem('familyId', foundFamily.id);
               localStorage.setItem('userName', foundMember.name);
-              // Setzen der Daten wird durch onSnapshot getriggert
             } catch (err) { setAuthError('Fehler bei der Anmeldung.'); }
           };
 
-          // Logout und Config Löschung
           const handleLogout = () => {
             auth.signOut();
             localStorage.clear();
@@ -509,11 +549,9 @@
             }, true);
           };
 
-          // Admin Feature: Komplette Familie löschen
           const handleDeleteFamily = () => {
             showConfirm("Familie unwiderruflich auflösen", "Möchtest du die gesamte Familie und alle Daten endgültig löschen? Alle Mitglieder werden sofort abgemeldet.", async () => {
                 await getFamilyDocRef(currentFamily.id).delete();
-                // Logout passiert danach automatisch durch den DB-Listener!
             }, true);
           };
 
@@ -522,6 +560,10 @@
               m.name === currentUser.name ? { ...m, [key]: value.trim() } : m
             );
             await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
+          };
+
+          const saveAdminSettings = async (key, value) => {
+            await getFamilyDocRef(currentFamily.id).update({ [key]: value.trim() });
           };
 
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
@@ -609,7 +651,7 @@
               </header>
 
               <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36">
-                <div className="pb-10">
+                <div className="min-h-[calc(100%+1px)] pb-10">
                 
                 {activeTab === 'home' && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -835,7 +877,7 @@
                 </div>
               </main>
 
-              <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+              <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
         }
