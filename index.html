@@ -7,15 +7,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Family Connect Pro</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & Babel (UMD Versionen für maximale Stabilität) -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -41,17 +37,15 @@
         // =====================================================================
         // 🛡️ HIER DEINEN RECAPTCHA SCHLÜSSEL EINTRAGEN 🛡️
         // =====================================================================
-        const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
+        const RECAPTCHA_SITE_KEY = "DEIN_SCHLUESSEL_HIER_EINFUEGEN";
         // =====================================================================
 
-        // HIER WAR DER FEHLER: "app" fehlte in dieser Liste!
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
 
         const generateFamilyId = () => Math.floor(100000 + Math.random() * 900000).toString();
         const getFamilyDocRef = (familyId) => db.doc(`artifacts/${appId}/public/data/families/${familyId}`);
 
-        // --- Absturzsichere SVG Icons ---
         const ICONS = {
           Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
           Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
@@ -69,7 +63,6 @@
           Smartphone: '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
           Speaker: '<rect width="16" height="20" x="4" y="2" rx="2"/><circle cx="12" cy="14" r="4"/><line x1="12" x2="12.01" y1="6" y2="6"/>',
           CheckCircle2: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
-          Key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
           Trash2: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>'
         };
 
@@ -89,7 +82,6 @@
             });
         };
 
-        // --- Custom Modal ---
         function Modal({ data, onClose }) {
             if (!data) return null;
             return (
@@ -114,7 +106,6 @@
             );
         }
 
-        // --- Config Loader ---
         function ConfigLoader({ onConfigLoaded }) {
             const [error, setError] = useState("");
             
@@ -147,10 +138,10 @@
                     <div className="w-full max-w-sm text-center space-y-6">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-blue-500 mx-auto mb-4" />
                         <h1 className="text-3xl font-bold tracking-tight">System Setup</h1>
-                        <p className="text-gray-400 text-sm leading-relaxed px-4">Bitte lade deine <span className="font-mono text-blue-400">config.json</span> hoch.</p>
+                        <p className="text-gray-400 text-sm leading-relaxed px-4">Bitte lade deine <span className="font-mono text-blue-400">config.json</span> hoch. Die Daten werden sicher lokal auf diesem Gerät gespeichert.</p>
                         {error && <p className="text-red-400 text-xs font-semibold bg-red-500/10 p-3 rounded-lg border border-red-500/20">{error}</p>}
                         
-                        <label className="inline-block w-full bg-blue-600 py-4 rounded-2xl font-bold active:scale-95 transition-all cursor-pointer mt-8">
+                        <label className="inline-block w-full bg-blue-600 py-4 rounded-2xl font-bold active:scale-95 transition-all cursor-pointer mt-8 shadow-[0_0_20px_rgba(37,99,235,0.4)]">
                             Konfiguration laden
                             <input 
                                 type="file" 
@@ -164,7 +155,6 @@
             );
         }
 
-        // --- Mathematisch perfekte Tab Bar ---
         const LiquidTabBar = ({ activeTab, setActiveTab }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -178,7 +168,6 @@
             <div className="fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 pb-safe">
               <div className="pointer-events-auto bg-white/95 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 rounded-full p-1.5 flex items-center justify-between w-full max-w-[220px] relative h-[60px]">
                 
-                {/* Blaue Pille - Perfekt zentriert hinter dem Icon */}
                 <div 
                   className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none"
                   style={{
@@ -197,6 +186,8 @@
                       onClick={() => {
                         if(navigator.vibrate) navigator.vibrate(10);
                         setActiveTab(tab.id);
+                        // URL Parameter bereinigen beim manuellen Tab-Wechsel
+                        window.history.replaceState({}, document.title, "/");
                       }}
                       className="flex-1 relative z-10 flex items-center justify-center h-full active:scale-90 transition-transform"
                     >
@@ -214,7 +205,6 @@
           );
         };
 
-        // --- Main App Component ---
         function App() {
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
@@ -229,21 +219,26 @@
           const [passwordInput, setPasswordInput] = useState('');
           const [authError, setAuthError] = useState('');
 
-          const [activeTab, setActiveTab] = useState('home');
+          // Deep Link Verarbeitung beim Start
+          const [activeTab, setActiveTab] = useState(() => {
+              const params = new URLSearchParams(window.location.search);
+              return params.get('tab') === 'history' ? 'history' : 'home';
+          });
           const [selectedReason, setSelectedReason] = useState(null);
           const [selectedMembers, setSelectedMembers] = useState([]);
           const [isSending, setIsSending] = useState(false);
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
+          // GANZE SÄTZE für die Historie und Pushes!
           const REASONS = [
-            { id: 'breakfast', label: 'Frühstück', icon: 'Coffee', category: 'meal' },
-            { id: 'lunch', label: 'Mittagessen', icon: 'Utensils', category: 'meal' },
-            { id: 'coffee', label: 'Kaffee', icon: 'UtensilsCrossed', category: 'meal' },
-            { id: 'dinner', label: 'Abendessen', icon: 'Moon', category: 'meal' },
-            { id: 'table', label: 'Tischdecken', icon: 'Utensils', category: 'push_only' },
-            { id: 'message', label: 'Kommen', icon: 'MessageCircle', category: 'other' },
-            { id: 'movie', label: 'Film', icon: 'Film', category: 'other' },
-            { id: 'game', label: 'Spielen', icon: 'Gamepad2', category: 'other' },
+            { id: 'breakfast', label: 'Frühstück', sentence: 'Das Frühstück ist fertig!', icon: 'Coffee', category: 'meal' },
+            { id: 'lunch', label: 'Mittagessen', sentence: 'Das Mittagessen ist fertig!', icon: 'Utensils', category: 'meal' },
+            { id: 'coffee', label: 'Kaffee', sentence: 'Es gibt Kaffee und Kuchen!', icon: 'UtensilsCrossed', category: 'meal' },
+            { id: 'dinner', label: 'Abendessen', sentence: 'Das Abendessen ist fertig!', icon: 'Moon', category: 'meal' },
+            { id: 'table', label: 'Tischdecken', sentence: 'Hilfe beim Tischdecken wird benötigt!', icon: 'Utensils', category: 'push_only' },
+            { id: 'message', label: 'Kommen', sentence: 'Bitte komm kurz zu mir!', icon: 'MessageCircle', category: 'other' },
+            { id: 'movie', label: 'Film', sentence: 'Der Film fängt gleich an!', icon: 'Film', category: 'other' },
+            { id: 'game', label: 'Spielen', sentence: 'Wir wollen spielen, komm dazu!', icon: 'Gamepad2', category: 'other' },
           ];
 
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ 
@@ -252,7 +247,7 @@
             onCancel: () => setModal(null) 
           });
 
-          // 1. App laden ohne Flackern
+          // Turbostart (Kein Timeout mehr)
           useEffect(() => {
             const initAuth = async () => {
               try {
@@ -270,14 +265,16 @@
                   const savedName = localStorage.getItem('userName');
                   if (savedFamilyId && savedName) {
                       await loadFamilyData(savedFamilyId, savedName);
+                  } else {
+                      setAppLoaded(true); // Direkt anzeigen, wenn kein User gespeichert
                   }
+              } else {
+                  setAppLoaded(true);
               }
-              setTimeout(() => setAppLoaded(true), 300);
             });
             return () => unsubscribe();
           }, []);
 
-          // 2. Real-time DB Listener
           useEffect(() => {
             if (!firebaseUser || !currentFamily?.id) return;
             const unsubscribe = getFamilyDocRef(currentFamily.id).onSnapshot((docSnap) => {
@@ -291,12 +288,13 @@
                      if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
                   }
                 }
+                setAppLoaded(true); // DB ist da, sofort anzeigen!
               }
             });
             return () => unsubscribe();
           }, [firebaseUser, currentFamily?.id, currentUser?.name]);
 
-          // 3. Foreground Push Listener (Wenn die App geöffnet ist)
+          // Pushes im Vordergrund
           useEffect(() => {
               if (messaging) {
                   try {
@@ -332,7 +330,6 @@
             const familyData = {
               id: newId, 
               name: familyNameInput,
-              vapidKey: '', 
               members: [{ name: memberNameInput, password: passwordInput, fcmToken: '', voiceMonkeyMeal: '', voiceMonkeyOther: '' }],
               history: []
             };
@@ -358,7 +355,7 @@
               const updatedMembers = [...data.members, newUser];
               await getFamilyDocRef(familyIdInput).update({ members: updatedMembers });
               
-              localStorage.setItem('familyId', form.familyId);
+              localStorage.setItem('familyId', familyIdInput);
               localStorage.setItem('userName', memberNameInput);
               setCurrentFamily({ ...data, members: updatedMembers }); 
               setCurrentUser(newUser);
@@ -387,16 +384,23 @@
             } catch (err) { setAuthError('Fehler bei der Anmeldung.'); }
           };
 
+          // NEU: Logout löscht alles inkl. Config
           const handleLogout = () => {
-            setCurrentFamily(null); setCurrentUser(null);
-            setPasswordInput(''); setAuthMode('login'); setPushStatus('Nicht konfiguriert');
-            localStorage.removeItem('familyId');
-            localStorage.removeItem('userName');
+            auth.signOut();
+            localStorage.clear(); // Löscht Familie UND Config
+            window.location.href = '/'; // Lädt die Seite hart neu für den Loader
           };
 
           const requestPushPermission = async () => {
             if (!messaging) return alert("Push wird auf diesem Gerät nicht unterstützt (Safari auf dem Home-Bildschirm speichern!).");
-            if (!currentFamily.vapidKey || currentFamily.vapidKey.trim() === '') return alert("Dem System fehlt der VAPID Key. Der Admin muss diesen im Setup-Tab eintragen.");
+            
+            // VAPID Key aus lokaler JSON Config auslesen
+            const storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}');
+            const vapidKey = storedConfig.vapidKey || (currentFamily && currentFamily.vapidKey);
+
+            if (!vapidKey || vapidKey.trim() === '') {
+                return alert("Es wurde kein VAPID-Key gefunden. Bitte füge in deiner config.json den Wert \"vapidKey\": \"B...\" hinzu und lade sie nach einem Logout neu hoch.");
+            }
             
             setPushStatus('Wird angefragt...');
             try {
@@ -405,7 +409,7 @@
                 try {
                   const reg = await navigator.serviceWorker.ready;
                   const token = await messaging.getToken({ 
-                      vapidKey: currentFamily.vapidKey.trim(),
+                      vapidKey: vapidKey.trim(),
                       serviceWorkerRegistration: reg 
                   });
                   if (token) {
@@ -423,7 +427,7 @@
                 } catch (tokenErr) {
                   console.error("Token Error:", tokenErr);
                   setPushStatus('Zertifikat-Fehler');
-                  alert("Fehler beim Token: Überprüfe den VAPID Key. Stelle sicher, dass keine Leerzeichen am Anfang oder Ende sind.");
+                  alert("Fehler beim Token: Überprüfe den VAPID Key in deiner Config.");
                 }
               } else { 
                 setPushStatus('Abgelehnt ❌'); 
@@ -456,7 +460,7 @@
               id: Date.now().toString(),
               timestamp: new Date().toISOString(),
               sender: currentUser.name,
-              reason: reasonObj.label,
+              reason: reasonObj.sentence, // Ganzer Satz wird gespeichert!
               targets: selectedMembers, 
               acknowledgedBy: [] 
             };
@@ -495,6 +499,15 @@
             }, true);
           };
 
+          // Admin Feature: Mitglied löschen
+          const handleDeleteMember = (memberName) => {
+            if (memberName === currentUser.name) return; // Admin kann sich nicht selbst löschen
+            showConfirm("Mitglied entfernen", `Möchtest du ${memberName} dauerhaft aus der Familie entfernen?`, async () => {
+                const updatedMembers = currentFamily.members.filter(m => m.name !== memberName);
+                await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
+            }, true);
+          };
+
           const saveSettings = async (key, value) => {
             const updatedMembers = currentFamily.members.map(m => 
               m.name === currentUser.name ? { ...m, [key]: value.trim() } : m
@@ -502,18 +515,12 @@
             await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
           };
 
-          const saveAdminSettings = async (key, value) => {
-            await getFamilyDocRef(currentFamily.id).update({ [key]: value.trim() });
-          };
-
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // --- Splash Screen ---
           if (!appLoaded) {
               return (
                   <div className="h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
-                     <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">Family Connect</p>
                   </div>
               );
           }
@@ -581,9 +588,6 @@
                     {activeTab === 'history' && 'Verlauf'}
                     {activeTab === 'settings' && 'Einstellungen'}
                   </h1>
-                  {activeTab === 'home' && (
-                    <p className="text-gray-500 font-medium mt-0.5 text-xs tracking-wide">ID: <span className="font-bold">{currentFamily.id}</span></p>
-                  )}
                 </div>
                 {activeTab === 'history' && currentFamily.history?.length > 0 && (
                   <button onClick={handleClearHistory} className="absolute right-4 bottom-4 text-red-500 font-bold text-xs bg-red-50 px-3 py-1.5 rounded-full active:bg-red-100 transition-colors flex items-center gap-1.5 shadow-sm">
@@ -736,16 +740,30 @@
                 {activeTab === 'settings' && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     
+                    {/* Neuer Admin Bereich: Personen und ID verwalten */}
                     {isAdmin && (
                        <section>
                          <h2 className="text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Icon name="Key" size={14}/> Admin-Bereich</h2>
-                         <div className="bg-white rounded-[28px] overflow-hidden shadow-sm border border-gray-100 p-5">
-                           <p className="text-sm font-bold mb-1">Server Push Schlüssel (VAPID)</p>
-                           <p className="text-xs text-gray-500 mb-3 leading-relaxed">Diesen Schlüssel bekommst du in der Firebase Konsole unter Project Settings &rarr; Cloud Messaging &rarr; Web Push certificates.</p>
-                           <input type="text" placeholder="B... Vapid Key eintragen..." 
-                                  className="w-full bg-[#F2F2F7] px-4 py-3 rounded-xl text-sm font-mono outline-none focus:ring-2 ring-black/10" 
-                                  defaultValue={currentFamily.vapidKey} 
-                                  onBlur={(e) => saveAdminSettings('vapidKey', e.target.value)} />
+                         <div className="bg-white rounded-[28px] overflow-hidden shadow-sm border border-gray-100">
+                           <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-[#F2F2F7]/50">
+                             <p className="font-bold text-sm">Familien ID:</p>
+                             <p className="font-mono font-bold tracking-wider text-[#007AFF]">{currentFamily.id}</p>
+                           </div>
+                           <div className="p-5">
+                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Familienmitglieder verwalten</p>
+                             <div className="space-y-1">
+                               {currentFamily.members.map((member, i) => (
+                                  <div key={member.name} className={`flex items-center justify-between p-3 rounded-2xl ${member.name === currentUser.name ? 'bg-gray-50' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                                    <span className="font-semibold text-[15px]">{member.name} {member.name === currentUser.name && "(Du)"}</span>
+                                    {member.name !== currentUser.name && (
+                                       <button onClick={() => handleDeleteMember(member.name)} className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full active:scale-90 transition-transform">
+                                         <Icon name="Trash2" size={16} />
+                                       </button>
+                                    )}
+                                  </div>
+                               ))}
+                             </div>
+                           </div>
                          </div>
                        </section>
                     )}
@@ -806,14 +824,13 @@
           );
         }
 
-        // --- Init & Root Component ---
         function Root() {
             const [config, setConfig] = useState(() => {
                 if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
                 const saved = localStorage.getItem('firebaseConfig');
                 return saved ? JSON.parse(saved) : null;
             });
-            const [status, setStatus] = useState("booting"); // booting, config-needed, error, ready
+            const [status, setStatus] = useState("booting"); 
             const [errorMsg, setErrorMsg] = useState("");
 
             useEffect(() => {
@@ -831,7 +848,6 @@
                         app = firebase.app();
                     }
                     
-                    // AppCheck aktivieren
                     if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
                         try {
                             firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true);
@@ -874,7 +890,7 @@
                         <p className="text-red-400 text-sm mb-8 font-mono bg-red-500/10 p-4 rounded-xl border border-red-500/20">{errorMsg}</p>
                         <button 
                             onClick={() => { localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }}
-                            className="bg-white/10 px-6 py-3 rounded-xl font-bold active:scale-95"
+                            className="bg-white/10 px-6 py-3 rounded-xl font-bold active:scale-95 transition-transform"
                         >
                             Neue Config laden
                         </button>
@@ -886,7 +902,6 @@
                 return (
                    <div className="h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
                       <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
-                      <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">System hochfahren</p>
                    </div>
                 );
             }
