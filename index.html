@@ -58,7 +58,7 @@
         // =====================================================================
         // 🛡️ HIER DEINEN RECAPTCHA SCHLÜSSEL EINTRAGEN 🛡️
         // =====================================================================
-        const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
+        const RECAPTCHA_SITE_KEY = "DEIN_SCHLUESSEL_HIER_EINFUEGEN";
         // =====================================================================
 
         let app, auth, db, messaging;
@@ -129,25 +129,27 @@
         // --- Mathematisch perfekte Tab Bar ---
         const LiquidTabBar = ({ activeTab, setActiveTab }) => {
           const tabs = [
-            { id: 'home', icon: Bell, label: 'Rufen' },
-            { id: 'history', icon: Clock, label: 'Verlauf' },
-            { id: 'settings', icon: Settings, label: 'Setup' }
+            { id: 'home', icon: Bell },
+            { id: 'history', icon: Clock },
+            { id: 'settings', icon: Settings }
           ];
 
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
 
           return (
             <div className="fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 pb-safe">
-              <div className="pointer-events-auto bg-white/95 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 rounded-full p-2 flex items-center justify-between w-full max-w-[280px] relative">
+              <div className="pointer-events-auto bg-white/95 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 rounded-full p-1.5 flex items-center justify-between w-full max-w-[220px] relative h-[60px]">
                 
-                {/* Blaue Pille - Exakt gedrittelt minus das Padding */}
+                {/* Blaue Pille - Perfekt zentriert hinter dem Icon */}
                 <div 
-                  className="absolute top-2 bottom-2 left-2 bg-[#007AFF]/10 rounded-[20px] transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                  className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none"
                   style={{
-                    width: 'calc((100% - 16px) / 3)', 
+                    width: 'calc((100% - 12px) / 3)', 
                     transform: `translateX(${activeIndex * 100}%)`,
                   }}
-                />
+                >
+                  <div className="w-12 h-full bg-[#007AFF]/12 rounded-full"></div>
+                </div>
                 
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
@@ -159,16 +161,13 @@
                         if(navigator.vibrate) navigator.vibrate(10);
                         setActiveTab(tab.id);
                       }}
-                      className="flex-1 relative z-10 flex flex-col items-center justify-center py-2"
+                      className="flex-1 relative z-10 flex items-center justify-center h-full active:scale-90 transition-transform"
                     >
                       <Icon 
-                        size={isActive ? 22 : 20} 
+                        size={isActive ? 24 : 22} 
                         strokeWidth={isActive ? 2.5 : 2}
-                        className={`transition-all duration-300 ${isActive ? 'text-[#007AFF] translate-y-[-2px]' : 'text-gray-400 translate-y-0'}`} 
+                        className={`transition-colors duration-300 ${isActive ? 'text-[#007AFF]' : 'text-gray-400'}`} 
                       />
-                      <span className={`text-[10px] font-bold mt-1 transition-all duration-300 ${isActive ? 'text-[#007AFF] opacity-100' : 'text-gray-400 opacity-0 absolute bottom-[-10px]'}`}>
-                        {tab.label}
-                      </span>
                     </button>
                   );
                 })}
@@ -546,8 +545,9 @@
                 )}
               </header>
 
-              {/* Flexibler Scroll-Container */}
+              {/* Flexibler Scroll-Container mit min-height für dauerhaftes Wischen */}
               <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36">
+                <div className="min-h-[calc(100%+1px)] pb-10">
                 
                 {/* --- HOME TAB --- */}
                 {activeTab === 'home' && (
@@ -636,7 +636,9 @@
                       <div className="text-center text-gray-400 font-medium mt-16">Keine Benachrichtigungen.</div>
                     ) : (
                       currentFamily.history.map((item) => {
-                        const isRecipient = item.targets.includes(currentUser.name);
+                        // Rückwärtskompatibel für alte Einträge (recipients) und neue (targets)
+                        const targetList = item.targets || item.recipients || [];
+                        const isRecipient = targetList.includes(currentUser.name);
                         const hasAcknowledged = item.acknowledgedBy?.includes(currentUser.name);
                         const isRecent = (new Date() - new Date(item.timestamp)) < (2 * 60 * 60 * 1000);
                         
@@ -646,7 +648,7 @@
                             <span key={name} className={`inline-flex items-center space-x-1 ${ack ? 'text-green-600 font-bold' : 'text-gray-500'}`}>
                               <span>{name}</span>
                               {ack && <CheckCircle2 size={12} className="text-green-500 inline" />}
-                              {item.targets.indexOf(name) !== item.targets.length - 1 && <span className="text-gray-400 mr-1">,</span>}
+                              {targetList.indexOf(name) !== targetList.length - 1 && <span className="text-gray-400 mr-1">,</span>}
                             </span>
                           );
                         };
@@ -670,7 +672,7 @@
 
                             <div className="bg-gray-50 rounded-2xl p-3 flex flex-wrap gap-1 items-center text-[13px]">
                               <span className="text-gray-400 font-medium mr-1">An:</span>
-                              {item.targets.map(name => renderRecipientStatus(name))}
+                              {targetList.map(name => renderRecipientStatus(name))}
                             </div>
 
                             {isRecipient && !hasAcknowledged && isRecent && item.sender !== currentUser.name && (
@@ -755,6 +757,7 @@
                   </div>
                 )}
 
+                </div>
               </main>
 
               {/* Die neue Menüleiste außerhalb des Scroll-Containers */}
