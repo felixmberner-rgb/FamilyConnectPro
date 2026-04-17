@@ -27,13 +27,19 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #F2F2F7; }
         .ios-blur { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); }
-        .liquid-pill { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .liquid-pill { transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
         .pt-safe { padding-top: env(safe-area-inset-top, 44px); }
         .toggle-dot { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         ::-webkit-scrollbar { display: none; }
         .active-scale:active { transform: scale(0.96); }
         input[type="file"] { display: none; }
+        
+        /* Modal Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+        .animate-scale-in { animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
     </style>
 </head>
 <body class="text-black antialiased overflow-hidden">
@@ -45,6 +51,31 @@
         let messaging = null;
 
         const { useState, useEffect } = React;
+
+        // Custom Modal UI Component
+        function Modal({ data, onClose }) {
+            if (!data) return null;
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl animate-scale-in">
+                        <div className="text-center mb-6">
+                            <h3 className="font-bold text-xl mb-2 text-black">{data.title}</h3>
+                            <p className="text-gray-500 text-[15px] leading-relaxed">{data.message}</p>
+                        </div>
+                        <div className="flex gap-3">
+                            {data.type === 'confirm' && (
+                                <button onClick={data.onCancel} className="flex-1 py-3.5 rounded-xl bg-[#F2F2F7] text-black font-bold active:scale-95 transition-transform">
+                                    Abbrechen
+                                </button>
+                            )}
+                            <button onClick={data.onConfirm} className={`flex-1 py-3.5 rounded-xl font-bold active:scale-95 transition-transform ${data.danger ? 'bg-red-500 text-white' : 'bg-[#007AFF] text-white'}`}>
+                                {data.confirmText || 'OK'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
         function ConfigLoader({ onConfigLoaded }) {
             const [error, setError] = useState("");
@@ -84,10 +115,10 @@
             const [user, setUser] = useState(null);
             const [family, setFamily] = useState(null);
             const [loading, setLoading] = useState(true);
+            const [modal, setModal] = useState(null);
 
             const [authMode, setAuthMode] = useState('login');
             const [form, setForm] = useState({ familyId: '', familyName: '', name: '', password: '' });
-            const [error, setError] = useState('');
 
             const [selectedReason, setSelectedReason] = useState(null);
             const [selectedMembers, setSelectedMembers] = useState([]);
@@ -99,8 +130,17 @@
                 { id: 'coffee', label: 'Kaffee & Kuchen', icon: 'utensils-crossed', color: 'text-amber-700' },
                 { id: 'dinner', label: 'Abendessen', icon: 'moon', color: 'text-indigo-600' },
                 { id: 'play', label: 'Spielen', icon: 'gamepad-2', color: 'text-green-500' },
-                { id: 'movie', label: 'Filmabend', icon: 'film', color: 'text-purple-500' }
+                { id: 'movie', label: 'Filmabend', icon: 'film', color: 'text-purple-500' },
+                { id: 'help', label: 'Hilfe', icon: 'life-buoy', color: 'text-red-500' }
             ];
+
+            // Modal Helpers
+            const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
+            const showConfirm = (title, message, onConfirm, danger = false) => setModal({ 
+                type: 'confirm', title, message, danger, 
+                onConfirm: () => { onConfirm(); setModal(null); }, 
+                onCancel: () => setModal(null) 
+            });
 
             useEffect(() => {
                 const unsubscribe = auth.onAuthStateChanged(async (u) => {
@@ -114,46 +154,47 @@
                 return unsubscribe;
             }, []);
 
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+            useEffect(() => { 
+                if (window.lucide) {
+                    setTimeout(() => window.lucide.createIcons(), 10);
+                }
+            });
 
             const loadFamilyData = async (familyId, userName) => {
                 try {
                     const doc = await db.collection('families').doc(familyId).get();
-                    if (!doc.exists) throw new Error("Familie existiert nicht in der Datenbank.");
+                    if (!doc.exists) throw new Error("Familie existiert nicht.");
                     
                     const data = doc.data();
                     const member = data.members.find(m => m.name.trim().toLowerCase() === userName.trim().toLowerCase());
                     
-                    if (!member) throw new Error("Benutzername nicht in dieser Familie gefunden.");
+                    if (!member) throw new Error("Benutzername nicht gefunden.");
                     
                     setFamily(data);
                     setUser(member);
-                    setView('app'); // Zwingt die App, das Dashboard zu laden
+                    setView('app');
                     
                     db.collection('families').doc(familyId).onSnapshot(snap => {
                         if (snap.exists) setFamily(snap.data());
                     });
                 } catch (e) {
-                    console.error("Ladefehler:", e);
-                    setError(e.message);
+                    showAlert("Ladefehler", e.message);
                 } finally {
                     setLoading(false);
                 }
             };
 
             const handleAuth = async () => {
-                setError('Wird angemeldet...'); // Lade-Feedback
                 try {
-                    // Immer zuerst anonym anmelden, wenn nicht bereits geschehen
                     if (!auth.currentUser) await auth.signInAnonymously();
                     
-                    // Formatierung der Eingaben
                     const safeName = form.name.trim();
                     const safePassword = form.password.trim();
 
                     if (authMode === 'create') {
                         if (!form.familyName || !safeName || !safePassword) throw new Error("Alle Felder ausfüllen.");
                         const newId = Math.floor(100000 + Math.random() * 900000).toString();
+                        // Der erste Nutzer ist automatisch der Admin
                         const newFamily = { id: newId, name: form.familyName, members: [{ name: safeName, password: safePassword, voiceMonkey: '', fcmToken: '' }], history: [] };
                         
                         await db.collection('families').doc(newId).set(newFamily);
@@ -169,15 +210,15 @@
                         const data = doc.data();
                         if (data.members.find(m => m.name.toLowerCase() === safeName.toLowerCase())) throw new Error('Name bereits vergeben.');
                         
-                        await db.collection('families').doc(form.familyId).update({
-                            members: firebase.firestore.FieldValue.arrayUnion({ name: safeName, password: safePassword, voiceMonkey: '', fcmToken: '' })
-                        });
+                        // Direkter Read-Modify-Write ist sicherer als arrayUnion für neue User
+                        const updatedMembers = [...data.members, { name: safeName, password: safePassword, voiceMonkey: '', fcmToken: '' }];
+                        await db.collection('families').doc(form.familyId).update({ members: updatedMembers });
+                        
                         localStorage.setItem('familyId', form.familyId);
                         localStorage.setItem('userName', safeName);
                         await loadFamilyData(form.familyId, safeName);
                         
                     } else {
-                        // LOGIN
                         if (!safeName || !safePassword) throw new Error("Name und Passwort erforderlich.");
                         const snap = await db.collection('families').get();
                         let found = false;
@@ -189,30 +230,45 @@
                                 localStorage.setItem('userName', m.name);
                                 await loadFamilyData(d.id, m.name);
                                 found = true;
-                                break; // Stoppe Schleife
+                                break;
                             }
                         }
                         if (!found) throw new Error('Anmeldedaten nicht korrekt.');
                     }
                 } catch (e) { 
-                    setError(e.message); 
+                    showAlert("Fehler", e.message); 
                 }
             };
 
             const requestPushPermission = async () => {
                 const vapidKey = localStorage.getItem('vapidKey');
-                if (!messaging || !vapidKey) return alert("Pushes werden auf diesem Gerät nicht unterstützt oder der VAPID Key fehlt in der config.json.");
+                if (!messaging || !vapidKey) {
+                    return showAlert("Hinweis", "Push-Benachrichtigungen werden von diesem Gerät/Browser nicht unterstützt.");
+                }
+
                 try {
+                    // Apple fragt den Nutzer
                     const permission = await Notification.requestPermission();
+                    
                     if (permission === 'granted') {
-                        const token = await messaging.getToken({ vapidKey: vapidKey });
-                        if (token) {
-                            const updatedMembers = family.members.map(m => m.name === user.name ? { ...m, fcmToken: token } : m);
-                            await db.collection('families').doc(family.id).update({ members: updatedMembers });
-                            alert("Apple Push erfolgreich aktiviert! ✅");
+                        try {
+                            const token = await messaging.getToken({ vapidKey: vapidKey });
+                            if (token) {
+                                const updatedMembers = family.members.map(m => m.name === user.name ? { ...m, fcmToken: token } : m);
+                                await db.collection('families').doc(family.id).update({ members: updatedMembers });
+                                showAlert("Erfolg", "Apple Push wurde erfolgreich aktiviert! ✅");
+                            }
+                        } catch (tokenError) {
+                            console.error(tokenError);
+                            showAlert("Fast fertig!", "Die Berechtigung wurde erteilt. Bitte lade die App einmal neu, damit das System die Verbindung endgültig herstellen kann.");
                         }
-                    } else { alert("Push-Berechtigung abgelehnt."); }
-                } catch (error) { console.error(error); alert("Fehler bei der Aktivierung."); }
+                    } else {
+                        showAlert("Abgelehnt", "Du hast die Push-Berechtigung abgelehnt. Du kannst sie in den iPhone-Einstellungen wieder aktivieren.");
+                    }
+                } catch (error) {
+                    console.error(error);
+                    showAlert("Fehler", "Fehler bei der Aktivierung. Bitte stelle sicher, dass die App als Icon auf deinem Home-Bildschirm liegt.");
+                }
             };
 
             const sendCall = async () => {
@@ -220,12 +276,16 @@
                 setIsSending(true);
                 const reasonObj = reasons.find(r => r.id === selectedReason);
                 
+                // Voice Monkey (Alexa) parallel triggern
                 family.members.filter(m => selectedMembers.includes(m.name)).forEach(m => {
                     if (m.voiceMonkey) fetch(m.voiceMonkey).catch(() => {});
                 });
 
                 const newEvent = { id: Date.now().toString(), sender: user.name, reason: reasonObj.label, targets: selectedMembers, timestamp: new Date().toISOString(), acks: [] };
-                await db.collection('families').doc(family.id).update({ history: firebase.firestore.FieldValue.arrayUnion(newEvent) });
+                
+                // Wir fügen das neue Event ganz Oben ein (damit History absteigend ist)
+                const newHistory = [newEvent, ...family.history];
+                await db.collection('families').doc(family.id).update({ history: newHistory });
 
                 if (navigator.vibrate) navigator.vibrate(50);
                 setSelectedReason(null); setSelectedMembers([]); setIsSending(false); setActiveTab('history');
@@ -241,13 +301,27 @@
                 }
             };
 
+            const clearHistory = () => {
+                showConfirm("Verlauf leeren", "Möchtest du den Ruf-Verlauf für alle Mitglieder dauerhaft löschen?", async () => {
+                    await db.collection('families').doc(family.id).update({ history: [] });
+                }, true);
+            };
+
+            const removeMember = (memberName) => {
+                showConfirm("Mitglied entfernen", `Möchtest du ${memberName} wirklich aus der Familie entfernen?`, async () => {
+                    const updatedMembers = family.members.filter(m => m.name !== memberName);
+                    await db.collection('families').doc(family.id).update({ members: updatedMembers });
+                }, true);
+            };
+
             const resetSystem = () => { auth.signOut(); localStorage.clear(); location.reload(); };
 
             if (loading) return <div className="h-screen flex items-center justify-center text-gray-400 font-medium bg-[#F2F2F7]">Laden...</div>;
 
             if (view === 'auth') {
                 return (
-                    <div className="h-screen flex flex-col items-center justify-center p-8 bg-black text-white">
+                    <div className="h-screen flex flex-col items-center justify-center p-8 bg-black text-white relative">
+                        <Modal data={modal} onClose={() => setModal(null)} />
                         <div className="w-full max-w-sm space-y-6 animate-in fade-in duration-1000">
                             <div className="text-center relative">
                                 <button onClick={resetSystem} className="absolute top-0 right-0 p-2 text-gray-600 hover:text-white"><i data-lucide="refresh-cw" className="w-4 h-4"></i></button>
@@ -256,7 +330,7 @@
                             </div>
                             <div className="flex bg-white/10 p-1 rounded-2xl backdrop-blur-md">
                                 {['login', 'join', 'create'].map(m => (
-                                    <button key={m} onClick={() => {setAuthMode(m); setError('');}} className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${authMode === m ? 'bg-white text-black shadow-lg scale-100' : 'text-gray-400 scale-95'}`}>
+                                    <button key={m} onClick={() => setAuthMode(m)} className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${authMode === m ? 'bg-white text-black shadow-lg scale-100' : 'text-gray-400 scale-95'}`}>
                                         {m === 'login' ? 'Anmelden' : m === 'join' ? 'Beitreten' : 'Neu'}
                                     </button>
                                 ))}
@@ -266,18 +340,26 @@
                                 {authMode === 'join' && <input type="text" placeholder="Familien-ID (6 Ziffern)" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none focus:ring-2 ring-[#007AFF]" value={form.familyId} onChange={e => setForm({...form, familyId: e.target.value})} />}
                                 <input type="text" placeholder="Vorname" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none focus:ring-2 ring-[#007AFF]" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                                 <input type="password" placeholder="Passwort" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none focus:ring-2 ring-[#007AFF]" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
-                                {error && <p className="text-red-400 text-xs text-center font-semibold">{error}</p>}
-                                <button onClick={handleAuth} className="w-full bg-[#007AFF] py-4 rounded-2xl font-bold active:scale-95 transition-all">Jetzt Starten</button>
+                                <button onClick={handleAuth} className="w-full bg-[#007AFF] py-4 rounded-2xl font-bold active:scale-95 transition-all mt-4">Jetzt Starten</button>
                             </div>
                         </div>
                     </div>
                 );
             }
 
+            const availableTargets = family.members.filter(m => m.name !== user.name);
+            // Derjenige, der den ersten Platz im Array hat (Ersteller), ist der Admin
+            const isAdmin = family.members.length > 0 && family.members[0].name === user.name;
+
             return (
-                <div className="h-screen flex flex-col bg-[#F2F2F7]">
-                    <div className="pt-safe px-6 pb-4 ios-blur border-b border-gray-200/50 flex justify-between items-end sticky top-0 z-50">
+                <div className="h-screen flex flex-col bg-[#F2F2F7] relative">
+                    <Modal data={modal} onClose={() => setModal(null)} />
+                    
+                    <div className="pt-safe px-6 pb-4 ios-blur border-b border-gray-200/50 flex justify-between items-end sticky top-0 z-40">
                         <h1 className="text-3xl font-extrabold tracking-tight text-black">{activeTab === 'home' ? family.name : activeTab === 'history' ? 'Verlauf' : 'Setup'}</h1>
+                        {activeTab === 'history' && family.history.length > 0 && (
+                            <button onClick={clearHistory} className="mb-1 text-red-500 font-medium text-sm active:opacity-50 transition-opacity">Verlauf leeren</button>
+                        )}
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 pb-40 space-y-6">
@@ -297,14 +379,20 @@
                                 <section>
                                     <h2 className="text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-2">Empfänger</h2>
                                     <div className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-gray-100">
-                                        {family.members.map((m, i) => (
-                                            <div key={m.name} onClick={() => { setSelectedMembers(prev => prev.includes(m.name) ? prev.filter(x => x !== m.name) : [...prev, m.name]); if(navigator.vibrate) navigator.vibrate(10); }} className={`flex items-center justify-between p-5 cursor-pointer active:bg-gray-50 transition-colors ${i !== family.members.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                                                <span className="font-semibold text-lg">{m.name} {m.name === user.name && <span className="text-gray-400 text-sm font-normal ml-1">(Du)</span>}</span>
-                                                <div className={`w-[51px] h-[31px] rounded-full relative transition-colors duration-300 ${selectedMembers.includes(m.name) ? 'bg-[#34C759]' : 'bg-[#E9E9EB]'}`}>
-                                                    <div className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] bg-white rounded-full shadow-md toggle-dot ${selectedMembers.includes(m.name) ? 'translate-x-[20px]' : ''}`}></div>
-                                                </div>
+                                        {availableTargets.length === 0 ? (
+                                            <div className="p-8 text-center text-gray-400 text-sm">
+                                                Du bist noch alleine. Lade Familie über das <span className="font-bold text-black">Setup</span> ein!
                                             </div>
-                                        ))}
+                                        ) : (
+                                            availableTargets.map((m, i) => (
+                                                <div key={m.name} onClick={() => { setSelectedMembers(prev => prev.includes(m.name) ? prev.filter(x => x !== m.name) : [...prev, m.name]); if(navigator.vibrate) navigator.vibrate(10); }} className={`flex items-center justify-between p-5 cursor-pointer active:bg-gray-50 transition-colors ${i !== availableTargets.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                                    <span className="font-semibold text-lg">{m.name}</span>
+                                                    <div className={`w-[51px] h-[31px] rounded-full relative transition-colors duration-300 ${selectedMembers.includes(m.name) ? 'bg-[#34C759]' : 'bg-[#E9E9EB]'}`}>
+                                                        <div className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] bg-white rounded-full shadow-md toggle-dot ${selectedMembers.includes(m.name) ? 'translate-x-[20px]' : ''}`}></div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </section>
                                 <button onClick={sendCall} disabled={!selectedReason || selectedMembers.length === 0 || isSending} className={`w-full py-5 rounded-[24px] font-bold text-xl transition-all active:scale-[0.98] ${!selectedReason || selectedMembers.length === 0 || isSending ? 'bg-gray-200 text-gray-400' : 'bg-black text-white shadow-xl shadow-black/10'}`}>
@@ -315,7 +403,10 @@
 
                         {activeTab === 'history' && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                {[...family.history].reverse().map(item => {
+                                {family.history.length === 0 && (
+                                    <div className="text-center text-gray-400 p-8 text-sm mt-10">Bisher keine Rufe im Verlauf.</div>
+                                )}
+                                {family.history.map(item => {
                                     const isMeTarget = item.targets.includes(user.name);
                                     const IHaveAcked = item.acks.includes(user.name);
                                     return (
@@ -348,6 +439,24 @@
                         {activeTab === 'settings' && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 
+                                {isAdmin && (
+                                    <div className="bg-white rounded-[32px] p-6 space-y-4 shadow-sm border border-gray-100">
+                                        <h3 className="font-bold text-lg flex items-center gap-3"><i data-lucide="users" className="text-orange-500"></i> Mitglieder verwalten</h3>
+                                        <div className="space-y-3">
+                                            {family.members.map((m, i) => (
+                                                <div key={m.name} className={`flex justify-between items-center pb-2 ${i !== family.members.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                                                    <span className="font-medium text-sm text-black">{m.name} {m.name === user.name && <span className="text-gray-400 text-xs ml-1">(Admin / Du)</span>}</span>
+                                                    {m.name !== user.name && (
+                                                        <button onClick={() => removeMember(m.name)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                                                            <i data-lucide="trash-2" className="w-5 h-5"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="bg-white rounded-[32px] p-6 space-y-5 shadow-sm border border-gray-100">
                                     <h3 className="font-bold text-lg flex items-center gap-3"><i data-lucide="smartphone" className="text-blue-500"></i> Apple Push Setup</h3>
                                     <div className="flex items-center justify-between border-t border-gray-100 pt-4">
@@ -359,7 +468,6 @@
                                             {user.fcmToken ? 'Erneuern' : 'Aktivieren'}
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 leading-relaxed">Pushes funktionieren nur, wenn die App in Safari über "Zum Home-Bildschirm" hinzugefügt wurde.</p>
                                 </div>
 
                                 <div className="bg-white rounded-[32px] p-6 space-y-5 shadow-sm border border-gray-100">
