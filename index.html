@@ -52,7 +52,7 @@
         import { initializeApp } from 'firebase/app';
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
-        import { getMessaging, getToken } from 'firebase/messaging';
+        import { getMessaging, getToken, onMessage } from 'firebase/messaging';
         import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
         // =====================================================================
@@ -250,31 +250,31 @@
                 if (currentUser) {
                   const updatedUser = data.members.find(m => m.name === currentUser.name);
                   if (updatedUser) {
-                     setCurrentUser(updatedUser);
-                     if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
+          // 3. Auto-Login prüfen, wenn Firebase User da ist
+          useEffect(() => {
+              if (firebaseUser) {
+                  const savedFamilyId = localStorage.getItem('familyId');
+                  const savedName = localStorage.getItem('userName');
+                  if (savedFamilyId && savedName) {
+                      loadFamilyData(savedFamilyId, savedName);
+                  } else {
+                      setAuthLoading(false);
                   }
-                }
               }
-            });
-            return () => unsubscribe();
-          }, [firebaseUser, currentFamily?.id, currentUser?.name]);
+          }, [firebaseUser]);
 
-          const loadFamilyData = async (familyId, userName) => {
-              try {
-                  const docSnap = await getDoc(getFamilyDocRef(familyId));
-                  if (!docSnap.exists()) throw new Error("Familie existiert nicht.");
-                  const data = docSnap.data();
-                  const member = data.members.find(m => m.name.trim().toLowerCase() === userName.trim().toLowerCase());
-                  if (!member) throw new Error("Benutzername nicht gefunden.");
-                  setCurrentFamily(data);
-                  setCurrentUser(member);
-                  if (member.fcmToken) setPushStatus('Aktiviert ✅');
-              } catch (e) {
-                  console.error("Ladefehler:", e);
-                  handleLogout(); 
+          // 4. Foreground Push Listener (Wenn die App geöffnet ist)
+          useEffect(() => {
+              if (messaging) {
+                  const unsub = onMessage(messaging, (payload) => {
+                      if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
+                      showAlert(payload.notification?.title || "Neuer Ruf", payload.notification?.body || "");
+                  });
+                  return () => unsub();
               }
-          };
+          }, []);
 
+          // --- Auth Handlers ---
           const handleCreateFamily = async () => {
             setAuthError('');
             if (!familyNameInput || !memberNameInput || !passwordInput) return setAuthError('Bitte alle Felder ausfüllen.');
@@ -525,22 +525,22 @@
             <div className="h-screen bg-[#F2F2F7] font-sans select-none overflow-hidden flex flex-col relative">
               <Modal data={modal} onClose={() => setModal(null)} />
 
-              {/* Fester Header außerhalb des Scroll-Containers */}
-              <header className="flex-none pt-safe-top pt-14 pb-4 px-6 bg-white/90 ios-blur border-b border-gray-200/50 z-40 flex justify-between items-end">
-                <div>
-                  <h1 className="text-3xl font-extrabold text-black tracking-tight">
+              {/* Fester zentrierter Header außerhalb des Scroll-Containers */}
+              <header className="flex-none pt-safe-top pt-14 pb-4 px-6 bg-white/90 ios-blur border-b border-gray-200/50 z-40 relative flex items-end justify-center">
+                <div className="text-center w-full">
+                  <h1 className="text-[26px] font-extrabold text-black tracking-tight">
                     {activeTab === 'home' && currentFamily.name}
                     {activeTab === 'history' && 'Verlauf'}
                     {activeTab === 'settings' && 'Einstellungen'}
                   </h1>
                   {activeTab === 'home' && (
-                    <p className="text-gray-500 font-medium mt-1 tracking-wide">ID: <span className="font-bold">{currentFamily.id}</span></p>
+                    <p className="text-gray-500 font-medium mt-0.5 text-xs tracking-wide">ID: <span className="font-bold">{currentFamily.id}</span></p>
                   )}
                 </div>
-                {/* Verlauf leeren Button */}
+                {/* Verlauf leeren Button - Absolut rechts positioniert */}
                 {activeTab === 'history' && currentFamily.history?.length > 0 && (
-                  <button onClick={handleClearHistory} className="mb-1 text-red-500 font-bold text-sm bg-red-50 px-3 py-1.5 rounded-full active:bg-red-100 transition-colors flex items-center gap-1.5">
-                    <Trash2 size={16} /> Leeren
+                  <button onClick={handleClearHistory} className="absolute right-4 bottom-4 text-red-500 font-bold text-xs bg-red-50 px-3 py-1.5 rounded-full active:bg-red-100 transition-colors flex items-center gap-1.5 shadow-sm">
+                    <Trash2 size={14} /> Leeren
                   </button>
                 )}
               </header>
