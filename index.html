@@ -30,10 +30,10 @@
     </script>
 
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #F2F2F7; }
-        .ios-blur { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #F2F2F7; margin: 0; }
+        .ios-blur { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
-        .pt-safe { padding-top: env(safe-area-inset-top, 44px); }
+        .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
         ::-webkit-scrollbar { display: none; }
         input[type="file"] { display: none; }
     </style>
@@ -47,7 +47,7 @@
         import { 
           Bell, Clock, Settings, Coffee, Utensils, UtensilsCrossed, Moon, 
           MessageCircle, Film, Gamepad2, Check, LogOut, ShieldCheck, 
-          Smartphone, Speaker, CheckCircle2, Key 
+          Smartphone, Speaker, CheckCircle2, Key, Trash2 
         } from 'lucide-react';
         import { initializeApp } from 'firebase/app';
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -58,18 +58,41 @@
         // =====================================================================
         // 🛡️ HIER DEINEN RECAPTCHA SCHLÜSSEL EINTRAGEN 🛡️
         // =====================================================================
-        const RECAPTCHA_SITE_KEY = "DEIN_SCHLUESSEL_HIER_EINFUEGEN";
+        const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
         // =====================================================================
 
-        // Globale Firebase-Instanzen (werden in Root initialisiert)
         let app, auth, db, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
 
-        // --- Helpers ---
         const generateFamilyId = () => Math.floor(100000 + Math.random() * 900000).toString();
         const getFamilyDocRef = (familyId) => doc(db, 'artifacts', appId, 'public', 'data', 'families', familyId);
 
-        // --- Config Loader Component (Für GitHub Pages erforderlich) ---
+        // --- Custom Modal ---
+        function Modal({ data, onClose }) {
+            if (!data) return null;
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-[28px] p-6 w-full max-w-sm shadow-2xl animate-scale-in">
+                        <div className="text-center mb-6">
+                            <h3 className="font-bold text-xl mb-2 text-black">{data.title}</h3>
+                            <p className="text-gray-500 text-[15px] leading-relaxed">{data.message}</p>
+                        </div>
+                        <div className="flex gap-3">
+                            {data.type === 'confirm' && (
+                                <button onClick={data.onCancel} className="flex-1 py-3.5 rounded-xl bg-[#F2F2F7] text-black font-bold active:scale-95 transition-transform">
+                                    Abbrechen
+                                </button>
+                            )}
+                            <button onClick={data.onConfirm} className={`flex-1 py-3.5 rounded-xl font-bold active:scale-95 transition-transform ${data.danger ? 'bg-red-500 text-white' : 'bg-[#007AFF] text-white'}`}>
+                                {data.confirmText || 'OK'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- Config Loader ---
         function ConfigLoader({ onConfigLoaded }) {
             const [error, setError] = useState("");
             const handleFileUpload = (e) => {
@@ -103,7 +126,7 @@
             );
         }
 
-        // --- Liquid Tab Bar Component (Refined) ---
+        // --- Mathematisch perfekte Tab Bar ---
         const LiquidTabBar = ({ activeTab, setActiveTab }) => {
           const tabs = [
             { id: 'home', icon: Bell, label: 'Rufen' },
@@ -114,16 +137,15 @@
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
 
           return (
-            <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none px-4" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-              <div className="pointer-events-auto bg-white/90 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 rounded-full px-4 py-2.5 flex items-center justify-between w-full max-w-[280px] relative overflow-hidden transition-all duration-500 ease-out">
+            <div className="fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 pb-safe">
+              <div className="pointer-events-auto bg-white/95 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 rounded-full p-2 flex items-center justify-between w-full max-w-[280px] relative">
                 
-                {/* Einheitliche blaue Pille */}
+                {/* Blaue Pille - Exakt gedrittelt minus das Padding */}
                 <div 
-                  className="absolute h-[80%] bg-[#007AFF]/10 rounded-[20px] transition-all duration-400 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                  className="absolute top-2 bottom-2 left-2 bg-[#007AFF]/10 rounded-[20px] transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
                   style={{
-                    width: '30%', 
-                    left: `${4 + (activeIndex * 32.5)}%`,
-                    top: '10%',
+                    width: 'calc((100% - 16px) / 3)', 
+                    transform: `translateX(${activeIndex * 100}%)`,
                   }}
                 />
                 
@@ -137,7 +159,7 @@
                         if(navigator.vibrate) navigator.vibrate(10);
                         setActiveTab(tab.id);
                       }}
-                      className="relative z-10 flex flex-col items-center justify-center w-full h-11"
+                      className="flex-1 relative z-10 flex flex-col items-center justify-center py-2"
                     >
                       <Icon 
                         size={isActive ? 22 : 20} 
@@ -157,12 +179,12 @@
 
         // --- Main App Component ---
         function App() {
+          const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
-          const [authLoading, setAuthLoading] = useState(true);
           const [currentFamily, setCurrentFamily] = useState(null);
           const [currentUser, setCurrentUser] = useState(null);
+          const [modal, setModal] = useState(null);
           
-          // Auth State
           const [authMode, setAuthMode] = useState('login');
           const [familyIdInput, setFamilyIdInput] = useState('');
           const [familyNameInput, setFamilyNameInput] = useState('');
@@ -170,7 +192,6 @@
           const [passwordInput, setPasswordInput] = useState('');
           const [authError, setAuthError] = useState('');
 
-          // Main App State
           const [activeTab, setActiveTab] = useState('home');
           const [selectedReason, setSelectedReason] = useState(null);
           const [selectedMembers, setSelectedMembers] = useState([]);
@@ -182,22 +203,41 @@
             { id: 'lunch', label: 'Mittagessen', icon: Utensils, category: 'meal' },
             { id: 'coffee', label: 'Kaffee', icon: UtensilsCrossed, category: 'meal' },
             { id: 'dinner', label: 'Abendessen', icon: Moon, category: 'meal' },
+            { id: 'table', label: 'Tischdecken', icon: Utensils, category: 'push_only' }, // Neuer Grund
             { id: 'message', label: 'Kommen', icon: MessageCircle, category: 'other' },
             { id: 'movie', label: 'Film', icon: Film, category: 'other' },
             { id: 'game', label: 'Spielen', icon: Gamepad2, category: 'other' },
           ];
 
-          // 1. Init Auth
+          const showConfirm = (title, message, onConfirm, danger = false) => setModal({ 
+            type: 'confirm', title, message, danger, 
+            onConfirm: () => { onConfirm(); setModal(null); }, 
+            onCancel: () => setModal(null) 
+          });
+
+          // 1. App laden ohne Flackern
           useEffect(() => {
             const initAuth = async () => {
               try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                   await signInWithCustomToken(auth, __initial_auth_token);
                 } else { await signInAnonymously(auth); }
-              } catch (error) { console.error("Auth error:", error); } finally { setAuthLoading(false); }
+              } catch (error) { console.error("Auth error:", error); }
             };
             initAuth();
-            const unsubscribe = onAuthStateChanged(auth, setFirebaseUser);
+
+            const unsubscribe = onAuthStateChanged(auth, async (u) => {
+              setFirebaseUser(u);
+              if (u) {
+                  const savedFamilyId = localStorage.getItem('familyId');
+                  const savedName = localStorage.getItem('userName');
+                  if (savedFamilyId && savedName) {
+                      await loadFamilyData(savedFamilyId, savedName);
+                  }
+              }
+              // Verzögerung für weicheren Übergang (verhindert Flackern)
+              setTimeout(() => setAppLoaded(true), 300);
+            });
             return () => unsubscribe();
           }, []);
 
@@ -224,37 +264,18 @@
               try {
                   const docSnap = await getDoc(getFamilyDocRef(familyId));
                   if (!docSnap.exists()) throw new Error("Familie existiert nicht.");
-                  
                   const data = docSnap.data();
                   const member = data.members.find(m => m.name.trim().toLowerCase() === userName.trim().toLowerCase());
-                  
                   if (!member) throw new Error("Benutzername nicht gefunden.");
-                  
                   setCurrentFamily(data);
                   setCurrentUser(member);
                   if (member.fcmToken) setPushStatus('Aktiviert ✅');
               } catch (e) {
                   console.error("Ladefehler:", e);
-                  handleLogout(); // Falls ID veraltet ist
-              } finally {
-                  setAuthLoading(false);
+                  handleLogout(); 
               }
           };
 
-          // 3. Auto-Login prüfen, wenn Firebase User da ist
-          useEffect(() => {
-              if (firebaseUser) {
-                  const savedFamilyId = localStorage.getItem('familyId');
-                  const savedName = localStorage.getItem('userName');
-                  if (savedFamilyId && savedName) {
-                      loadFamilyData(savedFamilyId, savedName);
-                  } else {
-                      setAuthLoading(false);
-                  }
-              }
-          }, [firebaseUser]);
-
-          // --- Auth Handlers ---
           const handleCreateFamily = async () => {
             setAuthError('');
             if (!familyNameInput || !memberNameInput || !passwordInput) return setAuthError('Bitte alle Felder ausfüllen.');
@@ -262,7 +283,7 @@
             const familyData = {
               id: newId, 
               name: familyNameInput,
-              vapidKey: '', // Wird später vom Admin eingetragen
+              vapidKey: '', 
               members: [{ name: memberNameInput, password: passwordInput, fcmToken: '', voiceMonkeyMeal: '', voiceMonkeyOther: '' }],
               history: []
             };
@@ -324,12 +345,9 @@
             localStorage.removeItem('userName');
           };
 
-          // --- Push Notification Setup (FCM) ---
           const requestPushPermission = async () => {
             if (!messaging) return alert("Push wird auf diesem Gerät nicht unterstützt (Safari auf dem Home-Bildschirm speichern!).");
-            if (!currentFamily.vapidKey || currentFamily.vapidKey.trim() === '') {
-              return alert("Dem System fehlt der VAPID Key. Der Admin muss diesen im Setup-Tab eintragen.");
-            }
+            if (!currentFamily.vapidKey || currentFamily.vapidKey.trim() === '') return alert("Dem System fehlt der VAPID Key. Der Admin muss diesen im Setup-Tab eintragen.");
             
             setPushStatus('Wird angefragt...');
             try {
@@ -368,7 +386,6 @@
             }
           };
 
-          // --- Send Logic ---
           const handleSendNotification = async () => {
             if (!selectedReason || selectedMembers.length === 0) return;
             setIsSending(true);
@@ -377,21 +394,24 @@
             const reasonObj = REASONS.find(r => r.id === selectedReason);
             const targets = currentFamily.members.filter(m => selectedMembers.includes(m.name));
             
-            // 1. Trigger Voice Monkey (Alexa)
-            targets.forEach(target => {
-              const url = reasonObj.category === 'meal' ? target.voiceMonkeyMeal : target.voiceMonkeyOther;
-              if (url && url.trim() !== '') {
-                fetch(url).catch(e => console.error("VM Error", e));
-              }
-            });
+            // 1. Trigger Voice Monkey (außer bei push_only wie "Tischdecken")
+            if (reasonObj.category !== 'push_only') {
+                targets.forEach(target => {
+                  const url = reasonObj.category === 'meal' ? target.voiceMonkeyMeal : target.voiceMonkeyOther;
+                  if (url && url.trim() !== '') {
+                    fetch(url).catch(e => console.error("VM Error", e));
+                  }
+                });
+            }
 
             // 2. Save History (Triggert die Cloud Function für Pushes)
+            // WICHTIG: Die Cloud-Function erwartet "targets"
             const newHistoryItem = {
               id: Date.now().toString(),
               timestamp: new Date().toISOString(),
               sender: currentUser.name,
               reason: reasonObj.label,
-              recipients: selectedMembers,
+              targets: selectedMembers, // Korrigiert für die Cloud Function!
               acknowledgedBy: [] 
             };
 
@@ -410,7 +430,6 @@
 
           const handleAcknowledge = async (historyItemId) => {
             if(navigator.vibrate) navigator.vibrate([20, 30]);
-            
             const updatedHistory = currentFamily.history.map(item => {
               if (item.id === historyItemId) {
                 if (!item.acknowledgedBy.includes(currentUser.name)) {
@@ -419,10 +438,15 @@
               }
               return item;
             });
-
             try {
               await updateDoc(getFamilyDocRef(currentFamily.id), { history: updatedHistory });
             } catch (err) { console.error("Ack err:", err); }
+          };
+
+          const handleClearHistory = () => {
+            showConfirm("Verlauf leeren", "Möchtest du den gesamten Verlauf für alle dauerhaft löschen?", async () => {
+                await updateDoc(getFamilyDocRef(currentFamily.id), { history: [] });
+            }, true);
           };
 
           const saveSettings = async (key, value) => {
@@ -436,8 +460,15 @@
             await updateDoc(getFamilyDocRef(currentFamily.id), { [key]: value.trim() });
           };
 
-          // --- UI Render ---
-          if (authLoading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Lade...</div>;
+          // --- Splash Screen (verhindert Flackern) ---
+          if (!appLoaded) {
+              return (
+                  <div className="h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
+                     <ShieldCheck size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
+                     <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">Family Connect</p>
+                  </div>
+              );
+          }
 
           if (!currentFamily || !currentUser) {
             return (
@@ -492,19 +523,31 @@
           const isAdmin = currentFamily.members.length > 0 && currentFamily.members[0].name === currentUser.name;
 
           return (
-            <div className="min-h-screen bg-[#F2F2F7] font-sans select-none overflow-hidden flex flex-col">
-              <div className="pt-14 pb-6 px-6 bg-white/80 backdrop-blur-xl sticky top-0 z-20 border-b border-gray-200/50">
-                <h1 className="text-3xl font-extrabold text-black tracking-tight">
-                  {activeTab === 'home' && currentFamily.name}
-                  {activeTab === 'history' && 'Verlauf'}
-                  {activeTab === 'settings' && 'Einstellungen'}
-                </h1>
-                {activeTab === 'home' && (
-                  <p className="text-gray-500 font-medium mt-1 tracking-wide">ID: <span className="font-bold">{currentFamily.id}</span></p>
-                )}
-              </div>
+            <div className="h-screen bg-[#F2F2F7] font-sans select-none overflow-hidden flex flex-col relative">
+              <Modal data={modal} onClose={() => setModal(null)} />
 
-              <div className="flex-1 overflow-y-auto px-4 pt-6 pb-32">
+              {/* Fester Header außerhalb des Scroll-Containers */}
+              <header className="flex-none pt-safe-top pt-14 pb-4 px-6 bg-white/90 ios-blur border-b border-gray-200/50 z-40 flex justify-between items-end">
+                <div>
+                  <h1 className="text-3xl font-extrabold text-black tracking-tight">
+                    {activeTab === 'home' && currentFamily.name}
+                    {activeTab === 'history' && 'Verlauf'}
+                    {activeTab === 'settings' && 'Einstellungen'}
+                  </h1>
+                  {activeTab === 'home' && (
+                    <p className="text-gray-500 font-medium mt-1 tracking-wide">ID: <span className="font-bold">{currentFamily.id}</span></p>
+                  )}
+                </div>
+                {/* Verlauf leeren Button */}
+                {activeTab === 'history' && currentFamily.history?.length > 0 && (
+                  <button onClick={handleClearHistory} className="mb-1 text-red-500 font-bold text-sm bg-red-50 px-3 py-1.5 rounded-full active:bg-red-100 transition-colors flex items-center gap-1.5">
+                    <Trash2 size={16} /> Leeren
+                  </button>
+                )}
+              </header>
+
+              {/* Flexibler Scroll-Container */}
+              <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36">
                 
                 {/* --- HOME TAB --- */}
                 {activeTab === 'home' && (
@@ -593,7 +636,7 @@
                       <div className="text-center text-gray-400 font-medium mt-16">Keine Benachrichtigungen.</div>
                     ) : (
                       currentFamily.history.map((item) => {
-                        const isRecipient = item.recipients.includes(currentUser.name);
+                        const isRecipient = item.targets.includes(currentUser.name);
                         const hasAcknowledged = item.acknowledgedBy?.includes(currentUser.name);
                         const isRecent = (new Date() - new Date(item.timestamp)) < (2 * 60 * 60 * 1000);
                         
@@ -603,7 +646,7 @@
                             <span key={name} className={`inline-flex items-center space-x-1 ${ack ? 'text-green-600 font-bold' : 'text-gray-500'}`}>
                               <span>{name}</span>
                               {ack && <CheckCircle2 size={12} className="text-green-500 inline" />}
-                              {item.recipients.indexOf(name) !== item.recipients.length - 1 && <span className="text-gray-400 mr-1">,</span>}
+                              {item.targets.indexOf(name) !== item.targets.length - 1 && <span className="text-gray-400 mr-1">,</span>}
                             </span>
                           );
                         };
@@ -627,7 +670,7 @@
 
                             <div className="bg-gray-50 rounded-2xl p-3 flex flex-wrap gap-1 items-center text-[13px]">
                               <span className="text-gray-400 font-medium mr-1">An:</span>
-                              {item.recipients.map(name => renderRecipientStatus(name))}
+                              {item.targets.map(name => renderRecipientStatus(name))}
                             </div>
 
                             {isRecipient && !hasAcknowledged && isRecent && item.sender !== currentUser.name && (
@@ -712,8 +755,9 @@
                   </div>
                 )}
 
-              </div>
+              </main>
 
+              {/* Die neue Menüleiste außerhalb des Scroll-Containers */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
             </div>
           );
@@ -743,8 +787,6 @@
                             });
                         }
 
-                        // Background Service Worker registrieren (zwingend für Pushes im Hintergrund)
-                        // WICHTIG: Relativer Pfad ./firebase-messaging-sw.js für GitHub Pages
                         if ('serviceWorker' in navigator) {
                             try {
                                 const urlParams = `?apiKey=${config.apiKey}&projectId=${config.projectId}&senderId=${config.messagingSenderId}&appId=${config.appId}`;
@@ -769,7 +811,12 @@
             }, [config]);
 
             if (!config) return <ConfigLoader onConfigLoaded={setConfig} />;
-            if (!isReady) return <div className="h-screen bg-black text-gray-400 flex items-center justify-center font-bold text-xl">System wird hochgefahren...</div>;
+            if (!isReady) return (
+               <div className="h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
+                  <ShieldCheck size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
+                  <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">System hochfahren</p>
+               </div>
+            );
             
             return <App />;
         }
