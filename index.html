@@ -11,7 +11,6 @@
     
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
-    <!-- Stabile CDNs ohne blockierende Sicherheits-Tags -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -122,7 +121,7 @@
           Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
           BellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
           Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-          Settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0-2.73-.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+          Settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
           Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
           Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
           UtensilsCrossed: '<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',
@@ -345,7 +344,6 @@
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
           // --- SICHERHEITS-NETZE ---
-          // Alle sicheren Daten werden hier EXAKT EINMAL deklariert!
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
@@ -373,17 +371,19 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard-Fix für iOS
+          // Keyboard-Fix für iOS: Strengere Erkennung und sanfterer Reset
           useEffect(() => {
             const handleFocusIn = (e) => { 
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
+                const tag = e.target.tagName;
+                const type = e.target.type;
+                if ((tag === 'INPUT' || tag === 'TEXTAREA') && !['checkbox', 'radio', 'submit', 'button'].includes(type)) {
+                    setIsKeyboardOpen(true); 
+                }
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
                 setTimeout(() => {
-                    window.scrollTo(0, 0);
-                    document.documentElement.scrollTop = 0;
-                    document.body.scrollTop = 0;
+                    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
                 }, 50);
             };
             
@@ -641,10 +641,15 @@
             }
             
             let storedConfig = {};
-            try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
+            try { 
+                storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); 
+                if (storedConfig.firebaseConfig) storedConfig = storedConfig.firebaseConfig;
+            } catch(e) {}
             
             const vapidKey = storedConfig.vapidKey || (currentFamily?.vapidKey);
-            if (!vapidKey || !vapidKey.trim()) return alert("Kein VAPID-Key hinterlegt! Admin muss diesen im Setup eintragen.");
+            if (!vapidKey || !vapidKey.trim()) {
+                return alert("Kein VAPID-Key gefunden! Bitte stelle sicher, dass 'vapidKey' in deiner config.json steht oder frage den Admin.");
+            }
             
             const swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
@@ -1005,7 +1010,7 @@
                     )}
                   </header>
 
-                  <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36 relative w-full scroll-smooth">
+                  <main className="scrollable-area px-4 pt-6 pb-36 w-full relative">
                     <div className="pb-10 w-full">
                     
                     {/* --- HOME TAB --- */}
@@ -1406,10 +1411,11 @@
                 const fallback = document.getElementById('fallback');
                 if (fallback) fallback.style.display = 'none';
 
-                if ('serviceWorker' in navigator) {
+                // Ignoriere den Fehler, wenn wir nicht auf HTTPS sind (z.B. Testumgebung)
+                if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
                     navigator.serviceWorker
                         .register('./firebase-messaging-sw.js')
-                        .catch(err => console.error('SW registration failed:', err));
+                        .catch(err => console.log('SW registrierung übersprungen (Test-Modus).'));
                 }
 
                 if (!config) return setStatus("config-needed");
