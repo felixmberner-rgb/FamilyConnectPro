@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FamilyConnect">
@@ -27,7 +27,7 @@
 
     <style>
         /* Body-Hintergrund für die normale App ist hell, Login ist explizit schwarz */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #F2F2F7; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #F2F2F7; margin: 0; overscroll-behavior-y: none; }
         .ios-blur { background: rgba(255, 255, 255, 0.80); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
         .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
@@ -116,19 +116,18 @@
             );
         }
 
+        // Live Tracking Overlay (Nach dem Rufen)
         function TrackingOverlay({ event, currentUser, currentFamily, onClose, onResend }) {
             if (!event) return null;
             const [cooldown, setCooldown] = useState(60);
 
             useEffect(() => {
-                const start = Date.now();
+                // Lokaler Timer für den 60s Spam-Schutz beim Neu-Rufen
                 const timer = setInterval(() => {
-                    const passed = Math.floor((Date.now() - start) / 1000);
-                    if (passed >= 60) setCooldown(0);
-                    else setCooldown(60 - passed);
+                    setCooldown(prev => prev > 0 ? prev - 1 : 0);
                 }, 1000);
                 return () => clearInterval(timer);
-            }, [event.id]);
+            }, []);
 
             return (
                 <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-md animate-fade-in md:items-center">
@@ -317,11 +316,26 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
+          // Keyboard & Scroll Reset Fix
           useEffect(() => {
-            const handleFocusIn = (e) => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); };
-            const handleFocusOut = () => setIsKeyboardOpen(false);
-            window.addEventListener('focusin', handleFocusIn); window.addEventListener('focusout', handleFocusOut);
-            return () => { window.removeEventListener('focusin', handleFocusIn); window.removeEventListener('focusout', handleFocusOut); };
+            const handleFocusIn = (e) => { 
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    setIsKeyboardOpen(true); 
+                }
+            };
+            const handleFocusOut = () => { 
+                setIsKeyboardOpen(false);
+                // Behebt den toten Raum nach dem Schließen der Tastatur in Safari
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 100);
+            };
+            window.addEventListener('focusin', handleFocusIn); 
+            window.addEventListener('focusout', handleFocusOut);
+            return () => { 
+                window.removeEventListener('focusin', handleFocusIn); 
+                window.removeEventListener('focusout', handleFocusOut); 
+            };
           }, []);
 
           useEffect(() => {
@@ -380,7 +394,7 @@
 
           useEffect(() => {
               if (currentFamily && currentUser && activeTab === 'history') {
-                  const latestEvent = currentFamily.history?.[0];
+                  const latestEvent = currentFamily.history?.filter(h => !h.isExpense && !h.isResend)?.[0];
                   if (latestEvent && latestEvent.targets?.includes(currentUser.name) && !latestEvent.acknowledgedBy?.includes(currentUser.name) && latestEvent.sender !== currentUser.name) {
                       const eventAge = Date.now() - new Date(latestEvent.timestamp).getTime();
                       if (eventAge < 3 * 60 * 1000 && !sessionStorage.getItem(`prompted_${latestEvent.id}`)) {
@@ -594,8 +608,20 @@
           };
 
           const requestPushPermission = async () => {
-            if (!messaging) return alert("Push wird auf diesem Gerät nicht unterstützt (Safari auf dem Home-Bildschirm speichern!).");
+            // Fange das Problem auf iOS ab, wenn die App nicht auf dem Homescreen liegt
+            if (!('Notification' in window)) {
+                return alert("Push wird auf diesem Gerät nicht unterstützt. Bitte drücke im Safari in der Mitte unten auf 'Teilen' und wähle 'Zum Home-Bildschirm'!");
+            }
             
+            // Wenn Push vom System aus versehen nicht geladen wurde, manuell initialisieren
+            if (!messaging) {
+                try {
+                    messaging = firebase.messaging();
+                } catch(e) {
+                    return alert("Fehler: Push-Dienst konnte nicht gestartet werden.");
+                }
+            }
+
             const storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}');
             const vapidKey = storedConfig.vapidKey || (currentFamily && currentFamily.vapidKey);
 
@@ -618,7 +644,7 @@
             } catch (error) { setPushStatus('Fehler'); alert("Kritischer Fehler beim Token-Abruf."); }
           };
 
-          const handleSendNotification = async (customReasonObj = null, customTargets = null) => {
+          const handleSendNotification = async (customReasonObj = null, customTargets = null, isResend = false) => {
             const reasonObj = customReasonObj || REASONS.find(r => r.id === selectedReason);
             const targetsList = customTargets || selectedMembers;
             if (!reasonObj || targetsList.length === 0) return;
@@ -648,6 +674,7 @@
                 }
             });
 
+            // Neu: isResend markiert unsichtbare Rufe für die UI
             const newHistoryItem = {
               id: Date.now().toString(),
               timestamp: now.toISOString(),
@@ -655,14 +682,15 @@
               reason: reasonObj.sentence, 
               targets: actualTargets,
               acknowledgedBy: [],
-              isExpense: false
+              isExpense: false,
+              isResend: isResend
             };
 
             try {
               await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...(currentFamily.history || [])].slice(0, 50) });
               if(navigator.vibrate) navigator.vibrate([30, 50, 30]);
               
-              if (!customReasonObj && reasonObj.category !== 'push_only') {
+              if (!customReasonObj && reasonObj.category !== 'push_only' && !isResend) {
                   setTrackingEventId(newHistoryItem.id);
               }
               
@@ -792,7 +820,7 @@
           };
 
           const handleDeleteFamily = () => {
-            showConfirm("Familie auflösen", "Möchtest du die gesamte Familie und alle Daten endgültig löschen?", async () => {
+            showConfirm("Familie auflösen", "Möchtest du die gesamte Familie und alle Daten endgültig löschen? Alle Mitglieder werden abgemeldet.", async () => {
                 await getFamilyDocRef(currentFamily.id).delete();
             }, true);
           };
@@ -946,13 +974,13 @@
                       onClose={() => setTrackingEventId(null)} 
                       onResend={(name, reason) => {
                           const rObj = REASONS.find(r => r.sentence === reason);
-                          if(rObj) handleSendNotification(rObj, [name]);
+                          if(rObj) handleSendNotification(rObj, [name], true);
                       }} 
                   />
               )}
 
               {/* Zentrierter Content-Bereich für Desktop-Dashboard-Ansicht (Volle Breite) */}
-              <div className="flex-1 flex flex-col w-full h-full bg-[#F2F2F7]">
+              <div className="flex-1 flex flex-col w-full h-full bg-[#F2F2F7] sm:shadow-2xl sm:border-x border-gray-300/50 max-w-5xl mx-auto">
                   <header className="flex-none pb-4 px-6 bg-white/80 ios-blur border-b border-[#C6C6C8] z-40 relative flex items-end justify-center w-full" style={{ paddingTop: 'calc(env(safe-area-inset-top, 44px) + 20px)' }}>
                     <div className="text-center w-full">
                       <h1 className="text-[34px] font-bold text-black tracking-tight leading-tight">
@@ -970,7 +998,7 @@
                   </header>
 
                   <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36 relative w-full scroll-smooth">
-                    <div className="pb-10 max-w-5xl mx-auto w-full">
+                    <div className="pb-10 w-full">
                     
                     {/* --- HOME TAB --- */}
                     {activeTab === 'home' && (
@@ -1070,8 +1098,8 @@
                                           </div>
                                       )}
                                       
-                                      <div className="grid grid-cols-2 gap-3">
-                                          <input type="number" placeholder="Gesamt (€)" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] focus:ring-2 ring-[#007AFF]/20" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} />
+                                      <div className="flex flex-col sm:flex-row gap-3">
+                                          <input type="number" inputMode="decimal" placeholder="Gesamt (€)" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] focus:ring-2 ring-[#007AFF]/20" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} />
                                           <input type="date" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[17px] text-gray-700 focus:ring-2 ring-[#007AFF]/20" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} />
                                       </div>
                                       
@@ -1080,7 +1108,7 @@
                                       {expenseModal.mode === 'split' && (
                                           <div className="pt-4 border-t border-[#E5E5EA]">
                                               <p className="text-[14px] font-semibold text-[#3C3C43] mb-2">Geteilt durch wie viele Personen? (inklusive dir)</p>
-                                              <input type="number" min="1" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] mb-5 focus:ring-2 ring-[#007AFF]/20" value={expenseForm.splitCount} onChange={e => setExpenseForm({...expenseForm, splitCount: e.target.value})} />
+                                              <input type="number" inputMode="decimal" min="1" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] mb-5 focus:ring-2 ring-[#007AFF]/20" value={expenseForm.splitCount} onChange={e => setExpenseForm({...expenseForm, splitCount: e.target.value})} />
                                               
                                               <p className="text-[14px] font-semibold text-[#3C3C43] mb-2">Wer schuldet dir seinen Anteil?</p>
                                               <div className="flex flex-wrap gap-2">
@@ -1109,9 +1137,8 @@
                                   </div>
                               </div>
                           ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {activeMembersList.filter(m => m.name !== currentUser.name).map(member => {
-                                    // Filtere Auslagen, die existieren, unbezahlt sind und bei denen der aktuelle Nutzer ODER der Partner beteiligt ist
                                     const expensesWithThem = (currentFamily.expenses || []).filter(e => e && e.amount && !e.isPaid && ((e.creditor === currentUser.name && e.debtor === member.name) || (e.creditor === member.name && e.debtor === currentUser.name)));
                                     
                                     let iOwe = 0; let theyOwe = 0;
@@ -1174,14 +1201,17 @@
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {(!currentFamily.history || currentFamily.history.filter(h => !h.isExpense).length === 0) ? (
+                        {(!currentFamily.history || currentFamily.history.filter(h => !h.isExpense && !h.isResend).length === 0) ? (
                           <div className="text-center text-[#8E8E93] font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
-                          currentFamily.history.filter(h => !h.isExpense).map((item) => {
+                          currentFamily.history.filter(h => !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
                             const isRecipient = targetList.includes(currentUser.name);
                             const hasAcknowledged = item.acknowledgedBy?.includes(currentUser.name);
                             const isRecent = (new Date() - new Date(item.timestamp)) < (2 * 60 * 60 * 1000);
+                            
+                            // Klickbare Kachel: Absender kann in den ersten 5 Minuten nochmal drücken
+                            const isRecentSender = (item.sender === currentUser.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
                             
                             const renderRecipientStatus = (name) => {
                               const ack = item.acknowledgedBy?.includes(name);
@@ -1195,7 +1225,9 @@
                             };
 
                             return (
-                              <div key={item.id} className="bg-white p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] flex flex-col justify-between">
+                              <div key={item.id} 
+                                   onClick={() => { if(isRecentSender) setTrackingEventId(item.id); }}
+                                   className={`bg-white p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] flex flex-col justify-between ${isRecentSender ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}>
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4">
                                       <div className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-[#007AFF]/10 text-[#007AFF]">
@@ -1217,7 +1249,7 @@
                                 </div>
 
                                 {isRecipient && !hasAcknowledged && isRecent && item.sender !== currentUser.name && (
-                                  <button onClick={() => handleAcknowledge(item.id)} className="w-full mt-4 bg-[#007AFF]/10 text-[#007AFF] font-semibold text-[16px] py-3.5 rounded-[14px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
+                                  <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id); }} className="w-full mt-4 bg-[#007AFF]/10 text-[#007AFF] font-semibold text-[16px] py-3.5 rounded-[14px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
                                     <Icon name="Check" size={20} strokeWidth={2.5} /><span>Bestätigen</span>
                                   </button>
                                 )}
