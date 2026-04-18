@@ -9,22 +9,22 @@
     <meta name="theme-color" content="#F2F2F7">
     <title>FamilyConnect</title>
     
-    apple-touch-icon.png
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
     <!-- Hochstabile CDNs ohne Blockade-Gefahr -->
-    https://cdn.tailwindcss.com</script>
-    https://unpkg.com/react@18.3.1/umd/react.production.min.jsscript>
-    <script crossorigin="anonymous" src="https://unpkg.com/react-dom/umd/"/script>
-    https://unpkg.com/@babel/standalone@7.24.4/babel.min.js</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.4/babel.min.js"></script>
 
-    https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.jsscript>
-    https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.jsscript>
-    https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.jsscript>
-    https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.jsscript>
-    https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.jsscript>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
 
-    https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.jsscript>
-    https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.jsscript>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
         /* Natives iOS Scrolling: Weich, wischbar und komplett ohne schwarze Balken! */
@@ -75,30 +75,9 @@
         };
 
         window.addEventListener('error', (event) => {
-            const target = event.target || event.srcElement;
-
-            // Externe Dateien / CDN-Skripte / Styles / Bilder
-            if (target && target !== window && (target.src || target.href)) {
-                const url = target.src || target.href;
-                console.error('Resource load error:', {
-                    tag: target.tagName,
-                    url
-                });
-                setFallbackMessage('Externe Datei konnte nicht geladen werden: ' + url);
-                return;
-            }
-        }, true);
-
-        window.onerror = (message, source, lineno, colno, error) => {
-            console.error('Global error:', {
-                message,
-                source,
-                lineno,
-                colno,
-                error
-            });
+            console.error('Global error:', event.error || event.message);
             setFallbackMessage('App konnte nicht gestartet werden. Bitte lade die Seite neu.');
-        };
+        });
 
         window.addEventListener('unhandledrejection', (event) => {
             // Harmlose ServiceWorker Warnungen auf lokalen PCs ausblenden
@@ -110,7 +89,7 @@
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
-        const RECAPTCHA_SITE_KEY = "DEIN_SCHLUESSEL_HIER_EINFUEGEN";
+        const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
 
@@ -187,7 +166,7 @@
                                 {data.confirmText || 'OK'}
                             </button>
                             {data.type === 'confirm' && (
-                                <button onClick={data.onCancel} className={`w-full py-3.5 rounded-[12px] bg-[#F2F2F7] text-[#007AFF] font-semibold text-[17px] active:opacity-70 transition-opacity`}>
+                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[12px] bg-[#F2F2F7] text-[#007AFF] font-semibold text-[17px] active:opacity-70 transition-opacity">
                                     Abbrechen
                                 </button>
                             )}
@@ -197,6 +176,7 @@
             );
         }
 
+        // Live Tracking Overlay
         function TrackingOverlay({ event, currentFamily, currentUser, safeMembers, onClose, onResend }) {
             if (!event) return null;
             const [cooldown, setCooldown] = useState(60);
@@ -362,8 +342,7 @@
           const [isSending, setIsSending] = useState(false);
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
-          // --- 5. DER DATEN-AIRBAG ---
-          // Schützt die App zuverlässig vor "null"-Werten in der Datenbank
+          // --- SICHERHEITS-NETZE ---
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
@@ -391,7 +370,7 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard Listener
+          // Keyboard-Fix für iOS: Strengere Erkennung und sanfterer Reset
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 const tag = e.target.tagName;
@@ -403,8 +382,7 @@
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
                 setTimeout(() => {
-                    // Erzwingt, dass Safari die Ansicht neu zeichnet
-                    window.dispatchEvent(new Event('resize'));
+                    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
                 }, 50);
             };
             
@@ -645,7 +623,6 @@
                 try { messaging = firebase.messaging(); } catch (e) { return alert("Fehler: Push-Dienst konnte nicht gestartet werden."); }
             }
             
-            // Sehr robuster Config Scanner
             let storedConfig = {};
             try { 
                 const rawConfig = localStorage.getItem('firebaseConfig');
@@ -704,7 +681,7 @@
             const actualTargets = [];
 
             safeMembers.forEach(member => {
-                if (targetsList.includes(member.name) && member.status !== 'pending') {
+                if (member && targetsList.includes(member.name) && member.status !== 'pending') {
                     const isDND = member.dndUntil && new Date(member.dndUntil) > now;
                     if (!isDND) {
                         actualTargets.push(member.name);
@@ -837,7 +814,6 @@
               await getFamilyDocRef(currentFamily.id).update({ expenses: updatedExpenses });
           };
 
-          // Patch 4: Exakte Minuten statt fehlerhaft gerundete Stunden
           const setDND = async (hours) => {
               let dndTime = null;
               if (hours > 0) { 
@@ -870,7 +846,7 @@
 
           const saveSettings = async (key, value) => {
             const val = value ? String(value).trim() : '';
-            await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, val } : m) });
+            await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, [key]: val } : m) });
           };
 
           // --- RENDER LOGIK ---
@@ -1011,7 +987,6 @@
                   />
               )}
 
-              {/* Flex-Container für die PWA. Erlaubt reines wischen ohne iOS-Caging! */}
               <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto sm:shadow-2xl sm:border-x border-gray-300/50 bg-[#F2F2F7]">
                   <header className="sticky top-0 pb-4 px-6 bg-white/80 ios-blur border-b border-[#C6C6C8] z-30 flex items-end justify-center w-full" style={{ paddingTop: 'calc(env(safe-area-inset-top, 44px) + 20px)' }}>
                     <div className="text-center w-full min-w-0">
@@ -1430,6 +1405,7 @@
                 const fallback = document.getElementById('fallback');
                 if (fallback) fallback.style.display = 'none';
 
+                // Ignoriere den Fehler, wenn wir nicht auf HTTPS sind (z.B. Testumgebung)
                 if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
                     navigator.serviceWorker
                         .register('./firebase-messaging-sw.js')
