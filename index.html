@@ -22,16 +22,18 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
 
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #F2F2F7; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #000; margin: 0; }
         .ios-blur { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
         .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
         ::-webkit-scrollbar { display: none; }
         input[type="file"] { display: none; }
+        /* Datum-Feld Styling */
+        input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
     </style>
 </head>
-<body class="text-black antialiased overflow-hidden flex justify-center bg-gray-200">
-    <div id="root" class="w-full bg-[#F2F2F7] relative"></div>
+<body class="text-black antialiased overflow-hidden flex justify-center">
+    <div id="root" class="w-full relative"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -40,7 +42,7 @@
         // =====================================================================
         // 🛡️ HIER DEINEN RECAPTCHA SCHLÜSSEL EINTRAGEN 🛡️
         // =====================================================================
-        const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
+        const RECAPTCHA_SITE_KEY = "DEIN_SCHLUESSEL_HIER_EINFUEGEN";
         // =====================================================================
 
         let app, db, auth, messaging;
@@ -71,7 +73,9 @@
           Trash2: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
           Banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
           Plus: '<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
-          X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>'
+          X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
+          Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
+          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
         };
 
         const Icon = ({ name, size = 24, strokeWidth = 2, className = "", onClick }) => {
@@ -191,8 +195,9 @@
                 reader.readAsText(file);
             };
 
+            // Vollbild auf Mac und iPhone
             return (
-                <div className="h-[100dvh] flex flex-col items-center justify-center p-8 bg-black text-white w-full">
+                <div className="h-[100dvh] flex flex-col items-center justify-center p-8 bg-black text-white w-full absolute inset-0 z-50">
                     <div className="w-full max-w-sm text-center space-y-6">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-blue-500 mx-auto mb-4" />
                         <h1 className="text-3xl font-bold tracking-tight">System Setup</h1>
@@ -273,8 +278,10 @@
           const [formInput, setFormInput] = useState({ familyId: '', familyName: '', name: '', password: '' });
           const [authError, setAuthError] = useState('');
 
-          const [addingExpenseFor, setAddingExpenseFor] = useState(null);
-          const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', whoPaid: 'me' });
+          // Expenses State (Single, Split, Edit)
+          const todayString = new Date().toISOString().split('T')[0];
+          const [expenseModal, setExpenseModal] = useState(null); // { mode: 'single'|'split'|'edit', target?: string, expense?: object }
+          const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', date: todayString, splitCount: 1, splitTargets: [] });
 
           const [activeTab, setActiveTab] = useState(() => {
               const params = new URLSearchParams(window.location.search);
@@ -531,38 +538,75 @@
             await getFamilyDocRef(currentFamily.id).update({ history: updatedHistory });
           };
 
-          const handleAddExpense = async () => {
+          // --- Expenses Logic ---
+          const openSingleExpense = (targetName) => {
+              setExpenseForm({ amount: '', reason: '', date: todayString, splitCount: 1, splitTargets: [] });
+              setExpenseModal({ mode: 'single', target: targetName });
+          };
+
+          const openSplitExpense = () => {
+              setExpenseForm({ amount: '', reason: '', date: todayString, splitCount: 2, splitTargets: [] });
+              setExpenseModal({ mode: 'split' });
+          };
+
+          const openEditExpense = (expense) => {
+              setExpenseForm({ amount: expense.amount, reason: expense.reason, date: expense.date || expense.timestamp.split('T')[0], splitCount: 1, splitTargets: [] });
+              setExpenseModal({ mode: 'edit', expense });
+          };
+
+          const toggleSplitTarget = (name) => {
+              setExpenseForm(prev => {
+                  const targets = prev.splitTargets.includes(name) ? prev.splitTargets.filter(n => n !== name) : [...prev.splitTargets, name];
+                  return { ...prev, splitTargets: targets };
+              });
+          };
+
+          const handleSaveExpense = async () => {
               if (!expenseForm.amount || !expenseForm.reason) return showAlert("Fehler", "Bitte Betrag und Grund angeben.");
               const amountNum = parseFloat(expenseForm.amount.replace(',', '.'));
               if (isNaN(amountNum) || amountNum <= 0) return showAlert("Fehler", "Ungültiger Betrag.");
 
-              const isMeCreditor = expenseForm.whoPaid === 'me';
-              const newExpense = {
-                  id: generateId(),
-                  creditor: isMeCreditor ? currentUser.name : addingExpenseFor,
-                  debtor: isMeCreditor ? addingExpenseFor : currentUser.name,
-                  amount: amountNum.toFixed(2),
-                  reason: expenseForm.reason,
-                  timestamp: new Date().toISOString(),
-                  isPaid: false
-              };
+              let newExpenses = [...(currentFamily.expenses || [])];
+              let historyPushes = [];
+
+              if (expenseModal.mode === 'edit') {
+                  newExpenses = newExpenses.map(e => e.id === expenseModal.expense.id ? {
+                      ...e, amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date
+                  } : e);
+              } else if (expenseModal.mode === 'single') {
+                  const newExp = {
+                      id: generateId(), creditor: currentUser.name, debtor: expenseModal.target,
+                      amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date, timestamp: new Date().toISOString(), isPaid: false
+                  };
+                  newExpenses.unshift(newExp);
+                  historyPushes.push({
+                      id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name,
+                      reason: `Neue Auslage: ${expenseForm.reason} (${amountNum.toFixed(2)}€)`, targets: [expenseModal.target], acknowledgedBy: [], isExpense: true
+                  });
+              } else if (expenseModal.mode === 'split') {
+                  const splitCount = parseInt(expenseForm.splitCount);
+                  if (splitCount < 1 || expenseForm.splitTargets.length === 0) return showAlert("Fehler", "Bitte gib die Anzahl der Personen ein und wähle mindestens eine Person aus.");
+                  const perPerson = (amountNum / splitCount).toFixed(2);
+
+                  expenseForm.splitTargets.forEach(target => {
+                      const newExp = {
+                          id: generateId(), creditor: currentUser.name, debtor: target,
+                          amount: perPerson, reason: `${expenseForm.reason} (Anteilig)`, date: expenseForm.date, timestamp: new Date().toISOString(), isPaid: false
+                      };
+                      newExpenses.unshift(newExp);
+                      historyPushes.push({
+                          id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name,
+                          reason: `Neue geteilte Auslage: ${expenseForm.reason} (${perPerson}€)`, targets: [target], acknowledgedBy: [], isExpense: true
+                      });
+                  });
+              }
 
               try {
-                  await getFamilyDocRef(currentFamily.id).update({ expenses: [newExpense, ...(currentFamily.expenses || [])] });
-                  
-                  const pushHistoryItem = {
-                      id: Date.now().toString(),
-                      timestamp: new Date().toISOString(),
-                      sender: currentUser.name,
-                      reason: `Neue Auslage hinzugefügt: ${expenseForm.reason} (${amountNum.toFixed(2)}€)`, 
-                      targets: [addingExpenseFor], 
-                      acknowledgedBy: [],
-                      isExpense: true
-                  };
-                  await getFamilyDocRef(currentFamily.id).update({ history: [pushHistoryItem, ...(currentFamily.history || [])].slice(0, 50) });
-
-                  setAddingExpenseFor(null);
-                  setExpenseForm({ amount: '', reason: '', whoPaid: 'me' });
+                  await getFamilyDocRef(currentFamily.id).update({ expenses: newExpenses });
+                  if (historyPushes.length > 0) {
+                      await getFamilyDocRef(currentFamily.id).update({ history: [...historyPushes, ...(currentFamily.history || [])].slice(0, 50) });
+                  }
+                  setExpenseModal(null);
               } catch (e) { showAlert("Fehler", "Konnte nicht gespeichert werden."); }
           };
 
@@ -614,21 +658,23 @@
           
           const saveAdminSettings = async (key, value) => await getFamilyDocRef(currentFamily.id).update({ [key]: value.trim() });
 
+          // --- Views ---
           if (!appLoaded) {
               return (
-                  <div className="h-[100dvh] bg-[#F2F2F7] flex flex-col items-center justify-center relative w-full sm:max-w-md sm:shadow-2xl sm:border-x border-gray-300">
+                  <div className="h-[100dvh] bg-[#000000] text-white flex flex-col items-center justify-center relative w-full absolute inset-0 z-50">
                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                   </div>
               );
           }
 
           if (!currentFamily || !currentUser) {
+            // Full-screen Login/Setup (Keine weißen Ränder mehr auf Mac)
             return (
-              <div className="h-[100dvh] bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative w-full sm:max-w-md sm:shadow-2xl sm:border-x border-gray-800 overflow-hidden">
+              <div className="min-h-[100dvh] bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative w-full overflow-hidden absolute inset-0 z-40">
                 <div className="absolute top-[-10%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
                 <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#5856D6] blur-[100px] opacity-20 pointer-events-none"></div>
 
-                <div className="bg-white/10 backdrop-blur-3xl border border-white/20 p-8 rounded-[40px] shadow-2xl w-full relative z-10">
+                <div className="bg-white/10 backdrop-blur-3xl border border-white/20 p-8 rounded-[40px] shadow-2xl w-full max-w-sm relative z-10">
                   <div className="flex justify-center mb-6">
                     <div className="w-20 h-20 bg-gradient-to-tr from-[#007AFF] to-[#5856D6] rounded-3xl flex items-center justify-center shadow-lg">
                       <Icon name="ShieldCheck" size={40} className="text-white" />
@@ -681,7 +727,8 @@
                   />
               )}
 
-              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto h-[100dvh]">
+              {/* Zentrierter und gestreckter Content-Bereich für große Displays (Dashboard-Ansicht) */}
+              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto h-full">
                   <header className="flex-none pb-4 px-6 bg-white/90 ios-blur border-b border-gray-200/50 z-40 relative flex items-end justify-center w-full" style={{ paddingTop: 'calc(env(safe-area-inset-top, 44px) + 24px)' }}>
                     <div className="text-center w-full">
                       <h1 className="text-[28px] font-extrabold text-black tracking-tight leading-none">
@@ -701,6 +748,7 @@
                   <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36 relative w-full">
                     <div className="pb-10">
                     
+                    {/* --- HOME TAB --- */}
                     {activeTab === 'home' && (
                       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <section>
@@ -767,23 +815,74 @@
                       </div>
                     )}
 
+                    {/* --- EXPENSES TAB --- */}
                     {activeTab === 'expenses' && (
                       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                           
-                          {addingExpenseFor ? (
+                          {/* Kopfzeile mit Split-Button */}
+                          {!expenseModal && (
+                              <div className="flex justify-between items-center px-2">
+                                <h2 className="text-[13px] font-bold text-gray-400 uppercase tracking-widest">Auslagen Übersicht</h2>
+                                <button onClick={openSplitExpense} className="text-sm text-[#007AFF] font-bold bg-[#007AFF]/10 px-4 py-2 rounded-full active:bg-[#007AFF]/20 transition-colors flex items-center gap-1">
+                                    <Icon name="Users" size={16} /> Geteilte Auslage
+                                </button>
+                              </div>
+                          )}
+
+                          {expenseModal ? (
                               <div className="bg-white rounded-[28px] p-6 shadow-sm border border-gray-100 max-w-xl mx-auto">
                                   <div className="flex justify-between items-center mb-6">
-                                      <h3 className="font-bold text-xl">Auslage mit {addingExpenseFor}</h3>
-                                      <button onClick={() => setAddingExpenseFor(null)} className="w-8 h-8 bg-gray-100 rounded-full flex justify-center items-center active:scale-90"><Icon name="X" size={18}/></button>
+                                      <h3 className="font-bold text-xl">
+                                          {expenseModal.mode === 'single' && `Auslage für ${expenseModal.target}`}
+                                          {expenseModal.mode === 'split' && `Neue geteilte Auslage`}
+                                          {expenseModal.mode === 'edit' && `Auslage bearbeiten`}
+                                      </h3>
+                                      <button onClick={() => setExpenseModal(null)} className="w-8 h-8 bg-gray-100 rounded-full flex justify-center items-center active:scale-90"><Icon name="X" size={18}/></button>
                                   </div>
+                                  
                                   <div className="space-y-4">
-                                      <div className="flex bg-[#F2F2F7] p-1 rounded-2xl">
-                                          <button onClick={() => setExpenseForm({...expenseForm, whoPaid: 'me'})} className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${expenseForm.whoPaid === 'me' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}>Ich habe bezahlt</button>
-                                          <button onClick={() => setExpenseForm({...expenseForm, whoPaid: 'them'})} className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${expenseForm.whoPaid === 'them' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}>{addingExpenseFor}</button>
+                                      {expenseModal.mode === 'split' && (
+                                          <div className="bg-blue-50 p-4 rounded-2xl mb-4 border border-blue-100 text-sm text-blue-800">
+                                              Hier kannst du z.B. ein Geschenk eintragen, das du gekauft hast. Gib den <b>Gesamtbetrag</b> ein und durch wie viele Leute er geteilt wird.
+                                          </div>
+                                      )}
+                                      
+                                      <div className="grid grid-cols-2 gap-4">
+                                          <input type="number" placeholder="Gesamtbetrag (€)" className="w-full bg-[#F2F2F7] px-5 py-4 rounded-2xl outline-none font-bold text-lg" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} />
+                                          <input type="date" className="w-full bg-[#F2F2F7] px-5 py-4 rounded-2xl outline-none font-bold text-gray-600" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} />
                                       </div>
-                                      <input type="number" placeholder="Betrag in € (z.B. 12.50)" className="w-full bg-[#F2F2F7] px-5 py-4 rounded-2xl outline-none font-bold text-lg" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} />
-                                      <input type="text" placeholder="Wofür? (z.B. Pizza)" className="w-full bg-[#F2F2F7] px-5 py-4 rounded-2xl outline-none font-medium" value={expenseForm.reason} onChange={e => setExpenseForm({...expenseForm, reason: e.target.value})} />
-                                      <button onClick={handleAddExpense} className="w-full bg-[#007AFF] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform mt-2">Speichern & Informieren</button>
+                                      
+                                      <input type="text" placeholder="Wofür? (z.B. Pizza, Geschenk)" className="w-full bg-[#F2F2F7] px-5 py-4 rounded-2xl outline-none font-medium" value={expenseForm.reason} onChange={e => setExpenseForm({...expenseForm, reason: e.target.value})} />
+                                      
+                                      {expenseModal.mode === 'split' && (
+                                          <div className="pt-2 border-t border-gray-100">
+                                              <p className="text-sm font-bold text-gray-600 mb-2">Geteilt durch wie viele Personen? (inklusive dir)</p>
+                                              <input type="number" min="1" className="w-full bg-[#F2F2F7] px-5 py-4 rounded-2xl outline-none font-bold mb-4" value={expenseForm.splitCount} onChange={e => setExpenseForm({...expenseForm, splitCount: e.target.value})} />
+                                              
+                                              <p className="text-sm font-bold text-gray-600 mb-2">Wer schuldet dir seinen Anteil?</p>
+                                              <div className="flex flex-wrap gap-2">
+                                                  {currentFamily.members.filter(m => m.name !== currentUser.name).map(m => {
+                                                      const isSel = expenseForm.splitTargets.includes(m.name);
+                                                      return (
+                                                          <button key={m.name} onClick={() => toggleSplitTarget(m.name)} className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-colors ${isSel ? 'bg-[#007AFF] text-white shadow-md' : 'bg-[#F2F2F7] text-gray-500'}`}>
+                                                              {m.name}
+                                                          </button>
+                                                      );
+                                                  })}
+                                              </div>
+                                              
+                                              {expenseForm.amount && expenseForm.splitCount > 0 && expenseForm.splitTargets.length > 0 && (
+                                                  <div className="mt-4 text-center bg-green-50 text-green-700 font-bold p-3 rounded-xl border border-green-100">
+                                                      Jede ausgewählte Person schuldet dir: <br className="md:hidden" />
+                                                      <span className="text-xl">{(parseFloat(expenseForm.amount.replace(',', '.')) / parseInt(expenseForm.splitCount)).toFixed(2)}€</span>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      )}
+
+                                      <button onClick={handleSaveExpense} className="w-full bg-[#007AFF] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform mt-4 shadow-[0_5px_15px_rgba(0,122,255,0.3)]">
+                                          {expenseModal.mode === 'edit' ? 'Änderungen speichern' : 'Speichern & Informieren'}
+                                      </button>
                                   </div>
                               </div>
                           ) : (
@@ -795,7 +894,7 @@
                                     const net = theyOwe - iOwe;
 
                                     return (
-                                        <div key={member.name} className="bg-white rounded-[28px] overflow-hidden shadow-sm border border-gray-100 flex flex-col h-full">
+                                        <div key={member.name} className="bg-white rounded-[28px] overflow-hidden shadow-sm border border-gray-100 flex flex-col">
                                             <div className="p-5 flex justify-between items-center bg-gray-50/50">
                                                 <div>
                                                     <p className="font-bold text-lg">{member.name}</p>
@@ -803,22 +902,32 @@
                                                         {net > 0 ? `Bekommt: +${net.toFixed(2)}€` : net < 0 ? `Schuldet: ${Math.abs(net).toFixed(2)}€` : 'Alles beglichen'}
                                                     </p>
                                                 </div>
-                                                <button onClick={() => setAddingExpenseFor(member.name)} className="w-10 h-10 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:scale-90 flex-shrink-0"><Icon name="Plus" size={20}/></button>
+                                                <button onClick={() => openSingleExpense(member.name)} className="w-10 h-10 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:scale-90 flex-shrink-0"><Icon name="Plus" size={20}/></button>
                                             </div>
                                             {expensesWithThem.length > 0 && (
-                                                <div className="border-t border-gray-100 p-4 space-y-3 flex-1 overflow-y-auto">
+                                                <div className="border-t border-gray-100 p-4 space-y-3">
                                                     {expensesWithThem.map(e => {
                                                         const isMyCredit = e.creditor === currentUser.name;
+                                                        const displayDate = e.date ? new Date(e.date).toLocaleDateString('de-DE') : new Date(e.timestamp).toLocaleDateString('de-DE');
+                                                        
                                                         return (
-                                                            <div key={e.id} className="flex justify-between items-center bg-white border border-gray-100 p-3 rounded-2xl">
+                                                            <div key={e.id} className={`flex justify-between items-center bg-white border p-3 rounded-2xl ${isMyCredit ? 'border-blue-100' : 'border-gray-100'}`}>
                                                                 <div className="pr-3">
                                                                     <p className="text-[14px] font-bold text-gray-800 break-words">{e.reason}</p>
-                                                                    <p className="text-[11px] text-gray-400 font-medium">{new Date(e.timestamp).toLocaleDateString()}</p>
+                                                                    <p className="text-[11px] text-gray-400 font-medium">{displayDate}</p>
                                                                 </div>
-                                                                <div className="flex items-center gap-3 flex-shrink-0">
+                                                                <div className="flex flex-col items-end gap-2 flex-shrink-0">
                                                                     <span className={`font-bold text-[15px] ${isMyCredit ? 'text-green-500' : 'text-red-500'}`}>{isMyCredit ? '+' : '-'}{e.amount}€</span>
-                                                                    {isMyCredit && <button onClick={() => handleMarkExpensePaid(e.id)} className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex justify-center items-center active:scale-90"><Icon name="Check" size={16}/></button>}
-                                                                    {!isMyCredit && <button onClick={() => handleDeleteExpense(e.id)} className="w-8 h-8 bg-red-100 text-red-500 rounded-full flex justify-center items-center active:scale-90"><Icon name="Trash2" size={14}/></button>}
+                                                                    
+                                                                    {isMyCredit ? (
+                                                                        <div className="flex gap-1">
+                                                                            <button onClick={() => openEditExpense(e)} className="w-7 h-7 bg-blue-50 text-blue-500 rounded-full flex justify-center items-center active:scale-90"><Icon name="Pencil" size={12}/></button>
+                                                                            <button onClick={() => handleMarkExpensePaid(e.id)} className="w-7 h-7 bg-green-50 text-green-600 rounded-full flex justify-center items-center active:scale-90"><Icon name="Check" size={14}/></button>
+                                                                            <button onClick={() => handleDeleteExpense(e.id)} className="w-7 h-7 bg-red-50 text-red-500 rounded-full flex justify-center items-center active:scale-90"><Icon name="Trash2" size={12}/></button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">Offen</span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         )
@@ -833,12 +942,13 @@
                       </div>
                     )}
 
+                    {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {(!currentFamily.history || currentFamily.history.length === 0) ? (
+                        {(!currentFamily.history || currentFamily.history.filter(h => !h.isExpense).length === 0) ? (
                           <div className="text-center text-gray-400 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
-                          currentFamily.history.map((item) => {
+                          currentFamily.history.filter(h => !h.isExpense).map((item) => {
                             const targetList = item.targets || item.recipients || [];
                             const isRecipient = targetList.includes(currentUser.name);
                             const hasAcknowledged = item.acknowledgedBy?.includes(currentUser.name);
@@ -856,11 +966,11 @@
                             };
 
                             return (
-                              <div key={item.id} className={`bg-white p-5 rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between ${item.isExpense ? 'border-l-4 border-l-[#007AFF]' : ''}`}>
+                              <div key={item.id} className="bg-white p-5 rounded-[28px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between">
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4">
-                                      <div className={`w-14 h-14 rounded-[20px] flex items-center justify-center flex-shrink-0 ${item.isExpense ? 'bg-blue-50 text-[#007AFF]' : 'bg-[#F2F2F7] text-[#007AFF]'}`}>
-                                        <Icon name={item.isExpense ? "Banknote" : "Clock"} size={24} />
+                                      <div className="w-14 h-14 rounded-[20px] flex items-center justify-center flex-shrink-0 bg-[#F2F2F7] text-[#007AFF]">
+                                        <Icon name="Clock" size={24} />
                                       </div>
                                       <div className="flex-1">
                                         <p className="font-bold text-[18px] tracking-tight">{item.reason}</p>
@@ -877,7 +987,7 @@
                                     </div>
                                 </div>
 
-                                {isRecipient && !hasAcknowledged && isRecent && item.sender !== currentUser.name && !item.isExpense && (
+                                {isRecipient && !hasAcknowledged && isRecent && item.sender !== currentUser.name && (
                                   <button onClick={() => handleAcknowledge(item.id)} className="w-full mt-4 bg-[#007AFF]/10 text-[#007AFF] font-bold py-3.5 rounded-[18px] active:scale-95 transition-all flex items-center justify-center space-x-2">
                                     <Icon name="Check" size={20} strokeWidth={3} /><span>Bestätigen</span>
                                   </button>
@@ -889,6 +999,7 @@
                       </div>
                     )}
 
+                    {/* --- SETTINGS TAB --- */}
                     {activeTab === 'settings' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         
@@ -1041,7 +1152,7 @@
             
             if (status === "error") {
                 return (
-                    <div className="h-[100dvh] w-full bg-black text-white flex flex-col items-center justify-center p-8 text-center relative mx-auto">
+                    <div className="h-[100dvh] w-full bg-black text-white flex flex-col items-center justify-center p-8 text-center relative mx-auto absolute inset-0 z-50">
                         <Icon name="ShieldCheck" size={64} className="text-red-500 mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-red-400 text-sm mb-8 font-mono bg-red-500/10 p-4 rounded-xl border border-red-500/20">{errorMsg}</p>
@@ -1054,7 +1165,7 @@
 
             if (status === "booting") {
                 return (
-                   <div className="h-[100dvh] w-full bg-[#F2F2F7] flex flex-col items-center justify-center relative mx-auto">
+                   <div className="h-[100dvh] w-full bg-[#F2F2F7] flex flex-col items-center justify-center relative mx-auto absolute inset-0 z-50">
                       <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                    </div>
                 );
