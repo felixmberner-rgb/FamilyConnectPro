@@ -21,25 +21,24 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
 
-    <!-- PDF und QR-Code Generierung -->
+    <!-- Zuverlässiges CDN für PDF und QR-Code Generierung -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #000; margin: 0; }
+        /* Body-Hintergrund für die normale App ist hell, Login ist explizit schwarz */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #F2F2F7; margin: 0; }
         .ios-blur { background: rgba(255, 255, 255, 0.80); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
         .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
         ::-webkit-scrollbar { display: none; }
         input[type="file"] { display: none; }
-        /* iOS Date Picker Styling */
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
-        /* Weiches iOS Scrolling */
         .scroll-smooth { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
-<body class="text-black antialiased overflow-hidden flex justify-center">
-    <div id="root" class="w-full relative"></div>
+<body class="text-black antialiased overflow-hidden flex justify-center w-full">
+    <div id="root" class="w-full relative h-[100dvh]"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -232,7 +231,7 @@
 
           return (
             <div 
-              className={`absolute bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-all duration-400 ease-out ${isKeyboardOpen ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}
+              className={`fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-all duration-400 ease-out ${isKeyboardOpen ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}
               style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             >
               <div className="pointer-events-auto bg-white/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-200/50 rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
@@ -281,9 +280,8 @@
           const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
           const [trackingEventId, setTrackingEventId] = useState(null);
           
-          // --- Admin / Auth States ---
-          const [authMode, setAuthMode] = useState('login'); // 'login', 'join', 'admin'
-          const [isAdminMode, setIsAdminMode] = useState(false); // Zeigt das Admin Dashboard
+          const [authMode, setAuthMode] = useState('login');
+          const [isAdminMode, setIsAdminMode] = useState(false); 
           const [adminFamilies, setAdminFamilies] = useState([]);
           const [newFamilyName, setNewFamilyName] = useState('');
           const [newMemberNames, setNewMemberNames] = useState({});
@@ -327,17 +325,12 @@
           }, []);
 
           useEffect(() => {
-            const initAuth = async () => {
-              try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                  await auth.signInWithCustomToken(__initial_auth_token);
-                } else { await auth.signInAnonymously(); }
-              } catch (error) { console.error("Auth error:", error); }
-            };
-            initAuth();
-
             const unsubscribe = auth.onAuthStateChanged(async (u) => {
-              setFirebaseUser(u);
+              if (u) {
+                  setFirebaseUser(u);
+              } else {
+                  try { await auth.signInAnonymously(); } catch(e) { console.error("Anonymous auth error", e); }
+              }
             });
             return () => unsubscribe();
           }, []);
@@ -436,16 +429,19 @@
             setAuthError('');
             if (!formInput.familyId || !formInput.name || !formInput.password) return setAuthError('Bitte alle Felder ausfüllen.');
             try {
-              const docSnap = await getFamilyDocRef(formInput.familyId).get();
+              const cleanId = formInput.familyId.trim();
+              const cleanName = formInput.name.trim().toLowerCase();
+              const cleanPass = formInput.password.trim();
+
+              const docSnap = await getFamilyDocRef(cleanId).get();
               if (!docSnap.exists) return setAuthError('Familie nicht gefunden.');
               const data = docSnap.data();
               
-              const memberIndex = data.members.findIndex(m => m.name.toLowerCase() === formInput.name.trim().toLowerCase());
+              const memberIndex = data.members.findIndex(m => m.name.toLowerCase() === cleanName);
               
               if (memberIndex === -1) {
                   return setAuthError('Dieser Name wurde vom Administrator noch nicht registriert.');
               }
-              
               if (data.members[memberIndex].status !== 'pending') {
                   return setAuthError('Dieser Account ist bereits aktiv. Bitte nutze "Anmelden".');
               }
@@ -453,7 +449,7 @@
               const updatedMembers = [...data.members];
               updatedMembers[memberIndex] = {
                   ...updatedMembers[memberIndex],
-                  password: formInput.password.trim(),
+                  password: cleanPass,
                   status: 'active',
                   fcmToken: '',
                   voiceMonkeyMeal: '',
@@ -461,11 +457,12 @@
                   dndUntil: null
               };
               
-              await getFamilyDocRef(formInput.familyId).update({ members: updatedMembers });
+              await getFamilyDocRef(cleanId).update({ members: updatedMembers });
               
-              localStorage.setItem('familyId', formInput.familyId); 
+              localStorage.setItem('familyId', cleanId); 
               localStorage.setItem('userName', updatedMembers[memberIndex].name);
-              setLocalFamilyId(formInput.familyId);
+              
+              setLocalFamilyId(cleanId);
               setLocalUserName(updatedMembers[memberIndex].name);
             } catch (err) { setAuthError('Fehler beim Beitreten.'); }
           };
@@ -474,26 +471,35 @@
             setAuthError('');
             if (!formInput.familyId || !formInput.name || !formInput.password) return setAuthError('Familien-ID, Name und Passwort erforderlich.');
             try {
-              const docSnap = await getFamilyDocRef(formInput.familyId).get();
+              const cleanId = formInput.familyId.trim();
+              const cleanName = formInput.name.trim().toLowerCase();
+              const cleanPass = formInput.password.trim();
+
+              const docSnap = await getFamilyDocRef(cleanId).get();
               if (!docSnap.exists) return setAuthError('Familie nicht gefunden. Überprüfe die ID.');
               
               const data = docSnap.data();
-              const member = data.members.find(m => m.name.toLowerCase() === formInput.name.trim().toLowerCase() && m.password === formInput.password.trim());
+              const member = data.members.find(m => m.name.toLowerCase() === cleanName && m.password === cleanPass);
               
               if (!member || member.status === 'pending') return setAuthError('Falsches Passwort oder noch nicht beigetreten.');
               
               localStorage.setItem('familyId', data.id); 
               localStorage.setItem('userName', member.name);
+              
               setLocalFamilyId(data.id);
               setLocalUserName(member.name);
-            } catch (err) { setAuthError('Fehler bei der Anmeldung.'); }
+            } catch (err) { 
+              setAuthError('Fehler bei der Anmeldung: ' + err.message); 
+            }
           };
 
           const handleLogout = () => { 
               localStorage.removeItem('familyId');
               localStorage.removeItem('userName');
-              localStorage.removeItem('firebaseConfig');
-              window.location.reload();
+              setLocalFamilyId(null);
+              setLocalUserName(null);
+              setCurrentFamily(null);
+              setCurrentUser(null);
           };
 
           // --- Admin Actions ---
@@ -534,7 +540,7 @@
           const generatePDF = async (family) => {
               try {
                   const { jsPDF } = window.jspdf;
-                  const QRCodeLib = window.QRCode; // Sicherstellen, dass QRCode vom window-Objekt geladen wird
+                  const QRCodeLib = window.QRCode; 
                   
                   if (!QRCodeLib) {
                       throw new Error("QR-Code Bibliothek wurde nicht geladen. Bitte überprüfe deine Internetverbindung.");
@@ -583,7 +589,7 @@
                   doc.save(`FamilyConnect_${family.name}_Setup.pdf`);
               } catch (err) {
                   console.error("PDF Error:", err);
-                  alert("Fehler beim Generieren der PDF.");
+                  alert(err.message || "Fehler beim Generieren der PDF.");
               }
           };
 
@@ -678,7 +684,30 @@
             await getFamilyDocRef(currentFamily.id).update({ history: updatedHistory });
           };
 
-          const handleAddExpense = async () => {
+          // --- Auslagen ---
+          const openSingleExpense = (targetName) => {
+              setExpenseForm({ amount: '', reason: '', date: todayString, splitCount: 1, splitTargets: [] });
+              setExpenseModal({ mode: 'single', target: targetName });
+          };
+
+          const openSplitExpense = () => {
+              setExpenseForm({ amount: '', reason: '', date: todayString, splitCount: 2, splitTargets: [] });
+              setExpenseModal({ mode: 'split' });
+          };
+
+          const openEditExpense = (expense) => {
+              setExpenseForm({ amount: expense.amount, reason: expense.reason, date: expense.date || expense.timestamp.split('T')[0], splitCount: 1, splitTargets: [] });
+              setExpenseModal({ mode: 'edit', expense });
+          };
+
+          const toggleSplitTarget = (name) => {
+              setExpenseForm(prev => {
+                  const targets = prev.splitTargets.includes(name) ? prev.splitTargets.filter(n => n !== name) : [...prev.splitTargets, name];
+                  return { ...prev, splitTargets: targets };
+              });
+          };
+
+          const handleSaveExpense = async () => {
               if (!expenseForm.amount || !expenseForm.reason) return showAlert("Fehler", "Bitte Betrag und Grund angeben.");
               const amountNum = parseFloat(expenseForm.amount.replace(',', '.'));
               if (isNaN(amountNum) || amountNum <= 0) return showAlert("Fehler", "Ungültiger Betrag.");
@@ -702,7 +731,7 @@
                   });
               } else if (expenseModal.mode === 'split') {
                   const splitCount = parseInt(expenseForm.splitCount);
-                  if (splitCount < 1 || expenseForm.splitTargets.length === 0) return showAlert("Fehler", "Bitte gib die Anzahl der Personen ein und wähle mindestens eine Person aus.");
+                  if (splitCount < 1 || expenseForm.splitTargets.length === 0) return showAlert("Fehler", "Bitte wähle mindestens eine Person aus.");
                   const perPerson = (amountNum / splitCount).toFixed(2);
 
                   expenseForm.splitTargets.forEach(target => {
@@ -751,6 +780,20 @@
           const handleClearHistory = () => {
             showConfirm("Verlauf leeren", "Möchtest du den gesamten Verlauf für alle dauerhaft löschen?", async () => {
                 await getFamilyDocRef(currentFamily.id).update({ history: [] });
+            }, true);
+          };
+
+          const handleDeleteMember = (memberName) => {
+            if (memberName === currentUser.name) return; 
+            showConfirm("Mitglied entfernen", `Möchtest du ${memberName} dauerhaft aus der Familie entfernen?`, async () => {
+                const updatedMembers = currentFamily.members.filter(m => m.name !== memberName);
+                await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
+            }, true);
+          };
+
+          const handleDeleteFamily = () => {
+            showConfirm("Familie auflösen", "Möchtest du die gesamte Familie und alle Daten endgültig löschen?", async () => {
+                await getFamilyDocRef(currentFamily.id).delete();
             }, true);
           };
 
@@ -840,7 +883,7 @@
           }
 
           if (!currentFamily || !currentUser) {
-            // Full-screen Login/Setup (Keine weißen Ränder mehr auf Mac)
+            // Full-screen Login
             return (
               <div className="min-h-[100dvh] bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative w-full overflow-hidden absolute inset-0 z-40">
                 <div className="absolute top-[-10%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
@@ -908,8 +951,8 @@
                   />
               )}
 
-              {/* Zentrierter Content-Bereich für Dashboard-Ansicht */}
-              <div className="flex-1 flex flex-col w-full max-w-3xl mx-auto h-full bg-[#F2F2F7] sm:shadow-2xl sm:border-x border-gray-300/50">
+              {/* Zentrierter Content-Bereich für Desktop-Dashboard-Ansicht (Volle Breite) */}
+              <div className="flex-1 flex flex-col w-full h-full bg-[#F2F2F7]">
                   <header className="flex-none pb-4 px-6 bg-white/80 ios-blur border-b border-[#C6C6C8] z-40 relative flex items-end justify-center w-full" style={{ paddingTop: 'calc(env(safe-area-inset-top, 44px) + 20px)' }}>
                     <div className="text-center w-full">
                       <h1 className="text-[34px] font-bold text-black tracking-tight leading-tight">
@@ -927,7 +970,7 @@
                   </header>
 
                   <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36 relative w-full scroll-smooth">
-                    <div className="pb-10">
+                    <div className="pb-10 max-w-5xl mx-auto w-full">
                     
                     {/* --- HOME TAB --- */}
                     {activeTab === 'home' && (
@@ -1068,11 +1111,15 @@
                           ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {activeMembersList.filter(m => m.name !== currentUser.name).map(member => {
-                                    // Zeige NUR Auslagen an, bei denen DU der Gläubiger bist (jemand schuldet dir was)
-                                    // oder bei denen DU der Schuldner bist (du schuldest jemandem was)
-                                    const expensesWithThem = (currentFamily.expenses || []).filter(e => !e.isPaid && ((e.creditor === currentUser.name && e.debtor === member.name) || (e.creditor === member.name && e.debtor === currentUser.name)));
+                                    // Filtere Auslagen, die existieren, unbezahlt sind und bei denen der aktuelle Nutzer ODER der Partner beteiligt ist
+                                    const expensesWithThem = (currentFamily.expenses || []).filter(e => e && e.amount && !e.isPaid && ((e.creditor === currentUser.name && e.debtor === member.name) || (e.creditor === member.name && e.debtor === currentUser.name)));
+                                    
                                     let iOwe = 0; let theyOwe = 0;
-                                    expensesWithThem.forEach(e => { if (e.creditor === currentUser.name) theyOwe += parseFloat(e.amount); else iOwe += parseFloat(e.amount); });
+                                    expensesWithThem.forEach(e => { 
+                                        const amt = parseFloat(e.amount) || 0;
+                                        if (e.creditor === currentUser.name) theyOwe += amt; 
+                                        else iOwe += amt; 
+                                    });
                                     const net = theyOwe - iOwe;
 
                                     return (
@@ -1090,7 +1137,7 @@
                                                 <div className="border-t border-[#E5E5EA] p-4 space-y-3 flex-1 overflow-y-auto">
                                                     {expensesWithThem.map(e => {
                                                         const isMyCredit = e.creditor === currentUser.name;
-                                                        const displayDate = e.date ? new Date(e.date).toLocaleDateString('de-DE') : new Date(e.timestamp).toLocaleDateString('de-DE');
+                                                        const displayDate = e.date ? new Date(e.date).toLocaleDateString('de-DE') : (e.timestamp ? new Date(e.timestamp).toLocaleDateString('de-DE') : 'Unbekannt');
                                                         
                                                         return (
                                                             <div key={e.id} className={`flex justify-between items-center bg-white border p-3 rounded-[16px] ${isMyCredit ? 'border-[#007AFF]/20 shadow-sm' : 'border-[#E5E5EA]'}`}>
@@ -1099,7 +1146,7 @@
                                                                     <p className="text-[12px] text-[#8E8E93] font-medium">{displayDate}</p>
                                                                 </div>
                                                                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                                                    <span className={`font-semibold text-[16px] ${isMyCredit ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{isMyCredit ? '+' : '-'}{e.amount}€</span>
+                                                                    <span className={`font-semibold text-[16px] ${isMyCredit ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{isMyCredit ? '+' : '-'}{parseFloat(e.amount || 0).toFixed(2)}€</span>
                                                                     
                                                                     {isMyCredit ? (
                                                                         <div className="flex gap-1.5 mt-1">
@@ -1315,7 +1362,7 @@
 
             if (status === "booting") {
                 return (
-                   <div className="h-[100dvh] w-full bg-[#000000] flex flex-col items-center justify-center relative mx-auto absolute inset-0 z-50">
+                   <div className="h-[100dvh] w-full bg-black flex flex-col items-center justify-center relative mx-auto absolute inset-0 z-50">
                       <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                    </div>
                 );
