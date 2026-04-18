@@ -25,18 +25,23 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* Anti-Keyboard-Jump Korsett für Safari */
         html, body { 
-            position: fixed; 
-            top: 0; left: 0; right: 0; bottom: 0; 
-            width: 100%; height: 100%; 
-            overflow: hidden; 
-            background-color: #F2F2F7; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            width: 100vw; 
+            height: 100dvh; 
             margin: 0; 
-            overscroll-behavior: none; 
+            padding: 0; 
+            background-color: #000; /* Verhindert weiße Blitze beim Scrollen */
+            overflow: hidden; 
+            overscroll-behavior: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
         }
-        #root { width: 100%; height: 100%; display: flex; justify-content: center; }
+        #root { 
+            width: 100%; 
+            height: 100%; 
+            background-color: #F2F2F7;
+            display: flex;
+            flex-direction: column;
+        }
         
         .ios-blur { background: rgba(255, 255, 255, 0.80); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
@@ -151,9 +156,9 @@
                         <p className="text-[#3C3C4399] mb-6 font-medium bg-white p-4 rounded-[16px] text-[15px] shadow-sm border border-[#E5E5EA]">"{event.reason}"</p>
                         
                         <div className="space-y-3">
-                            {event.targets.map(targetName => {
+                            {(event.targets || []).map(targetName => {
                                 const hasAck = event.acknowledgedBy?.includes(targetName);
-                                const targetMember = currentFamily.members.find(m => m.name === targetName);
+                                const targetMember = (currentFamily?.members || []).find(m => m.name === targetName);
                                 const isDND = targetMember?.dndUntil && new Date(targetMember.dndUntil) > new Date();
 
                                 return (
@@ -307,13 +312,18 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard Listener für iOS Fix
+          // Keyboard Listener für iOS Fix (Verhindert Dead Space nach dem Tippen)
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    document.body.scrollTop = 0;
+                    document.documentElement.scrollTop = 0;
+                }, 50);
             };
             window.addEventListener('focusin', handleFocusIn); 
             window.addEventListener('focusout', handleFocusOut);
@@ -345,7 +355,7 @@
             const unsubscribe = getFamilyDocRef(localFamilyId).onSnapshot((docSnap) => {
               if (docSnap.exists) {
                 const data = docSnap.data();
-                const updatedUser = data.members.find(m => m.name === localUserName);
+                const updatedUser = (data.members || []).find(m => m && m.name === localUserName);
                 
                 if (!updatedUser || updatedUser.status === 'pending') {
                     alert("Dein Account wurde vom Administrator aus der Familie entfernt.");
@@ -376,7 +386,19 @@
               }
           }, [isAdminMode]);
 
-          // Foreground Push
+          useEffect(() => {
+              if (currentFamily && currentUser && activeTab === 'history') {
+                  const latestEvent = (currentFamily.history || []).find(h => h && !h.isExpense && !h.isResend);
+                  if (latestEvent && latestEvent.targets?.includes(currentUser.name) && !latestEvent.acknowledgedBy?.includes(currentUser.name) && latestEvent.sender !== currentUser.name) {
+                      const eventAge = Date.now() - new Date(latestEvent.timestamp).getTime();
+                      if (eventAge < 3 * 60 * 1000 && !sessionStorage.getItem(`prompted_${latestEvent.id}`)) {
+                          sessionStorage.setItem(`prompted_${latestEvent.id}`, 'true');
+                          showConfirm(`Ruf von ${latestEvent.sender}`, `${latestEvent.reason}\n\nMöchtest du direkt bestätigen, dass du kommst?`, () => handleAcknowledge(latestEvent.id));
+                      }
+                  }
+              }
+          }, [currentFamily, currentUser, activeTab]);
+
           useEffect(() => {
               if (messaging) {
                   try {
@@ -385,7 +407,7 @@
                           showAlert(payload.notification?.title || "Neue Benachrichtigung", payload.notification?.body || "");
                       });
                       return () => unsub();
-                  } catch(e) {}
+                  } catch(e) { console.warn("Meldungs-Listener Fehler:", e); }
               }
           }, []);
 
@@ -415,7 +437,7 @@
               if (!docSnap.exists) return setAuthError('Familie nicht gefunden.');
               const data = docSnap.data();
               
-              const memberIndex = data.members.findIndex(m => m.name.toLowerCase() === cleanName);
+              const memberIndex = (data.members || []).findIndex(m => m && m.name.toLowerCase() === cleanName);
               if (memberIndex === -1) return setAuthError('Dieser Name wurde vom Administrator noch nicht registriert.');
               if (data.members[memberIndex].status !== 'pending') return setAuthError('Dieser Account ist bereits aktiv. Bitte nutze "Anmelden".');
               
@@ -438,7 +460,7 @@
               if (!docSnap.exists) return setAuthError('Familie nicht gefunden. Überprüfe die ID.');
               
               const data = docSnap.data();
-              const member = data.members.find(m => m.name.toLowerCase() === cleanName && m.password === formInput.password.trim());
+              const member = (data.members || []).find(m => m && m.name.toLowerCase() === cleanName && m.password === formInput.password.trim());
               if (!member || member.status === 'pending') return setAuthError('Falsches Passwort oder noch nicht beigetreten.');
               
               localStorage.setItem('familyId', data.id); localStorage.setItem('userName', member.name);
@@ -465,7 +487,7 @@
           const adminAddMember = async (fam) => {
               const name = newMemberNames[fam.id];
               if (!name || !name.trim()) return;
-              if (fam.members.find(m => m.name.toLowerCase() === name.trim().toLowerCase())) return showAlert("Fehler", "Name existiert bereits.");
+              if ((fam.members || []).find(m => m && m.name.toLowerCase() === name.trim().toLowerCase())) return showAlert("Fehler", "Name existiert bereits.");
               await getFamilyDocRef(fam.id).update({ members: [...fam.members, { name: name.trim(), status: 'pending' }] });
               setNewMemberNames({ ...newMemberNames, [fam.id]: '' });
           };
@@ -473,7 +495,7 @@
           const adminDeleteMember = async (famId, memberName) => {
               showConfirm("Mitglied löschen", `Möchtest du ${memberName} aus der Familie entfernen?`, async () => {
                   const fam = adminFamilies.find(f => f.id === famId);
-                  await getFamilyDocRef(famId).update({ members: fam.members.filter(m => m.name !== memberName) });
+                  await getFamilyDocRef(famId).update({ members: (fam.members || []).filter(m => m && m.name !== memberName) });
               }, true);
           };
 
@@ -514,7 +536,7 @@
                   const reg = await navigator.serviceWorker.ready;
                   const token = await messaging.getToken({ vapidKey: vapidKey.trim(), serviceWorkerRegistration: reg });
                   if (token) {
-                    await getFamilyDocRef(currentFamily.id).update({ members: currentFamily.members.map(m => m.name === currentUser.name ? { ...m, fcmToken: token } : m) });
+                    await getFamilyDocRef(currentFamily.id).update({ members: (currentFamily.members || []).map(m => m && m.name === currentUser?.name ? { ...m, fcmToken: token } : m) });
                     setPushStatus('Aktiviert ✅'); alert("Erfolgreich!");
                   } else setPushStatus('Fehler');
               } else setPushStatus('Abgelehnt ❌');
@@ -526,15 +548,15 @@
             const targetsList = customTargets || selectedMembers;
             if (!reasonObj || targetsList.length === 0) return;
             
-            const todayCalls = currentFamily.history.filter(h => h.sender === currentUser.name && new Date(h.timestamp).toDateString() === new Date().toDateString());
+            const todayCalls = (currentFamily.history || []).filter(h => h && h.sender === currentUser.name && new Date(h.timestamp).toDateString() === new Date().toDateString());
             if (todayCalls.length >= 20) return showAlert("Limit erreicht", "Du hast heute bereits 20 Rufe gesendet.");
 
             setIsSending(true); if(navigator.vibrate) navigator.vibrate(10);
             const now = new Date(); const isNightMode = now.getHours() >= 22 || now.getHours() < 7;
             const actualTargets = [];
 
-            currentFamily.members.forEach(member => {
-                if (targetsList.includes(member.name) && member.status !== 'pending') {
+            (currentFamily.members || []).forEach(member => {
+                if (member && targetsList.includes(member.name) && member.status !== 'pending') {
                     const isDND = member.dndUntil && new Date(member.dndUntil) > now;
                     if (!isDND) {
                         actualTargets.push(member.name);
@@ -560,7 +582,7 @@
 
           const handleAcknowledge = async (historyItemId) => {
             if(navigator.vibrate) navigator.vibrate([20, 30]);
-            await getFamilyDocRef(currentFamily.id).update({ history: currentFamily.history.map(item => item.id === historyItemId && !item.acknowledgedBy.includes(currentUser.name) ? { ...item, acknowledgedBy: [...(item.acknowledgedBy || []), currentUser.name] } : item) });
+            await getFamilyDocRef(currentFamily.id).update({ history: (currentFamily.history || []).map(item => item && item.id === historyItemId && !(item.acknowledgedBy || []).includes(currentUser.name) ? { ...item, acknowledgedBy: [...(item.acknowledgedBy || []), currentUser.name] } : item) });
           };
 
           const handleSaveExpense = async () => {
@@ -573,7 +595,7 @@
               let historyPushes = [];
 
               if (expenseModal.mode === 'edit') {
-                  newExpenses = newExpenses.map(e => e.id === expenseModal.expense.id ? { ...e, amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date } : e);
+                  newExpenses = newExpenses.map(e => e && e.id === expenseModal.expense.id ? { ...e, amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date } : e);
               } else if (expenseModal.mode === 'single') {
                   newExpenses.unshift({ id: generateId(), creditor: currentUser.name, debtor: expenseModal.target, amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date, timestamp: new Date().toISOString(), isPaid: false });
                   historyPushes.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Neue Auslage: ${expenseForm.reason} (${amountNum.toFixed(2)}€)`, targets: [expenseModal.target], acknowledgedBy: [], isExpense: true });
@@ -594,14 +616,44 @@
               } catch (e) { showAlert("Fehler", "Konnte nicht gespeichert werden."); }
           };
 
+          const handleMarkExpensePaid = async (expId) => {
+              const updatedExpenses = (currentFamily.expenses || []).map(e => e && e.id === expId ? { ...e, isPaid: true } : e);
+              await getFamilyDocRef(currentFamily.id).update({ expenses: updatedExpenses });
+          };
+
+          const handleDeleteExpense = async (expId) => {
+              const updatedExpenses = (currentFamily.expenses || []).filter(e => e && e.id !== expId);
+              await getFamilyDocRef(currentFamily.id).update({ expenses: updatedExpenses });
+          };
+
           const setDND = async (hours) => {
               let dndTime = null;
               if (hours > 0) { const dndDate = new Date(); dndDate.setHours(dndDate.getHours() + hours); dndTime = dndDate.toISOString(); }
-              await getFamilyDocRef(currentFamily.id).update({ members: currentFamily.members.map(m => m.name === currentUser.name ? { ...m, dndUntil: dndTime } : m) });
+              await getFamilyDocRef(currentFamily.id).update({ members: (currentFamily.members || []).map(m => m && m.name === currentUser.name ? { ...m, dndUntil: dndTime } : m) });
+          };
+
+          const handleClearHistory = () => {
+            showConfirm("Verlauf leeren", "Möchtest du den gesamten Verlauf für alle dauerhaft löschen?", async () => {
+                await getFamilyDocRef(currentFamily.id).update({ history: [] });
+            }, true);
+          };
+
+          const handleDeleteMember = (memberName) => {
+            if (memberName === currentUser.name) return; 
+            showConfirm("Mitglied entfernen", `Möchtest du ${memberName} dauerhaft aus der Familie entfernen?`, async () => {
+                const updatedMembers = (currentFamily.members || []).filter(m => m && m.name !== memberName);
+                await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
+            }, true);
+          };
+
+          const handleDeleteFamily = () => {
+            showConfirm("Familie auflösen", "Möchtest du die gesamte Familie und alle Daten endgültig löschen?", async () => {
+                await getFamilyDocRef(currentFamily.id).delete();
+            }, true);
           };
 
           const saveSettings = async (key, value) => {
-            await getFamilyDocRef(currentFamily.id).update({ members: currentFamily.members.map(m => m.name === currentUser.name ? { ...m, [key]: value.trim() } : m) });
+            await getFamilyDocRef(currentFamily.id).update({ members: (currentFamily.members || []).map(m => m && m.name === currentUser.name ? { ...m, [key]: value.trim() } : m) });
           };
 
           if (!appLoaded) {
@@ -649,8 +701,8 @@
                                       <div className="p-5">
                                           <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Mitglieder</h4>
                                           <div className="space-y-3 mb-5">
-                                              {fam.members.length === 0 && <p className="text-[#8E8E93] text-sm">Keine Mitglieder.</p>}
-                                              {fam.members.map(m => (
+                                              {(fam.members || []).length === 0 && <p className="text-[#8E8E93] text-sm">Keine Mitglieder.</p>}
+                                              {(fam.members || []).map(m => m && (
                                                   <div key={m.name} className="flex justify-between items-center p-3.5 bg-[#F2F2F7] rounded-[14px]">
                                                       <div className="flex items-center gap-3">
                                                           <span className="font-semibold text-[16px]">{m.name}</span>
@@ -720,8 +772,8 @@
             );
           }
 
-          const trackingEvent = trackingEventId ? currentFamily.history.find(h => h.id === trackingEventId) : null;
-          const activeMembersList = currentFamily.members.filter(m => m.status !== 'pending');
+          const trackingEvent = trackingEventId ? (currentFamily?.history || []).find(h => h && h.id === trackingEventId) : null;
+          const activeMembersList = (currentFamily?.members || []).filter(m => m && m.status !== 'pending');
 
           return (
             <div className="h-full bg-[#F2F2F7] font-sans select-none flex flex-col relative w-full">
@@ -742,13 +794,13 @@
                   <header className="flex-none pb-4 px-6 bg-white/80 ios-blur border-b border-[#C6C6C8] z-40 relative flex items-end justify-center w-full" style={{ paddingTop: 'calc(env(safe-area-inset-top, 44px) + 20px)' }}>
                     <div className="text-center w-full">
                       <h1 className="text-[34px] font-bold text-black tracking-tight leading-tight">
-                        {activeTab === 'home' && `Familie ${currentFamily.name}`}
+                        {activeTab === 'home' && `Familie ${currentFamily?.name}`}
                         {activeTab === 'history' && 'Verlauf'}
                         {activeTab === 'expenses' && 'Auslagen'}
                         {activeTab === 'settings' && 'Einstellungen'}
                       </h1>
                     </div>
-                    {activeTab === 'history' && currentFamily.history?.length > 0 && (
+                    {activeTab === 'history' && (currentFamily?.history || []).length > 0 && (
                       <button onClick={handleClearHistory} className="absolute right-4 bottom-4 text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full active:opacity-70 transition-opacity flex items-center gap-1.5">
                         <Icon name="Trash2" size={14} /> Leeren
                       </button>
@@ -785,7 +837,7 @@
                             <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest">Empfänger</h2>
                             <button className="text-[14px] text-[#007AFF] font-semibold active:opacity-70 transition-opacity" onClick={() => {
                                 if(navigator.vibrate) navigator.vibrate(10);
-                                const others = activeMembersList.filter(m => m.name !== currentUser.name && !(m.dndUntil && new Date(m.dndUntil) > new Date())).map(m => m.name);
+                                const others = activeMembersList.filter(m => m.name !== currentUser?.name && !(m.dndUntil && new Date(m.dndUntil) > new Date())).map(m => m.name);
                                 setSelectedMembers(selectedMembers.length === others.length ? [] : others);
                               }}>
                               {selectedMembers.length >= (activeMembersList.length - 1) ? 'Keine' : 'Alle'}
@@ -793,13 +845,13 @@
                           </div>
                           
                           <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA]">
-                            {activeMembersList.filter(m => m.name !== currentUser.name).map((member, index, arr) => {
+                            {activeMembersList.filter(m => m.name !== currentUser?.name).map((member, index, arr) => {
                               const isSelected = selectedMembers.includes(member.name);
                               const isMemberDND = member.dndUntil && new Date(member.dndUntil) > new Date();
 
                               return (
                                 <div key={member.name} onClick={() => {
-                                    if(isMemberDND) return; // Nicht klickbar
+                                    if(isMemberDND) return; 
                                     if(navigator.vibrate) navigator.vibrate(10);
                                     if (isSelected) setSelectedMembers(prev => prev.filter(m => m !== member.name));
                                     else setSelectedMembers(prev => [...prev, member.name]);
@@ -850,14 +902,14 @@
                                       <button onClick={() => setExpenseModal(null)} className="w-8 h-8 bg-[#F2F2F7] rounded-full flex justify-center items-center active:opacity-70"><Icon name="X" size={18}/></button>
                                   </div>
                                   
-                                  <div className="space-y-4">
+                                  <div className="space-y-4 w-full">
                                       {expenseModal.mode === 'split' && (
                                           <div className="bg-[#007AFF]/10 p-4 rounded-[14px] mb-4 text-[13px] text-[#007AFF] leading-relaxed">
                                               Gib den <b>Gesamtbetrag</b> ein und durch wie viele Personen er geteilt wird.
                                           </div>
                                       )}
                                       
-                                      <div className="flex flex-col sm:flex-row gap-3">
+                                      <div className="flex flex-col sm:flex-row gap-3 w-full">
                                           <input type="text" inputMode="decimal" placeholder="Gesamt (€)" className="w-full box-border sm:flex-1 bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] focus:ring-2 ring-[#007AFF]/20" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value.replace(/[^0-9.,]/g, '')})} />
                                           <input type="date" className="w-full box-border sm:flex-1 bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[17px] text-gray-700 focus:ring-2 ring-[#007AFF]/20" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} />
                                       </div>
@@ -871,7 +923,7 @@
                                               
                                               <p className="text-[14px] font-semibold text-[#3C3C43] mb-2">Wer schuldet dir seinen Anteil?</p>
                                               <div className="flex flex-wrap gap-2">
-                                                  {activeMembersList.filter(m => m.name !== currentUser.name).map(m => {
+                                                  {activeMembersList.filter(m => m.name !== currentUser?.name).map(m => {
                                                       const isSel = expenseForm.splitTargets.includes(m.name);
                                                       return (
                                                           <button key={m.name} onClick={() => toggleSplitTarget(m.name)} className={`px-4 py-2.5 rounded-full text-[15px] font-semibold transition-colors ${isSel ? 'bg-[#007AFF] text-white' : 'bg-[#F2F2F7] text-[#3C3C43]'}`}>
@@ -897,13 +949,13 @@
                               </div>
                           ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {activeMembersList.filter(m => m.name !== currentUser.name).map(member => {
-                                    const expensesWithThem = (currentFamily.expenses || []).filter(e => e && e.amount && !e.isPaid && ((e.creditor === currentUser.name && e.debtor === member.name) || (e.creditor === member.name && e.debtor === currentUser.name)));
+                                {activeMembersList.filter(m => m.name !== currentUser?.name).map(member => {
+                                    const expensesWithThem = (currentFamily.expenses || []).filter(e => e && e.amount && !e.isPaid && ((e.creditor === currentUser?.name && e.debtor === member.name) || (e.creditor === member.name && e.debtor === currentUser?.name)));
                                     
                                     let iOwe = 0; let theyOwe = 0;
                                     expensesWithThem.forEach(e => { 
                                         const amt = parseFloat(e.amount) || 0;
-                                        if (e.creditor === currentUser.name) theyOwe += amt; 
+                                        if (e.creditor === currentUser?.name) theyOwe += amt; 
                                         else iOwe += amt; 
                                     });
                                     const net = theyOwe - iOwe;
@@ -922,7 +974,7 @@
                                             {expensesWithThem.length > 0 && (
                                                 <div className="border-t border-[#E5E5EA] p-4 space-y-3 flex-1 overflow-y-auto">
                                                     {expensesWithThem.map(e => {
-                                                        const isMyCredit = e.creditor === currentUser.name;
+                                                        const isMyCredit = e.creditor === currentUser?.name;
                                                         const displayDate = e.date ? new Date(e.date).toLocaleDateString('de-DE') : (e.timestamp ? new Date(e.timestamp).toLocaleDateString('de-DE') : 'Unbekannt');
                                                         
                                                         return (
@@ -960,16 +1012,17 @@
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {(!currentFamily.history || currentFamily.history.filter(h => !h.isExpense && !h.isResend).length === 0) ? (
+                        {(!(currentFamily?.history || []).filter(h => h && !h.isExpense && !h.isResend).length) ? (
                           <div className="text-center text-[#8E8E93] font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
-                          currentFamily.history.filter(h => !h.isExpense && !h.isResend).map((item) => {
+                          (currentFamily.history || []).filter(h => h && !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
-                            const isRecipient = targetList.includes(currentUser.name);
-                            const hasAcknowledged = item.acknowledgedBy?.includes(currentUser.name);
+                            const isRecipient = targetList.includes(currentUser?.name);
+                            const hasAcknowledged = item.acknowledgedBy?.includes(currentUser?.name);
+                            const isRecent = (new Date() - new Date(item.timestamp)) < (2 * 60 * 60 * 1000);
                             
-                            // Re-Send Logik: War es in den letzten 5 Minuten und bist du der Absender?
-                            const isRecentSender = (item.sender === currentUser.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
+                            // Re-Send Logik
+                            const isRecentSender = (item.sender === currentUser?.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
                             
                             const renderRecipientStatus = (name) => {
                               const ack = item.acknowledgedBy?.includes(name);
@@ -1004,7 +1057,7 @@
                                     </div>
                                 </div>
 
-                                {isRecipient && !hasAcknowledged && item.sender !== currentUser.name && (
+                                {isRecipient && !hasAcknowledged && item.sender !== currentUser?.name && (
                                   <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id); }} className="w-full mt-4 bg-[#007AFF]/10 text-[#007AFF] font-semibold text-[16px] py-3.5 rounded-[14px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
                                     <Icon name="Check" size={20} strokeWidth={2.5} /><span>Bestätigen</span>
                                   </button>
@@ -1027,7 +1080,7 @@
                                   <div className="flex flex-col justify-center h-full gap-4 bg-[#FF9500]/10 p-5 rounded-[16px] border border-[#FF9500]/20 text-center">
                                       <div>
                                           <p className="font-semibold text-[#FF9500] text-[17px]">Aktiviert bis</p>
-                                          <p className="text-[15px] text-[#FF9500]/80 font-medium">{new Date(currentUser.dndUntil).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} Uhr</p>
+                                          <p className="text-[15px] text-[#FF9500]/80 font-medium">{new Date(currentUser?.dndUntil).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} Uhr</p>
                                       </div>
                                       <button onClick={() => setDND(0)} className="bg-[#FF9500] text-white font-semibold px-4 py-3 rounded-[12px] active:opacity-80 w-full">Beenden</button>
                                   </div>
@@ -1054,11 +1107,11 @@
                                 <div className="bg-[#007AFF]/10 p-2.5 rounded-[12px]"><Icon name="Smartphone" size={20} className="text-[#007AFF]"/></div>
                                 <div>
                                   <p className="font-semibold text-[16px]">Apple Push</p>
-                                  <p className="text-[13px] text-[#8E8E93] font-normal">Status: <span className={currentUser.fcmToken ? "text-[#34C759] font-medium" : "text-[#FF9500] font-medium"}>{pushStatus}</span></p>
+                                  <p className="text-[13px] text-[#8E8E93] font-normal">Status: <span className={currentUser?.fcmToken ? "text-[#34C759] font-medium" : "text-[#FF9500] font-medium"}>{pushStatus}</span></p>
                                 </div>
                               </div>
                               <button onClick={requestPushPermission} className="bg-[#007AFF]/10 text-[#007AFF] text-[14px] font-semibold px-4 py-2 rounded-full active:opacity-70 transition-opacity">
-                                {currentUser.fcmToken ? 'Erneuern' : 'Aktivieren'}
+                                {currentUser?.fcmToken ? 'Erneuern' : 'Aktivieren'}
                               </button>
                             </div>
                             
@@ -1072,7 +1125,7 @@
                                  <p className="text-[13px] font-medium text-[#8E8E93] mb-1.5 ml-1">Für Mahlzeiten</p>
                                  <input type="text" placeholder="https://api.voicemonkey.io/trigger..." 
                                         className="w-full box-border bg-[#F2F2F7] px-4 py-3 rounded-[12px] text-[15px] font-normal outline-none focus:ring-2 ring-[#007AFF]/20 transition-all" 
-                                        defaultValue={currentUser.voiceMonkeyMeal} 
+                                        defaultValue={currentUser?.voiceMonkeyMeal} 
                                         onBlur={(e) => saveSettings('voiceMonkeyMeal', e.target.value)} />
                               </div>
 
@@ -1080,7 +1133,7 @@
                                  <p className="text-[13px] font-medium text-[#8E8E93] mb-1.5 ml-1">Für Aktivitäten</p>
                                  <input type="text" placeholder="https://api.voicemonkey.io/trigger..." 
                                         className="w-full box-border bg-[#F2F2F7] px-4 py-3 rounded-[12px] text-[15px] font-normal outline-none focus:ring-2 ring-[#007AFF]/20 transition-all" 
-                                        defaultValue={currentUser.voiceMonkeyOther} 
+                                        defaultValue={currentUser?.voiceMonkeyOther} 
                                         onBlur={(e) => saveSettings('voiceMonkeyOther', e.target.value)} />
                               </div>
                             </div>
