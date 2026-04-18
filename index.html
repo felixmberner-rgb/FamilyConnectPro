@@ -6,6 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FamilyConnect">
+    <meta name="theme-color" content="#F2F2F7">
     <title>FamilyConnect</title>
     
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -30,7 +31,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* Ultimativer Layout-Fix: Festgetackertes Fenster, eliminiert schwarze Balken und unruhiges Bouncen */
+        /* Ultimatives Native-App Layout: Die App ist starr, nur der innere Container scrollt! */
         html, body { 
             position: fixed;
             inset: 0;
@@ -52,7 +53,7 @@
             position: relative;
         }
 
-        /* Nur der Inhaltsbereich darf scrollen. Header und TabBar bleiben statisch! */
+        /* Dieser Bereich ermöglicht butterweiches iOS Scrolling, ohne dass die Header/Footer bouncen */
         .scrollable-area {
             flex: 1;
             overflow-y: auto;
@@ -62,7 +63,7 @@
         .scrollable-area::-webkit-scrollbar { display: none; }
         
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
         .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
         
         input[type="file"] { display: none; }
@@ -93,8 +94,8 @@
         });
 
         window.addEventListener('unhandledrejection', (event) => {
-            // Harmlose ServiceWorker Warnungen auf lokalen Geräten komplett stumm schalten
             if(event.reason && String(event.reason).includes("URL protocol")) return;
+            if(event.reason && String(event.reason).includes("appCheck/recaptcha-error")) return; // Stumm schalten
             console.error('Unhandled rejection:', event.reason);
         });
 
@@ -104,6 +105,7 @@
 
         // VOM NUTZER BEREITGESTELLTER CAPTCHA KEY
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
+        const CONFIG_STORAGE_KEY = "familyConnectAppConfig"; // Einheitlicher Speicherschlüssel für die config.json
         
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
@@ -155,8 +157,7 @@
           Plus: '<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
           X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
-          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-          FileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>'
+          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
         };
 
         const Icon = ({ name, size = 24, strokeWidth = 2, className = "", onClick }) => {
@@ -259,8 +260,7 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        // Ganze Datei speichern, um auch den VAPID-Key sicher zu haben
-                        localStorage.setItem('familyConnectConfig', JSON.stringify(parsed));
+                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
                         onConfigLoaded(parsed);
                     } catch (err) { setError("Fehler: " + err.message); }
                 };
@@ -298,9 +298,7 @@
 
           return (
             <div 
-              /* 'absolute' anstatt 'fixed'. Da die gesamte App 100% Höhe hat und nicht scrollt, bleibt absolute perfekt unten stehen! */
-              className={`absolute bottom-8 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+              className={`absolute bottom-4 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -355,7 +353,6 @@
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
           // --- SICHERHEITS-NETZE ---
-          // Blockiert fehlerhafte Datenbankeinträge, die einen Absturz verursachen könnten.
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
@@ -383,7 +380,7 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard-Fix für iOS (Reset ohne Bouncen)
+          // Keyboard-Fix für iOS: Strengere Erkennung und sanfterer Reset
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 const tag = e.target.tagName;
@@ -394,6 +391,9 @@
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                }, 50);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -619,6 +619,7 @@
               } catch (err) { alert(err.message || "Fehler beim Generieren der PDF."); }
           };
 
+          // Intelligenter Push-Scanner (findet VAPID Key sicher)
           const requestPushPermission = async () => {
             if (!window.isSecureContext) return alert("Push funktioniert nur über HTTPS.");
             if (!('Notification' in window) || !('serviceWorker' in navigator)) return alert("Push wird in diesem Modus nicht unterstützt (Bitte als Web-App auf dem Home-Bildschirm speichern).");
@@ -633,11 +634,15 @@
                 try { messaging = firebase.messaging(); } catch (e) { return alert("Fehler: Push-Dienst konnte nicht gestartet werden."); }
             }
             
-            // VAPID Key Tiefenscan (Holt den Key verlässlich aus der hochgeladenen config.json)
+            // VAPID Key Tiefenscan
             let storedConfig = {};
             try { 
-                const rawConfig = localStorage.getItem('familyConnectConfig');
-                if (rawConfig) storedConfig = JSON.parse(rawConfig); 
+                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY);
+                if (rawConfig) {
+                    const parsed = JSON.parse(rawConfig);
+                    // Sucht nach vapidKey auf allen Ebenen des JSON Objekts
+                    storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
+                }
             } catch(e) {}
             
             const vapidKey = storedConfig.vapidKey || currentFamily?.vapidKey;
@@ -646,8 +651,15 @@
                 return alert("Kein VAPID-Key gefunden! Bitte stelle sicher, dass das Feld 'vapidKey' in deiner hochgeladenen config.json steht.");
             }
             
-            const swReg = await navigator.serviceWorker.getRegistration();
-            if (!swReg) return alert("Es wurde kein Service Worker gefunden. Bitte lade die Seite neu.");
+            let swReg = await navigator.serviceWorker.getRegistration();
+            if (!swReg) {
+                try {
+                    // Not-Registrierung, falls Safari den Worker vergessen hat
+                    swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                } catch(e) {
+                    return alert("Es wurde kein Service Worker gefunden. Bitte lade die Seite neu.");
+                }
+            }
 
             setPushStatus('Wird angefragt...');
             try {
@@ -822,12 +834,13 @@
               await getFamilyDocRef(currentFamily.id).update({ expenses: updatedExpenses });
           };
 
+          // "Nicht Stören" Math-Fix: In echte Minuten umrechnen
           const setDND = async (hours) => {
               let dndTime = null;
               if (hours > 0) { 
                   const dndDate = new Date(); 
-                  // In exakte Minuten umrechnen
-                  dndDate.setMinutes(dndDate.getMinutes() + Math.round(hours * 60)); 
+                  const exactMinutes = Math.round(hours * 60);
+                  dndDate.setMinutes(dndDate.getMinutes() + exactMinutes); 
                   dndTime = dndDate.toISOString(); 
               }
               await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, dndUntil: dndTime } : m) });
@@ -870,66 +883,68 @@
 
           if (isAdminMode) {
               return (
-                  <div className="flex-1 flex flex-col w-full h-full relative z-40 bg-[#F2F2F7] dark:bg-black">
+                  <div className="flex flex-col w-full h-full absolute inset-0 overflow-hidden bg-[#F2F2F7] dark:bg-black z-40">
                       <Modal data={modal} onClose={() => setModal(null)} />
-                      <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end">
-                          <h1 className="text-[28px] font-extrabold tracking-tight leading-none text-black dark:text-white">Admin-Dashboard</h1>
-                          <button onClick={() => setIsAdminMode(false)} className="text-[#FF3B30] font-semibold active:opacity-70">Logout</button>
-                      </header>
-                      
-                      <div className="scrollable-area px-6 py-6 w-full">
-                        <div className="max-w-4xl mx-auto space-y-8 pb-20">
-                          <section className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-sm border border-[#E5E5EA] dark:border-[#38383A]">
-                              <h2 className="text-[18px] font-bold mb-4 text-black dark:text-white">Neue Familie anlegen</h2>
-                              <div className="flex flex-col sm:flex-row gap-3">
-                                  <input type="text" placeholder="Name der Familie" className="w-full sm:flex-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-gray-500" value={newFamilyName} onChange={e => setNewFamilyName(e.target.value)} />
-                                  <button onClick={adminCreateFamily} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Erstellen</button>
-                              </div>
-                          </section>
-
-                          <div className="space-y-6">
-                              {adminFamilies.map(fam => {
-                                  const localSafeMembers = Array.isArray(fam.members) ? fam.members.filter(m => m && m.name) : [];
-                                  return (
-                                      <div key={fam.id} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
-                                          <div className="p-5 bg-[#F9F9F9] dark:bg-[#2C2C2E] border-b border-[#E5E5EA] dark:border-[#38383A] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
-                                              <div>
-                                                  <h3 className="font-bold text-[20px] text-black dark:text-white">{fam.name}</h3>
-                                                  <p className="text-[#8E8E93] dark:text-[#EBEBF5]/60 text-[13px] font-mono mt-1">ID: {fam.id}</p>
-                                              </div>
-                                              <div className="flex w-full sm:w-auto gap-2">
-                                                  <button onClick={() => generatePDF(fam)} className="flex-1 sm:flex-none justify-center bg-[#007AFF]/10 text-[#007AFF] px-4 py-2.5 rounded-full text-[13px] font-semibold active:opacity-70 flex items-center gap-1.5 transition-opacity">
-                                                      <Icon name="FileText" size={14} /> PDF Info-Blatt
-                                                  </button>
-                                                  <button onClick={() => adminDeleteFamily(fam.id)} className="bg-[#FF3B30]/10 text-[#FF3B30] w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center active:opacity-70 shrink-0 transition-opacity">
-                                                      <Icon name="Trash2" size={16} />
-                                                  </button>
-                                              </div>
-                                          </div>
-                                          <div className="p-5">
-                                              <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Mitglieder</h4>
-                                              <div className="space-y-3 mb-5">
-                                                  {localSafeMembers.length === 0 && <p className="text-[#8E8E93] text-sm">Keine Mitglieder.</p>}
-                                                  {localSafeMembers.map(m => (
-                                                      <div key={m.name} className="flex justify-between items-center p-3.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[14px]">
-                                                          <div className="flex items-center gap-3">
-                                                              <span className="font-semibold text-[16px] text-black dark:text-white">{m.name}</span>
-                                                              {m.status === 'pending' ? <span className="bg-[#FF9500]/20 text-[#FF9500] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Ausstehend</span> : <span className="bg-[#34C759]/20 text-[#34C759] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Aktiv</span>}
-                                                          </div>
-                                                          <button onClick={() => adminDeleteMember(fam.id, m.name)} className="text-[#FF3B30] active:opacity-70 p-1"><Icon name="Trash2" size={18} /></button>
-                                                      </div>
-                                                  ))}
-                                              </div>
-                                              <div className="flex flex-col sm:flex-row gap-3">
-                                                  <input type="text" placeholder="Neuer Vorname" className="w-full sm:flex-1 bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:border-[#007AFF] box-border text-black dark:text-white placeholder-gray-500" value={newMemberNames[fam.id] || ''} onChange={e => setNewMemberNames({...newMemberNames, [fam.id]: e.target.value})} />
-                                                  <button onClick={() => adminAddMember(fam)} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Registrieren</button>
-                                              </div>
-                                          </div>
+                      <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative min-h-0">
+                          <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end">
+                              <h1 className="text-[28px] font-extrabold text-black dark:text-white tracking-tight leading-none">Admin-Dashboard</h1>
+                              <button onClick={() => setIsAdminMode(false)} className="text-[#FF3B30] font-semibold active:opacity-70">Logout</button>
+                          </header>
+                          
+                          <main className="scrollable-area px-6 py-6 w-full">
+                              <div className="max-w-4xl mx-auto space-y-8 pb-20">
+                                  <section className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-sm border border-[#E5E5EA] dark:border-[#38383A]">
+                                      <h2 className="text-[18px] font-bold mb-4 text-black dark:text-white">Neue Familie anlegen</h2>
+                                      <div className="flex flex-col sm:flex-row gap-3">
+                                          <input type="text" placeholder="Name der Familie" className="w-full sm:flex-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-gray-500" value={newFamilyName} onChange={e => setNewFamilyName(e.target.value)} />
+                                          <button onClick={adminCreateFamily} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Erstellen</button>
                                       </div>
-                                  );
-                              })}
-                          </div>
-                        </div>
+                                  </section>
+
+                                  <div className="space-y-6">
+                                      {adminFamilies.map(fam => {
+                                          const localSafeMembers = Array.isArray(fam.members) ? fam.members.filter(m => m && m.name) : [];
+                                          return (
+                                              <div key={fam.id} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
+                                                  <div className="p-5 bg-[#F9F9F9] dark:bg-[#2C2C2E] border-b border-[#E5E5EA] dark:border-[#38383A] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+                                                      <div>
+                                                          <h3 className="font-bold text-[20px] text-black dark:text-white">{fam.name}</h3>
+                                                          <p className="text-[#8E8E93] dark:text-[#EBEBF5]/60 text-[13px] font-mono mt-1">ID: {fam.id}</p>
+                                                      </div>
+                                                      <div className="flex w-full sm:w-auto gap-2">
+                                                          <button onClick={() => generatePDF(fam)} className="flex-1 sm:flex-none justify-center bg-[#007AFF]/10 text-[#007AFF] px-4 py-2.5 rounded-full text-[13px] font-semibold active:opacity-70 flex items-center gap-1.5 transition-opacity">
+                                                              <Icon name="FileText" size={14} /> PDF Info-Blatt
+                                                          </button>
+                                                          <button onClick={() => adminDeleteFamily(fam.id)} className="bg-[#FF3B30]/10 text-[#FF3B30] w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center active:opacity-70 shrink-0 transition-opacity">
+                                                              <Icon name="Trash2" size={16} />
+                                                          </button>
+                                                      </div>
+                                                  </div>
+                                                  <div className="p-5">
+                                                      <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Mitglieder</h4>
+                                                      <div className="space-y-3 mb-5">
+                                                          {localSafeMembers.length === 0 && <p className="text-[#8E8E93] text-sm">Keine Mitglieder.</p>}
+                                                          {localSafeMembers.map(m => (
+                                                              <div key={m.name} className="flex justify-between items-center p-3.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[14px]">
+                                                                  <div className="flex items-center gap-3">
+                                                                      <span className="font-semibold text-[16px] text-black dark:text-white">{m.name}</span>
+                                                                      {m.status === 'pending' ? <span className="bg-[#FF9500]/20 text-[#FF9500] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Ausstehend</span> : <span className="bg-[#34C759]/20 text-[#34C759] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Aktiv</span>}
+                                                                  </div>
+                                                                  <button onClick={() => adminDeleteMember(fam.id, m.name)} className="text-[#FF3B30] active:opacity-70 p-1"><Icon name="Trash2" size={18} /></button>
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                      <div className="flex flex-col sm:flex-row gap-3">
+                                                          <input type="text" placeholder="Neuer Vorname" className="w-full sm:flex-1 bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:border-[#007AFF] box-border text-black dark:text-white placeholder-gray-500" value={newMemberNames[fam.id] || ''} onChange={e => setNewMemberNames({...newMemberNames, [fam.id]: e.target.value})} />
+                                                          <button onClick={() => adminAddMember(fam)} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Registrieren</button>
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                          );
+                                      })}
+                                  </div>
+                              </div>
+                          </main>
                       </div>
                   </div>
               );
@@ -937,7 +952,7 @@
 
           if (!currentFamily || !currentUser) {
             return (
-              <div className="fixed inset-0 bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans w-full overflow-hidden z-40">
+              <div className="flex flex-col w-full h-full absolute inset-0 overflow-hidden bg-[#000000] text-white z-40 items-center justify-center p-6 font-sans">
                 <div className="absolute top-[-10%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
                 <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#5856D6] blur-[100px] opacity-20 pointer-events-none"></div>
 
@@ -985,7 +1000,7 @@
           const trackingEvent = trackingEventId ? safeHistory.find(h => h.id === trackingEventId) : null;
 
           return (
-            <div className="flex flex-col w-full h-full relative">
+            <div className="flex flex-col w-full h-full absolute inset-0 overflow-hidden bg-[#F2F2F7] dark:bg-black">
               <Modal data={modal} onClose={() => setModal(null)} />
               
               {trackingEvent && (
@@ -999,10 +1014,8 @@
                   />
               )}
 
-              {/* Main Wrapper mit Dark Mode Klassen */}
-              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A] bg-[#F2F2F7] dark:bg-black relative">
-                  
-                  {/* Header: Fest, flex-none */}
+              {/* Der innere Container, der die Höhe begrenzt und Scrollen nur auf main erlaubt */}
+              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative min-h-0 sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
                   <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full">
                     <div className="text-center w-full min-w-0">
                       <h1 className="text-[34px] font-bold text-black dark:text-white tracking-tight leading-tight truncate mt-6">
@@ -1019,13 +1032,11 @@
                     )}
                   </header>
 
-                  {/* Content: Nur dies hier scrollt! */}
-                  <main className="scrollable-area px-4 pt-6 pb-36 w-full">
-                    <div className="pb-10 w-full">
+                  <main className="scrollable-area px-4 pt-6 pb-36 w-full relative">
                     
                     {/* --- HOME TAB --- */}
                     {activeTab === 'home' && (
-                      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         <section>
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2">Grund</h2>
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
@@ -1093,7 +1104,7 @@
 
                     {/* --- EXPENSES TAB --- */}
                     {activeTab === 'expenses' && (
-                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                           
                           {!expenseModal && (
                               <div className="flex justify-between items-center px-2">
@@ -1224,7 +1235,7 @@
 
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         {(!safeHistory.filter(h => !h.isExpense && !h.isResend).length) ? (
                           <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
@@ -1282,7 +1293,7 @@
 
                     {/* --- SETTINGS TAB --- */}
                     {activeTab === 'settings' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         
                         <section>
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="BellOff" size={14}/> Nicht stören</h2>
@@ -1350,38 +1361,6 @@
                             </div>
                           </div>
                         </section>
-
-                        {isAdmin && (
-                           <section className="md:col-span-2">
-                             <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Key" size={14}/> Admin-Bereich</h2>
-                             <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
-                               <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A] flex items-center justify-between bg-[#F9F9F9] dark:bg-[#2C2C2E]">
-                                 <p className="font-semibold text-[15px] text-black dark:text-white">Familien ID:</p>
-                                 <p className="font-mono font-semibold tracking-wider text-[#007AFF]">{currentFamily.id}</p>
-                               </div>
-                               <div className="p-4">
-                                 <p className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-wider mb-3">Familienmitglieder verwalten</p>
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                   {safeMembers.map((member) => (
-                                      <div key={member.name} className={`flex items-center justify-between p-3.5 rounded-[14px] ${member.name === currentUser.name ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E]' : 'bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-sm'}`}>
-                                        <span className="font-medium text-[16px] text-black dark:text-white">{member.name} {member.name === currentUser.name && "(Du)"}</span>
-                                        {member.name !== currentUser.name && (
-                                           <button onClick={() => handleDeleteMember(member.name)} className="w-9 h-9 flex items-center justify-center bg-[#FF3B30]/10 text-[#FF3B30] rounded-full active:opacity-70 transition-opacity">
-                                             <Icon name="Trash2" size={16} />
-                                           </button>
-                                        )}
-                                      </div>
-                                   ))}
-                                 </div>
-                               </div>
-                               <div className="p-4 bg-[#FF3B30]/5 border-t border-[#FF3B30]/10 md:flex md:justify-end">
-                                 <button onClick={handleDeleteFamily} className="w-full md:w-auto px-6 py-3.5 text-[#FF3B30] font-semibold text-[15px] bg-white dark:bg-[#1C1C1E] rounded-[12px] shadow-sm border border-[#FF3B30]/20 active:opacity-80 transition-opacity">
-                                   Komplette Familie auflösen
-                                 </button>
-                               </div>
-                             </div>
-                           </section>
-                        )}
                         
                         <div className="md:col-span-2 pt-2">
                             <button onClick={handleLogout} className="w-full md:max-w-xs mx-auto py-3.5 bg-white dark:bg-[#1C1C1E] text-[#FF3B30] font-semibold rounded-[14px] shadow-sm flex items-center justify-center space-x-2 active:opacity-70 transition-opacity border border-[#E5E5EA] dark:border-[#38383A]">
@@ -1392,10 +1371,10 @@
                       </div>
                     )}
 
-                    </div>
                   </main>
               </div>
 
+              {/* Die Navigation ist nun absolut zum Bildschirm positioniert (nicht mehr zum Container) */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
@@ -1407,8 +1386,7 @@
                     if (typeof __firebase_config !== 'undefined') {
                         return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
                     }
-                    const saved = localStorage.getItem('firebaseConfig');
-                    // Rückwärtskompatibilität: Die alte Version hat nur "firebaseConfig" geladen, die neue lädt das ganze Objekt.
+                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
                     return saved ? JSON.parse(saved) : null;
                 } catch (e) {
                     console.error("Config Parse Error:", e);
@@ -1422,7 +1400,7 @@
                 const fallback = document.getElementById('fallback');
                 if (fallback) fallback.style.display = 'none';
 
-                // Ignoriere den Fehler in Safari, wenn man die Datei lokal testet
+                // Ignoriert den Fehler in Safari, wenn man die Datei lokal testet
                 if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
                     navigator.serviceWorker
                         .register('./firebase-messaging-sw.js')
@@ -1457,7 +1435,7 @@
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
-                        <button onClick={() => { localStorage.removeItem('firebaseConfig'); localStorage.removeItem('familyConnectConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
+                        <button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
                             Neue Config laden
                         </button>
                     </div>
