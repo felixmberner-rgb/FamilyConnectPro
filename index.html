@@ -2,7 +2,6 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <!-- WICHTIG: viewport-fit=cover erlaubt der App, den gesamten Bildschirm inkl. Notch auszufüllen -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,6 +12,7 @@
     
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
+    <!-- Stabile CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = { darkMode: 'media' }
@@ -21,6 +21,7 @@
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.24.4/babel.min.js"></script>
 
+    <!-- Firebase Compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -31,7 +32,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* --- DIE PERFEKTE IOS LAYOUT-LÖSUNG --- */
+        /* --- DER PERFEKTE IOS LAYOUT FIX --- */
         :root {
             --app-bg: #F2F2F7;
         }
@@ -39,13 +40,11 @@
             :root { --app-bg: #000000; }
         }
 
-        /* 1. Nutzt den kompletten Raum, ohne weiße/schwarze Ränder */
         html {
-            background-color: var(--app-bg);
             height: -webkit-fill-available;
+            background-color: var(--app-bg);
         }
         
-        /* 2. Body sperrt das Bouncen der ganzen App */
         body { 
             background-color: var(--app-bg); 
             margin: 0; 
@@ -67,18 +66,19 @@
             flex-direction: column;
         }
         
-        /* 3. NUR das Innere darf scrollen. Puffer für die Navbar integriert! */
+        /* Native Scrolling Area mit Puffer für die TabBar */
         .scrollable-area {
-            flex: 1 1 auto;
+            flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch; 
-            padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
+            padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px)); 
         }
         
         .scrollable-area::-webkit-scrollbar { display: none; }
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pt-safe-top { padding-top: calc(16px + env(safe-area-inset-top, 44px)); }
+        .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 12px); }
+        .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
         
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
@@ -86,6 +86,7 @@
 </head>
 <body class="text-black dark:text-white antialiased">
     
+    <!-- Ladebildschirm Fallback -->
     <div id="fallback" style="position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
         FamilyConnect startet...
     </div>
@@ -93,6 +94,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // --- 1. GLOBALE FEHLERBEHANDLUNG & CONSOLE CLEANUP ---
         const originalConsoleError = console.error;
         console.error = function(...args) {
             const msg = String(args[0]);
@@ -121,10 +123,12 @@
             console.error('Unhandled rejection:', event.reason);
         });
 
+        // --- 2. REACT SETUP ---
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
+        const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
         
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
@@ -327,7 +331,7 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
+                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
                         onConfigLoaded(parsed);
                     } catch (err) { setError("Fehler: " + err.message); }
                 };
@@ -335,8 +339,9 @@
                 reader.readAsText(file);
             };
 
+            // Pechschwarzer Hintergrund nur beim Setup
             return (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto pb-safe">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" />
                         <div>
@@ -354,7 +359,7 @@
             );
         }
 
-        // --- DIE MENÜLEISTE SITZT WIEDER GANZ UNTEN ---
+        // --- GANZ UNTEN FIXIERT --- Sitzt exakt unten am Display
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -366,7 +371,7 @@
 
           return (
             <div 
-              className={`fixed bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              className={`fixed bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
               style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 20px))' }}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
@@ -390,7 +395,7 @@
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
           
-          // Liest sicher die Daten - KEIN AUTOMATISCHER LOGOUT!
+          // Liest sicher die Daten aus dem Cache - KEIN AUTOMATISCHER LOGOUT!
           const [localFamilyId, setLocalFamilyId] = useState(() => localStorage.getItem('familyId'));
           const [localUserName, setLocalUserName] = useState(() => localStorage.getItem('userName'));
 
@@ -449,14 +454,13 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard-Fix, der die App nach Eingabe sanft zurückfallen lässt
+          // Keyboard-Fix für iOS
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                setTimeout(() => { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); }, 50);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -500,7 +504,7 @@
                 const updatedUser = rawMembers.find(m => m && typeof m === 'object' && m.name === localUserName);
                 
                 if (!updatedUser || updatedUser.status === 'pending') {
-                    console.warn("User-Daten temporär nicht bereit.");
+                    console.warn("Nutzerdaten temporär nicht verfügbar.");
                     return; 
                 }
 
@@ -510,7 +514,7 @@
                 setAppLoaded(true);
               }
             }, (error) => {
-                console.warn("Datenbank-Fehler (meist harmlose Netzwerkunterbrechung):", error);
+                console.warn("Verbindungsfehler zur Datenbank:", error);
             });
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
@@ -568,11 +572,11 @@
               if ('serviceWorker' in navigator) {
                   navigator.serviceWorker.addEventListener('message', handleSWMessage);
               }
-              // Firebase onMessage (wirft bei uns absichtlich KEINE showNotification, um Double-Pushes zu vermeiden)
               if (messaging) {
                   try {
                       const unsub = messaging.onMessage((payload) => {
-                          console.log('Nachricht im Vordergrund:', payload);
+                          if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
+                          showAlert(payload.notification?.title || "Neue Benachrichtigung", payload.notification?.body || "");
                       });
                       return () => {
                           unsub();
@@ -739,7 +743,7 @@
             let storedConfig = {};
             let firebaseConfigObj = {};
             try { 
-                const rawConfig = localStorage.getItem('firebaseConfig');
+                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
                 if (rawConfig) {
                     const parsed = JSON.parse(rawConfig);
                     storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
@@ -865,7 +869,6 @@
             } catch (e) {}
           };
 
-          // --- Expense Handlers ---
           const resetExpenseForm = (overrides = {}) => {
               setExpenseForm({
                   amount: '',
@@ -1076,7 +1079,6 @@
           }
 
           if (!currentFamily || !currentUser) {
-            // Nur das Login-Menü ist pechschwarz (bg-black)
             return (
               <div className="flex flex-col w-full h-full absolute inset-0 overflow-y-auto bg-[#000000] text-white z-40 items-center justify-center p-6 font-sans">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
@@ -1140,7 +1142,6 @@
                   />
               )}
 
-              {/* Flex Container für die iOS PWA */}
               <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
                   
                   <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full sticky top-0">
@@ -1159,7 +1160,6 @@
                     )}
                   </header>
 
-                  {/* Dieser Bereich SCROLLT native und weich! */}
                   <main className="scrollable-area px-4 pt-6 w-full relative">
                     
                     {/* --- HOME TAB --- */}
@@ -1550,9 +1550,16 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
-                    const saved = localStorage.getItem('firebaseConfig');
-                    return saved ? JSON.parse(saved) : null;
+                    // BEHÄLT DEINEN LOGIN! 
+                    // 1. Eigene Config prüfen
+                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                    if (saved) return JSON.parse(saved);
+                    
+                    // 2. Vorschau-Config prüfen (NUR wenn keine eigene da ist)
+                    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                        return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+                    }
+                    return null;
                 } catch (e) { return null; }
             });
             const [status, setStatus] = useState("booting"); 
@@ -1592,7 +1599,7 @@
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
-                        <button onClick={() => { localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
+                        <button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
                             Neue Config laden
                         </button>
                     </div>
