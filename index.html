@@ -14,9 +14,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = {
-        darkMode: 'media', 
-      }
+      tailwind.config = { darkMode: 'media' }
     </script>
     <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -32,52 +30,48 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* DER ULTIMATIVE ECHTZEIT-LAYOUT FIX */
+        /* ECHTZEIT-SENSOR LAYOUT: Zwingt iOS in das echte, sichtbare Fenster */
         :root {
             --app-bg: #F2F2F7;
-            --app-height: 100vh; /* Wird durch JS in Echtzeit überschrieben! */
+            --app-height: 100vh; /* Wird durch JS sofort exakt berechnet */
         }
         @media (prefers-color-scheme: dark) {
             :root { --app-bg: #000000; }
         }
 
-        /* Der Äußere Body wird absolut starr fixiert, kein Bouncen mehr! */
         html, body { 
+            background-color: var(--app-bg); 
             margin: 0; 
             padding: 0;
             width: 100%; 
             height: 100%;
-            background-color: var(--app-bg); 
-            overflow: hidden;
+            overflow: hidden; 
             overscroll-behavior-y: none; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
         }
         
-        /* Die Root-Ebene bekommt die berechneten Millimeter vom Sensor */
         #root { 
             width: 100%; 
             height: var(--app-height); 
             display: flex;
             flex-direction: column;
-            position: relative; /* WICHTIG: Damit 'absolute' TabBar sich daran ausrichtet! */
+            position: relative; /* Menüleiste richtet sich HIERRAN aus */
             overflow: hidden;
         }
         
-        /* Nur der Mittelteil darf sanft scrollen */
         .scrollable-area {
             flex: 1 1 auto;
             min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
+            -webkit-overflow-scrolling: touch; 
             padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
         }
         
         .scrollable-area::-webkit-scrollbar { display: none; }
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
-        .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
+        .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
         
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
@@ -101,10 +95,16 @@
             originalConsoleError.apply(console, args);
         };
 
+        const setFallbackMessage = (message) => {
+            const fallback = document.getElementById('fallback');
+            if (!fallback) return;
+            fallback.style.display = 'flex';
+            fallback.textContent = message;
+        };
+
         window.addEventListener('error', (event) => {
             console.error('Global error:', event.error || event.message);
-            const fallback = document.getElementById('fallback');
-            if (fallback) { fallback.style.display = 'flex'; fallback.textContent = 'App konnte nicht gestartet werden.'; }
+            setFallbackMessage('App konnte nicht gestartet werden. Bitte lade die Seite neu.');
         });
 
         window.addEventListener('unhandledrejection', (event) => {
@@ -115,7 +115,7 @@
             console.error('Unhandled rejection:', event.reason);
         });
 
-        // --- 2. REACT & FIREBASE SETUP ---
+        // --- 2. REACT SETUP ---
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
@@ -189,6 +189,7 @@
             });
         };
 
+        // --- CUSTOM MODAL ---
         function Modal({ data, onClose }) {
             if (!data) return null;
             
@@ -241,6 +242,7 @@
             );
         }
 
+        // Live Tracking Overlay
         function TrackingOverlay({ event, currentFamily, currentUser, safeMembers, onClose, onResend }) {
             if (!event) return null;
             const [cooldown, setCooldown] = useState(60);
@@ -261,7 +263,7 @@
 
             return (
                 <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-md animate-fade-in md:items-center">
-                    <div className="bg-[#F2F2F7] dark:bg-black w-full md:max-w-md md:rounded-[24px] rounded-t-[24px] p-6 pb-safe shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto scroll-smooth">
+                    <div className="bg-[#F2F2F7] dark:bg-black w-full md:max-w-md md:rounded-[24px] rounded-t-[24px] p-6 pb-safe shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto scroll-smooth" style={{WebkitOverflowScrolling: 'touch'}}>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-[22px] font-bold tracking-tight text-black dark:text-white">Ruf Status</h2>
                             <button onClick={onClose} className="w-8 h-8 bg-gray-200/60 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300 active:opacity-70"><Icon name="X" size={18}/></button>
@@ -317,11 +319,12 @@
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
+                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
                         onConfigLoaded(parsed);
                     } catch (err) { setError("Fehler: " + err.message); }
                 };
@@ -330,7 +333,7 @@
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto pb-safe">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" />
                         <div>
@@ -348,7 +351,6 @@
             );
         }
 
-        // HIER: TabBar absolut im berechneten Container. Sitzt GANZ UNTEN!
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -358,9 +360,11 @@
           ];
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
 
+          // Die Menüleiste wird absolut HIER platziert, ganz unten in der Root-Ebene.
           return (
             <div 
-              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 pb-safe transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 20px) + 16px)' }}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -415,6 +419,7 @@
           const [isSending, setIsSending] = useState(false);
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
+          // --- SICHERHEITS-NETZE ---
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
@@ -442,12 +447,11 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // DAS IST DER ECHTZEIT-SENSOR DER DAS DREHEN UND DIE TASTATUR BEHEBT!
+          // DAS IST DER ECHTZEIT-SENSOR DER DAS DREHEN UND DIE HÖHE BEHEBT!
           useEffect(() => {
             const setAppHeight = () => {
                 const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
                 document.documentElement.style.setProperty('--app-height', `${vh}px`);
-                window.scrollTo(0, 0);
             };
             
             setAppHeight(); // Beim Start sofort berechnen
@@ -462,7 +466,7 @@
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                setTimeout(() => { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); }, 50);
+                setTimeout(() => { window.scrollTo(0, 0); }, 50); // Tastatur Sanftes schließen
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -470,8 +474,10 @@
             
             return () => { 
                 window.removeEventListener('resize', setAppHeight);
-                window.visualViewport?.removeEventListener('resize', setAppHeight);
-                window.visualViewport?.removeEventListener('scroll', setAppHeight);
+                if (window.visualViewport) {
+                    window.visualViewport.removeEventListener('resize', setAppHeight);
+                    window.visualViewport.removeEventListener('scroll', setAppHeight);
+                }
                 window.removeEventListener('focusin', handleFocusIn); 
                 window.removeEventListener('focusout', handleFocusOut); 
             };
@@ -746,13 +752,11 @@
             }
             
             let storedConfig = {};
-            let firebaseConfigObj = {};
             try { 
-                const rawConfig = localStorage.getItem('firebaseConfig');
+                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
                 if (rawConfig) {
                     const parsed = JSON.parse(rawConfig);
                     storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
-                    firebaseConfigObj = parsed.firebaseConfig || parsed;
                 }
             } catch(e) {}
             
@@ -765,8 +769,7 @@
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
-                    const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
-                    swReg = await navigator.serviceWorker.register(swUrl);
+                    swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
                 } catch(e) {
                     console.error("SW Registration Error:", e);
                     return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
@@ -844,7 +847,6 @@
             setTimeout(() => setIsSending(false), 800);
           };
 
-          // Echtzeit-Bestätigung mit Fresh Fetch
           const handleAcknowledge = async (historyItemId, responseType = 'Bestätigt') => {
             if(navigator.vibrate) navigator.vibrate([20, 30]);
             const responseString = `${currentUser.name}:${responseType}`;
@@ -1152,8 +1154,8 @@
                   />
               )}
 
-              {/* Flex Container für die iOS PWA */}
-              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
+              {/* HIER DIE VERWENDUNG DES ECHTZEIT-SENSORS */}
+              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]" style={{ height: 'var(--app-height)' }}>
                   
                   <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full sticky top-0">
                     <div className="text-center w-full min-w-0">
@@ -1171,7 +1173,6 @@
                     )}
                   </header>
 
-                  {/* Dieser Bereich SCROLLT native und weich! */}
                   <main className="scrollable-area px-4 pt-6 w-full relative">
                     
                     {/* --- HOME TAB --- */}
@@ -1384,31 +1385,38 @@
                             const isRecipient = targetList.includes(currentUser?.name);
                             const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
                             
-                            // Re-Send Logik
-                            const isRecentSender = item.timestamp && (item.sender === currentUser?.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
+                            // JEDER kann nun auf die Kachel klicken, um Details zu sehen oder zu antworten!
+                            const handleCardClick = () => {
+                                if (navigator.vibrate) navigator.vibrate(10);
+                                // Wenn man Empfänger ist UND noch NICHT geantwortet hat -> Antwort-Menü öffnen
+                                if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
+                                    setModal({ 
+                                        type: 'custom_ack', 
+                                        title: `Ruf von ${item.sender}`, 
+                                        message: `${item.reason}\n\nWie möchtest du antworten?`, 
+                                        onRespond: (responseType) => {
+                                            handleAcknowledge(item.id, responseType);
+                                            setModal(null);
+                                        },
+                                        onCancel: () => setModal(null) 
+                                    });
+                                } else {
+                                    // Alle anderen (Sender oder Leute die schon geantwortet haben) sehen die Übersicht
+                                    setTrackingEventId(item.id);
+                                }
+                            };
                             
                             const renderRecipientStatus = (name) => {
                               const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
-                              const isAck = !!ackEntry;
-                              
-                              let ackText = '';
-                              if (isAck && ackEntry.includes(':')) {
-                                  ackText = ackEntry.split(':')[1];
-                                  if (ackText === 'Bestätigt') ackText = ''; 
-                              }
-
                               return (
-                                <span key={name} className={`inline-flex items-center space-x-1 ${isAck ? 'font-semibold ' + getStatusColor(ackEntry) : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>
-                                  <span>{name}</span>
-                                  {isAck && ackText && <span className="text-xs">({ackText})</span>}
-                                  {isAck && <Icon name="CheckCircle2" size={12} className={`${getStatusColor(ackEntry)} inline`} />}
-                                  {targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
+                                <span key={name} className={`font-semibold ${getStatusColor(ackEntry)}`}>
+                                  {name}{targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
                                 </span>
                               );
                             };
 
                             return (
-                              <div key={item.id} onClick={() => { if(isRecentSender) setTrackingEventId(item.id); }} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between ${isRecentSender ? 'cursor-pointer active:scale-[0.98] transition-transform shadow-md border-[#007AFF]/30' : ''}`}>
+                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4 min-w-0">
                                       <div className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-[#007AFF]/10 text-[#007AFF]">
@@ -1428,23 +1436,6 @@
                                       {targetList.map(name => renderRecipientStatus(name))}
                                     </div>
                                 </div>
-
-                                {/* Wenn man Empfänger ist UND noch nicht bestätigt hat */}
-                                {isRecipient && !hasAcknowledged && item.sender !== currentUser?.name && (
-                                  <div className="mt-4 flex flex-col gap-2">
-                                    <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Komme sofort'); }} className="w-full bg-[#34C759]/10 text-[#34C759] font-semibold text-[15px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
-                                      <Icon name="Check" size={18} strokeWidth={2.5} /><span>Komme sofort</span>
-                                    </button>
-                                    <div className="flex gap-2">
-                                      <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'In 5 Minuten'); }} className="flex-1 bg-[#FF9500]/10 text-[#FF9500] font-semibold text-[14px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity">
-                                        In 5 Min
-                                      </button>
-                                      <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Fangt schon mal an'); }} className="flex-1 bg-[#FF3B30]/10 text-[#FF3B30] font-semibold text-[14px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity">
-                                        Fangt an
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             );
                           })
@@ -1575,6 +1566,7 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
+                    // BEHÄLT DEN LOGIN ABSOLUT SICHER! 
                     if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
                     const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
                     return saved ? JSON.parse(saved) : null;
