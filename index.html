@@ -33,35 +33,40 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* Natives iOS Scrolling - Perfekte Balance für Tastatur & Scrollen */
+        /* Ultimativer iOS Safari Fix - Verhindert weiße Streifen und Bouncen */
         html, body { 
-            margin: 0; 
-            padding: 0;
+            position: fixed; /* Verhindert, dass iOS den Body beim Scrollen verschiebt */
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             width: 100%; 
             height: 100%; 
-            overflow: hidden; /* Verhindert das Bouncen des gesamten Browsers */
-            overscroll-behavior-y: none;
+            margin: 0; 
+            padding: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
-            /* Dynamischer Hintergrund für Dark Mode Fallback */
-            background-color: #F2F2F7; 
-        }
-
-        @media (prefers-color-scheme: dark) {
-            html, body { background-color: #000000; }
+            background-color: #000000; /* Basis-Leinwand ist schwarz, verhindert weiße Blitze! */
         }
         
         #root { 
             width: 100%; 
-            height: 100dvh; /* Nutzt die dynamische iOS Viewport Höhe! */
+            height: 100%; /* Exakt 100% des fixed bodys */
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            background-color: #F2F2F7; /* Heller Hintergrund für die App */
         }
 
-        /* Der innere Container, der sanft wischbar ist */
+        @media (prefers-color-scheme: dark) {
+            #root { background-color: #000000; }
+        }
+
+        /* Der scrollbare innere Container: Sichert butterweiches Wischen! */
         .scrollable-area {
-            flex: 1;
+            flex: 1 1 auto;
+            height: 100%; /* Wichtig für flex-child scrolling */
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch; /* Butterweiches Apple-Scrolling */
@@ -77,7 +82,7 @@
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
     </style>
 </head>
-<body class="bg-[#F2F2F7] dark:bg-black text-black dark:text-white antialiased">
+<body class="text-black dark:text-white antialiased">
     
     <!-- Ladebildschirm Fallback -->
     <div id="fallback" class="bg-[#F2F2F7] dark:bg-black" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
@@ -185,8 +190,7 @@
           Plus: '<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
           X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
-          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-          FileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>'
+          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
         };
 
         const Icon = ({ name, size = 24, strokeWidth = 2, className = "", onClick }) => {
@@ -341,12 +345,12 @@
             };
 
             return (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#F2F2F7] dark:bg-black text-black dark:text-white w-full h-full relative z-50">
+                <div className="flex-1 flex flex-col items-center justify-center p-8 bg-black text-white w-full h-full relative z-50">
                     <div className="w-full max-w-sm text-center space-y-8">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" />
                         <div>
                           <h1 className="text-[34px] font-bold tracking-tight mb-2">System Setup</h1>
-                          <p className="text-gray-500 dark:text-[#EBEBF5]/60 text-[15px] leading-relaxed px-4">Bitte lade deine <span className="font-mono text-[#007AFF]">config.json</span> hoch. Die Daten werden sicher lokal gespeichert.</p>
+                          <p className="text-gray-400 text-[15px] leading-relaxed px-4">Bitte lade deine <span className="font-mono text-[#007AFF]">config.json</span> hoch. Die Daten werden sicher lokal gespeichert.</p>
                         </div>
                         {error && <p className="text-[#FF3B30] text-[13px] font-semibold bg-[#FF3B30]/10 p-3 rounded-[10px] border border-[#FF3B30]/20">{error}</p>}
                         
@@ -370,7 +374,8 @@
 
           return (
             <div 
-              className={`fixed bottom-4 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
+              className={`absolute left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ bottom: 'calc(env(safe-area-inset-bottom, 20px) + 24px)' }}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -453,7 +458,7 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Smarter Keyboard-Fix für iOS: Zwingt den Bildschirm weich zurück, ohne Variablen zu verändern
+          // Aggressiver Keyboard-Fix für iOS Safari
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 const tag = e.target.tagName;
@@ -462,14 +467,16 @@
                     setIsKeyboardOpen(true); 
                 }
             };
-            const handleFocusOut = (e) => { 
-                // Wenn der nächste Fokus wieder ein Input ist, bleibe offen
-                if (e.relatedTarget && (e.relatedTarget.tagName === 'INPUT' || e.relatedTarget.tagName === 'TEXTAREA')) {
-                    return;
-                }
+            const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
+                // Doppeltes Reset, damit iOS Safari keine Lücken unten lässt!
                 setTimeout(() => {
-                    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                    document.documentElement.scrollTop = 0;
+                    document.body.scrollTop = 0;
+                }, 10);
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
                 }, 100);
             };
             
@@ -1005,7 +1012,7 @@
           
           if (!appLoaded) {
               return (
-                  <div className="fixed inset-0 bg-[#F2F2F7] dark:bg-black flex flex-col items-center justify-center z-50">
+                  <div className="fixed inset-0 bg-[#000000] flex flex-col items-center justify-center z-50">
                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                   </div>
               );
@@ -1373,8 +1380,9 @@
                         ) : (
                           safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
-                            const isRecipient = targetList.includes(currentUser?.name);
-                            const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
+                            
+                            const myAckEntry = (item.acknowledgedBy || []).find(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
+                            const hasAcknowledged = !!myAckEntry;
                             
                             const isRecentSender = item.timestamp && (item.sender === currentUser?.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
                             
@@ -1421,7 +1429,7 @@
                                 </div>
 
                                 {/* Wenn man Empfänger ist UND noch nicht bestätigt hat */}
-                                {isRecipient && !hasAcknowledged && item.sender !== currentUser?.name && (
+                                {targetList.includes(currentUser?.name) && !hasAcknowledged && item.sender !== currentUser?.name && (
                                   <div className="mt-4 flex flex-col gap-2">
                                     <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Komme sofort'); }} className="w-full bg-[#34C759]/10 text-[#34C759] font-semibold text-[15px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
                                       <Icon name="Check" size={18} strokeWidth={2.5} /><span>Komme sofort</span>
