@@ -21,7 +21,6 @@
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.24.4/babel.min.js"></script>
 
-    <!-- Firebase Compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -32,52 +31,57 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* --- DER PERFEKTE IOS LAYOUT FIX --- */
+        /* --- ECHTZEIT-SENSOR LAYOUT --- */
         :root {
             --app-bg: #F2F2F7;
+            --app-height: 100vh; /* Wird in Echtzeit vom JS überschrieben! */
         }
         @media (prefers-color-scheme: dark) {
             :root { --app-bg: #000000; }
         }
 
-        html {
-            height: -webkit-fill-available;
-            background-color: var(--app-bg);
-        }
-        
-        body { 
+        /* Der Body blockiert jedes Bouncen */
+        html, body { 
+            position: fixed; 
+            inset: 0;
+            width: 100%; 
+            height: 100%;
             background-color: var(--app-bg); 
             margin: 0; 
             padding: 0;
-            width: 100%; 
-            min-height: 100vh;
-            min-height: -webkit-fill-available;
             overflow: hidden; 
             overscroll-behavior-y: none; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
         }
         
+        /* Die Root-Ebene passt sich auf den Millimeter an die berechnete iPhone-Höhe an */
         #root { 
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%; 
-            height: 100vh;
-            height: -webkit-fill-available;
+            height: var(--app-height); 
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         
-        /* Native Scrolling Area mit Puffer für die TabBar */
+        /* Nur dieser Bereich darf scrollen */
         .scrollable-area {
-            flex: 1;
+            flex: 1 1 auto;
+            min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch; 
-            padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px)); 
+            padding-bottom: calc(80px + env(safe-area-inset-bottom, 12px));
         }
         
         .scrollable-area::-webkit-scrollbar { display: none; }
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 12px); }
+        
+        /* Puffer für die tief sitzende TabBar */
+        .pb-safe-menu { padding-bottom: env(safe-area-inset-bottom, 12px); }
         .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
         
         input[type="file"] { display: none; }
@@ -86,7 +90,6 @@
 </head>
 <body class="text-black dark:text-white antialiased">
     
-    <!-- Ladebildschirm Fallback -->
     <div id="fallback" style="position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
         FamilyConnect startet...
     </div>
@@ -94,7 +97,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- 1. GLOBALE FEHLERBEHANDLUNG & CONSOLE CLEANUP ---
+        // --- 1. GLOBALE FEHLERBEHANDLUNG ---
         const originalConsoleError = console.error;
         console.error = function(...args) {
             const msg = String(args[0]);
@@ -128,7 +131,6 @@
         const { createRoot } = ReactDOM;
 
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
-        const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
         
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
@@ -270,7 +272,7 @@
 
             return (
                 <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-md animate-fade-in md:items-center">
-                    <div className="bg-[#F2F2F7] dark:bg-black w-full md:max-w-md md:rounded-[24px] rounded-t-[24px] p-6 pb-safe shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto scroll-smooth" style={{WebkitOverflowScrolling: 'touch'}}>
+                    <div className="bg-[#F2F2F7] dark:bg-black w-full md:max-w-md md:rounded-[24px] rounded-t-[24px] p-6 pb-safe shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto scroll-smooth">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-[22px] font-bold tracking-tight text-black dark:text-white">Ruf Status</h2>
                             <button onClick={onClose} className="w-8 h-8 bg-gray-200/60 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300 active:opacity-70"><Icon name="X" size={18}/></button>
@@ -320,6 +322,7 @@
             );
         }
 
+        // HIER: Der Setup Loader mit sicherem Speichern (Verhindert Endlos-Loop)
         function ConfigLoader({ onConfigLoaded }) {
             const [error, setError] = useState("");
             
@@ -331,9 +334,10 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
+                        localStorage.setItem('familyConnectAppConfig', JSON.stringify(parsed));
+                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
                         onConfigLoaded(parsed);
-                    } catch (err) { setError("Fehler: " + err.message); }
+                    } catch (err) { setError("Fehler: Ungültiges Dateiformat."); }
                 };
                 reader.onerror = () => setError("Fehler beim Lesen der Datei.");
                 reader.readAsText(file);
@@ -359,7 +363,8 @@
             );
         }
 
-        // --- GANZ UNTEN FIXIERT --- Sitzt exakt unten am Display
+        // --- GANZ UNTEN FIXIERT ---
+        // Durch 'absolute' und 'bottom-0' klebt die Bar millimetergenau am unteren Rand von #root
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -371,8 +376,7 @@
 
           return (
             <div 
-              className={`fixed bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 20px))' }}
+              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-2 pb-safe-menu transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -395,7 +399,7 @@
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
           
-          // Liest sicher die Daten aus dem Cache - KEIN AUTOMATISCHER LOGOUT!
+          // Liest absolut sicher deine Nutzerdaten!
           const [localFamilyId, setLocalFamilyId] = useState(() => localStorage.getItem('familyId'));
           const [localUserName, setLocalUserName] = useState(() => localStorage.getItem('userName'));
 
@@ -454,19 +458,38 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard-Fix für iOS
+          // --- ECHTZEIT SENSOR FÜR DAS DREHEN UND DIE TASTATUR ---
           useEffect(() => {
+            const setAppHeight = () => {
+                const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                document.documentElement.style.setProperty('--app-height', `${vh}px`);
+                window.scrollTo(0, 0); // Behebt den Scroll-Bug nach Tastatureingabe
+            };
+            
+            setAppHeight(); // Sofort beim Start berechnen
+            window.addEventListener('resize', setAppHeight);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', setAppHeight);
+                window.visualViewport.addEventListener('scroll', setAppHeight);
+            }
+
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
+                setTimeout(() => { window.scrollTo(0, 0); }, 50);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
             window.addEventListener('focusout', handleFocusOut);
             
             return () => { 
+                window.removeEventListener('resize', setAppHeight);
+                if (window.visualViewport) {
+                    window.visualViewport.removeEventListener('resize', setAppHeight);
+                    window.visualViewport.removeEventListener('scroll', setAppHeight);
+                }
                 window.removeEventListener('focusin', handleFocusIn); 
                 window.removeEventListener('focusout', handleFocusOut); 
             };
@@ -504,7 +527,7 @@
                 const updatedUser = rawMembers.find(m => m && typeof m === 'object' && m.name === localUserName);
                 
                 if (!updatedUser || updatedUser.status === 'pending') {
-                    console.warn("Nutzerdaten temporär nicht verfügbar.");
+                    console.warn("User-Daten temporär nicht bereit.");
                     return; 
                 }
 
@@ -514,7 +537,7 @@
                 setAppLoaded(true);
               }
             }, (error) => {
-                console.warn("Verbindungsfehler zur Datenbank:", error);
+                console.warn("Datenbank-Fehler (meist harmlose Netzwerkunterbrechung):", error);
             });
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
@@ -741,13 +764,11 @@
             }
             
             let storedConfig = {};
-            let firebaseConfigObj = {};
             try { 
-                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
-                if (rawConfig) {
-                    const parsed = JSON.parse(rawConfig);
-                    storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
-                    firebaseConfigObj = parsed.firebaseConfig || parsed;
+                const saved1 = localStorage.getItem('familyConnectAppConfig');
+                const saved2 = localStorage.getItem('firebaseConfig');
+                if (saved1 || saved2) {
+                    storedConfig = JSON.parse(saved1 || saved2);
                 }
             } catch(e) {}
             
@@ -760,15 +781,16 @@
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
-                    const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
-                    swReg = await navigator.serviceWorker.register(swUrl);
+                    // Update den SW, falls es noch der alte ist
+                    swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                    await swReg.update(); 
                 } catch(e) {
                     console.error("SW Registration Error:", e);
                     return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
                 }
+            } else {
+                await swReg.update();
             }
-
-            if (!swReg) return showAlert("Fehler", "Es konnte kein Service Worker registriert werden.");
 
             setPushStatus('Wird angefragt...');
             try {
@@ -866,7 +888,9 @@
                 if (changed) {
                     await docRef.update({ history: updatedHistory });
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error("Fehler beim Bestätigen:", e);
+            }
           };
 
           const resetExpenseForm = (overrides = {}) => {
@@ -1079,6 +1103,7 @@
           }
 
           if (!currentFamily || !currentUser) {
+            // Nur das Login-Menü ist pechschwarz (bg-black)
             return (
               <div className="flex flex-col w-full h-full absolute inset-0 overflow-y-auto bg-[#000000] text-white z-40 items-center justify-center p-6 font-sans">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
@@ -1392,6 +1417,14 @@
                             
                             const renderRecipientStatus = (name) => {
                               const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
+                              const isAck = !!ackEntry;
+                              
+                              let ackText = '';
+                              if (isAck && ackEntry.includes(':')) {
+                                  ackText = ackEntry.split(':')[1];
+                                  if (ackText === 'Bestätigt') ackText = ''; 
+                              }
+
                               return (
                                 <span key={name} className={`font-semibold ${getStatusColor(ackEntry)}`}>
                                   {name}{targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
@@ -1542,7 +1575,28 @@
                   </main>
               </div>
 
-              <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
+              {/* --- TABBAR IST ABSOLUT GANZ UNTEN FIXIERT --- */}
+              <div 
+                className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-2 pb-safe-menu transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              >
+                <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
+                  <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeTab === 'home' ? 0 : activeTab === 'history' ? 100 : activeTab === 'expenses' ? 200 : 300}%)` }}>
+                    <div className="w-12 md:w-14 h-full bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full"></div>
+                  </div>
+                  <button onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab('home'); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
+                    <Icon name="Bell" size={activeTab === 'home' ? 24 : 22} strokeWidth={activeTab === 'home' ? 2.5 : 2} className={`transition-colors duration-300 ${activeTab === 'home' ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
+                  </button>
+                  <button onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab('history'); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
+                    <Icon name="Clock" size={activeTab === 'history' ? 24 : 22} strokeWidth={activeTab === 'history' ? 2.5 : 2} className={`transition-colors duration-300 ${activeTab === 'history' ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
+                  </button>
+                  <button onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab('expenses'); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
+                    <Icon name="Euro" size={activeTab === 'expenses' ? 24 : 22} strokeWidth={activeTab === 'expenses' ? 2.5 : 2} className={`transition-colors duration-300 ${activeTab === 'expenses' ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
+                  </button>
+                  <button onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab('settings'); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
+                    <Icon name="Settings" size={activeTab === 'settings' ? 24 : 22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} className={`transition-colors duration-300 ${activeTab === 'settings' ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
+                  </button>
+                </div>
+              </div>
             </div>
           );
         }
@@ -1550,17 +1604,16 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    // BEHÄLT DEINEN LOGIN! 
-                    // 1. Eigene Config prüfen
-                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                    const saved1 = localStorage.getItem('familyConnectAppConfig');
+                    const saved2 = localStorage.getItem('firebaseConfig');
+                    const saved = saved1 || saved2;
                     if (saved) return JSON.parse(saved);
                     
-                    // 2. Vorschau-Config prüfen (NUR wenn keine eigene da ist)
-                    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    if (typeof __firebase_config !== 'undefined') {
                         return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
                     }
-                    return null;
                 } catch (e) { return null; }
+                return null;
             });
             const [status, setStatus] = useState("booting"); 
             const [errorMsg, setErrorMsg] = useState("");
@@ -1574,6 +1627,8 @@
                 setStatus("booting");
                 try {
                     const finalConfig = config.firebaseConfig ? config.firebaseConfig : config;
+                    if (!finalConfig.apiKey) throw new Error("Fehlende API-Key Daten in der Config.");
+                    
                     if (!firebase.apps.length) app = firebase.initializeApp(finalConfig);
                     else app = firebase.app();
                     
