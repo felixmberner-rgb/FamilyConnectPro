@@ -31,12 +31,15 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* Natives iOS Vollbild-Layout */
+        /* Ultimativer iOS Safari Fix für Tastatur und Höhe */
         html, body { 
+            position: fixed;
+            inset: 0;
             width: 100%; 
-            height: 100dvh; /* Die magische Regel für iOS Safari (ohne Navigation Bar Ränder) */
-            overflow: hidden; /* Sperrt das iOS "Bouncen" für den Hintergrund */
+            height: 100%; 
             background-color: #F2F2F7;
+            overflow: hidden; 
+            overscroll-behavior: none;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             margin: 0; 
             padding: 0;
@@ -45,13 +48,18 @@
         
         #root { 
             width: 100%; 
-            height: 100%;
+            /* Fallback für ältere Browser */
+            height: 100dvh;
+            /* Der Lebensretter-Trick: JS injiziert die exakte Pixelhöhe des sichtbaren Fensters */
+            height: var(--app-height, 100dvh);
             display: flex;
             flex-direction: column;
-            position: relative;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
-        /* Der scrollbare innere Container */
+        /* Der scrollbare innere Container: Sichert butterweiches Wischen! */
         .scrollable-area {
             flex: 1 1 auto;
             min-height: 0; /* Zwingt Flexbox, den Inhalt scrollen zu lassen */
@@ -71,6 +79,7 @@
 </head>
 <body class="bg-[#F2F2F7] dark:bg-black text-black dark:text-white antialiased">
     
+    <!-- Ladebildschirm Fallback -->
     <div id="fallback" class="bg-[#F2F2F7] dark:bg-black" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
         FamilyConnect startet...
     </div>
@@ -91,10 +100,9 @@
             setFallbackMessage('App konnte nicht gestartet werden. Bitte lade die Seite neu.');
         });
 
-        // Fängt die Firebase ReCAPTCHA und ServiceWorker Fehler ab und blockiert sie in der Konsole
         window.addEventListener('unhandledrejection', (event) => {
             const reason = String(event.reason);
-            if (reason.includes("URL protocol") || reason.includes("appCheck/recaptcha-error") || reason.includes("ReCAPTCHA error")) {
+            if (reason.includes("URL protocol") || reason.includes("appCheck/recaptcha-error")) {
                 event.preventDefault(); 
                 return;
             }
@@ -133,7 +141,6 @@
             return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE');
         };
 
-        // Farblogik für die Kacheln im Verlauf
         const getStatusColor = (ackString) => {
             if (!ackString) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60'; // Ausstehend
             if (ackString.includes('Komme sofort')) return 'text-[#34C759]'; // Grün
@@ -352,7 +359,7 @@
 
           return (
             <div 
-              className={`fixed bottom-6 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
+              className={`fixed bottom-4 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -434,8 +441,17 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard-Fix für iOS
+          // Der magische Keyboard-Fix mit dynamischer Höhe
           useEffect(() => {
+            const setAppHeight = () => {
+                if (window.visualViewport) {
+                    document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
+                } else {
+                    document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+                }
+                window.scrollTo(0, 0); 
+            };
+
             const handleFocusIn = (e) => { 
                 const tag = e.target.tagName;
                 const type = e.target.type;
@@ -446,14 +462,35 @@
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
                 setTimeout(() => {
-                    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                    setAppHeight();
+                    window.scrollTo(0, 0);
+                    document.body.scrollTop = 0;
                 }, 50);
+                setTimeout(() => {
+                    setAppHeight();
+                    window.scrollTo(0, 0);
+                }, 300);
             };
             
+            setAppHeight();
+            
+            window.addEventListener('resize', setAppHeight);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', setAppHeight);
+                window.visualViewport.addEventListener('scroll', () => {
+                    if (window.visualViewport.offsetTop > 0) window.scrollTo(0, 0);
+                });
+            }
+
             window.addEventListener('focusin', handleFocusIn); 
             window.addEventListener('focusout', handleFocusOut);
             
             return () => { 
+                window.removeEventListener('resize', setAppHeight);
+                if (window.visualViewport) {
+                    window.visualViewport.removeEventListener('resize', setAppHeight);
+                    window.visualViewport.removeEventListener('scroll', setAppHeight);
+                }
                 window.removeEventListener('focusin', handleFocusIn); 
                 window.removeEventListener('focusout', handleFocusOut); 
             };
@@ -710,6 +747,7 @@
                 try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
             }
             
+            // VAPID Key Tiefenscan mit Parameter für den Mac ServiceWorker
             let storedConfig = {};
             let firebaseConfigObj = {};
             try { 
@@ -730,6 +768,7 @@
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
+                    // Dynamischer Start für Mac Safari (übergibt Firebase Credentials an den Worker)
                     const swUrl = `./firebase-messaging-sw.js?apiKey=${firebaseConfigObj.apiKey || ''}&projectId=${firebaseConfigObj.projectId || ''}&senderId=${firebaseConfigObj.messagingSenderId || ''}&appId=${firebaseConfigObj.appId || ''}`;
                     swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
@@ -1345,9 +1384,33 @@
                           safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
                             
-                            // History Items sind jetzt immer klickbar für alle, um das Overlay zu öffnen
+                            const myAckEntry = (item.acknowledgedBy || []).find(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
+                            const hasAcknowledged = !!myAckEntry;
+                            
+                            const isRecentSender = item.timestamp && (item.sender === currentUser?.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
+                            
+                            const renderRecipientStatus = (name) => {
+                              const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
+                              const isAck = !!ackEntry;
+                              
+                              let ackText = '';
+                              if (isAck && ackEntry.includes(':')) {
+                                  ackText = ackEntry.split(':')[1];
+                                  if (ackText === 'Bestätigt') ackText = ''; 
+                              }
+
+                              return (
+                                <span key={name} className={`inline-flex items-center space-x-1 ${isAck ? 'font-semibold ' + getStatusColor(ackEntry) : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>
+                                  <span>{name}</span>
+                                  {isAck && ackText && <span className="text-xs">({ackText})</span>}
+                                  {isAck && <Icon name="CheckCircle2" size={12} className={`${getStatusColor(ackEntry)} inline`} />}
+                                  {targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
+                                </span>
+                              );
+                            };
+
                             return (
-                              <div key={item.id} onClick={() => setTrackingEventId(item.id)} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
+                              <div key={item.id} onClick={() => { if(isRecentSender) setTrackingEventId(item.id); }} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between ${isRecentSender ? 'cursor-pointer active:scale-[0.98] transition-transform shadow-md border-[#007AFF]/30' : ''}`}>
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4 min-w-0">
                                       <div className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-[#007AFF]/10 text-[#007AFF]">
@@ -1362,20 +1425,28 @@
                                       </div>
                                     </div>
 
-                                    {/* Kompakte Namensliste mit Farbcodes statt langen Texten */}
                                     <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
                                       <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
-                                      {targetList.map((name, idx) => {
-                                        const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
-                                        const colorClass = getStatusColor(ackEntry);
-                                        return (
-                                          <span key={name} className={`font-semibold ${colorClass}`}>
-                                            {name}{idx < targetList.length - 1 ? <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span> : ''}
-                                          </span>
-                                        );
-                                      })}
+                                      {targetList.map(name => renderRecipientStatus(name))}
                                     </div>
                                 </div>
+
+                                {/* Wenn man Empfänger ist UND noch nicht bestätigt hat */}
+                                {targetList.includes(currentUser?.name) && !hasAcknowledged && item.sender !== currentUser?.name && (
+                                  <div className="mt-4 flex flex-col gap-2">
+                                    <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Komme sofort'); }} className="w-full bg-[#34C759]/10 text-[#34C759] font-semibold text-[15px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
+                                      <Icon name="Check" size={18} strokeWidth={2.5} /><span>Komme sofort</span>
+                                    </button>
+                                    <div className="flex gap-2">
+                                      <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'In 5 Minuten'); }} className="flex-1 bg-[#FF9500]/10 text-[#FF9500] font-semibold text-[14px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity">
+                                        In 5 Min
+                                      </button>
+                                      <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Fangt schon mal an'); }} className="flex-1 bg-[#FF3B30]/10 text-[#FF3B30] font-semibold text-[14px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity">
+                                        Fangt an
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })
