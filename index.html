@@ -12,6 +12,7 @@
     
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
+    <!-- Stabile CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -32,7 +33,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* * DER PERFEKTE IOS LAYOUT FIX NACH DEINER ANLEITUNG * */
+        /* * DER PERFEKTE IOS LAYOUT FIX (Exakt nach Vorgabe) * */
         :root {
             --app-bg: #F2F2F7;
         }
@@ -40,9 +41,9 @@
             :root { --app-bg: #000000; }
         }
 
-        /* html und body füllen die exakt verfügbare Höhe aus, um schwarze Balken zu töten */
         html {
             height: -webkit-fill-available;
+            background-color: var(--app-bg);
         }
         
         body { 
@@ -52,7 +53,7 @@
             width: 100%; 
             min-height: 100vh;
             min-height: -webkit-fill-available;
-            overflow: hidden; /* Body sperren, damit die App nicht bounct */
+            overflow: hidden; 
             overscroll-behavior-y: none; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
@@ -71,13 +72,12 @@
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            -webkit-overflow-scrolling: touch; /* Butterweiches Wischen auf iOS */
-            padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px)); /* Platz für die tiefergelegte Navbar */
+            -webkit-overflow-scrolling: touch; 
+            padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px)); /* Viel Platz für die Navbar */
         }
         
         .scrollable-area::-webkit-scrollbar { display: none; }
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
         .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
         
         input[type="file"] { display: none; }
@@ -86,6 +86,7 @@
 </head>
 <body class="text-black dark:text-white antialiased">
     
+    <!-- Ladebildschirm Fallback -->
     <div id="fallback" style="position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
         FamilyConnect startet...
     </div>
@@ -155,11 +156,12 @@
             return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE');
         };
 
+        // Farblogik für die Kacheln im Verlauf
         const getStatusColor = (ackString) => {
             if (!ackString) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60'; 
             if (ackString.includes('Komme sofort')) return 'text-[#34C759]'; 
             if (ackString.includes('In 5 Minuten')) return 'text-[#FF9500]'; 
-            if (ackString.includes('Fangt schon mal an')) return 'text-[#FF3B30]'; 
+            if (ackString.includes('Fangt schon mal an') || ackString.includes('Fangt an')) return 'text-[#FF3B30]'; 
             return 'text-[#34C759]'; 
         };
 
@@ -188,7 +190,8 @@
           Plus: '<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
           X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
-          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+          FileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>'
         };
 
         const Icon = ({ name, size = 24, strokeWidth = 2, className = "", onClick }) => {
@@ -334,6 +337,7 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
+                        // SICHERHEIT: Speichert immer unter firebaseConfig für absolute Abwärtskompatibilität!
                         localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
                         onConfigLoaded(parsed);
                     } catch (err) { setError("Fehler: " + err.message); }
@@ -342,7 +346,6 @@
                 reader.readAsText(file);
             };
 
-            // Nur auf der Startseite: Schwarzer Hintergrund, keine Safari-Balken!
             return (
                 <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto pb-safe">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
@@ -397,7 +400,7 @@
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
           
-          // Liest sicher die Daten aus dem Cache, ohne jemals automatisch abzumelden!
+          // Liest absolut sicher die bestehenden Daten! KEIN Logout!
           const [localFamilyId, setLocalFamilyId] = useState(() => localStorage.getItem('familyId'));
           const [localUserName, setLocalUserName] = useState(() => localStorage.getItem('userName'));
 
@@ -457,7 +460,7 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Elegantes Ausblenden der TabBar bei Fokus
+          // Keyboard-Fix
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 const tag = e.target.tagName;
@@ -479,13 +482,14 @@
             };
           }, []);
 
+          // Auth Initialisierung
           useEffect(() => {
             const initAuth = async () => {
               try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                   await auth.signInWithCustomToken(__initial_auth_token);
                 } else { await auth.signInAnonymously(); }
-              } catch (error) {}
+              } catch (error) { console.error("Auth error:", error); }
             };
             initAuth();
 
@@ -495,7 +499,7 @@
             return () => unsubscribe();
           }, []);
 
-          // ABSOLUT SICHERER DB Listener (kein Autologout!)
+          // DB Listener: Schmeißt dich niemals von alleine raus!
           useEffect(() => {
             if (!firebaseUser || !localFamilyId || !localUserName) {
                 if (firebaseUser && !isAdminMode) setAppLoaded(true);
@@ -510,7 +514,8 @@
                 const updatedUser = rawMembers.find(m => m && typeof m === 'object' && m.name === localUserName);
                 
                 if (!updatedUser || updatedUser.status === 'pending') {
-                    console.warn("User temporär nicht gefunden.");
+                    // VERHINDERT, dass iOS wegen Netzwerk-Lags ausloggt!
+                    console.warn("User-Daten temporär nicht bereit.");
                     return; 
                 }
 
@@ -520,7 +525,7 @@
                 setAppLoaded(true);
               }
             }, (error) => {
-                console.warn("Snapshot Error, kein Grund zur Panik:", error);
+                console.warn("Datenbank-Fehler (meist harmlose Netzwerkunterbrechung):", error);
             });
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
@@ -717,21 +722,11 @@
           const requestPushPermission = async () => {
             if (!window.isSecureContext) return showAlert("Fehler", "Push funktioniert nur über HTTPS.");
             
-            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-                return showAlert("Push-Fehler", "Push wird in diesem Modus nicht unterstützt. Bitte als Web-App auf dem Home-Bildschirm speichern.");
+            if (!('serviceWorker' in navigator)) {
+                return showAlert("Push-Fehler", "Push wird auf diesem Gerät nicht unterstützt. Bitte als App auf dem Home-Bildschirm speichern.");
             }
 
-            if (!firebase?.messaging) return showAlert("Fehler", "Firebase Messaging ist nicht verfügbar.");
-
-            try {
-                const supported = firebase.messaging.isSupported ? await firebase.messaging.isSupported() : true;
-                if (!supported) return showAlert("Fehler", "Push ist auf diesem Gerät/Browser nicht verfügbar.");
-            } catch (e) { return showAlert("Fehler", "Push-Unterstützung konnte nicht geprüft werden."); }
-
-            if (!messaging) {
-                try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
-            }
-            
+            // Sicherstellen, dass die Firebase Config-Parameter verlässlich gelesen werden (egal wo der Key steht)
             let storedConfig = {};
             let firebaseConfigObj = {};
             try { 
@@ -744,48 +739,50 @@
             } catch(e) {}
             
             const vapidKey = storedConfig.vapidKey || currentFamily?.vapidKey;
-            
             if (!vapidKey || !vapidKey.trim()) {
-                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte stelle sicher, dass das Feld 'vapidKey' in deiner hochgeladenen config.json steht.");
-            }
-            
-            let swReg = await navigator.serviceWorker.getRegistration();
-            if (!swReg) {
-                try {
-                    const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
-                    swReg = await navigator.serviceWorker.register(swUrl);
-                } catch(e) {
-                    return showAlert("Push-Fehler", "Fehler beim Starten des Push-Dienstes: " + e.message);
-                }
+                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte stelle sicher, dass 'vapidKey' in deiner hochgeladenen config.json Datei steht.");
             }
 
-            if (!swReg) return showAlert("Fehler", "Es konnte kein Service Worker registriert werden.");
-
-            setPushStatus('Wird angefragt...');
             try {
-              const permission = await Notification.requestPermission();
-              if (permission !== 'granted') {
-                  setPushStatus('Abgelehnt ❌');
-                  return;
-              }
+                // Den Service Worker immer explizit neu initialisieren, um Parameter-Fehler auf iOS und Mac zu beheben
+                const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
+                const swReg = await navigator.serviceWorker.register(swUrl);
+                
+                await navigator.serviceWorker.ready;
 
-              const token = await messaging.getToken({
-                  vapidKey: vapidKey.trim(),
-                  serviceWorkerRegistration: swReg
-              });
+                if (!firebase?.messaging) return showAlert("Fehler", "Firebase Messaging konnte nicht geladen werden.");
+                if (!messaging) messaging = firebase.messaging();
+                
+                setPushStatus('Wird angefragt...');
 
-              if (!token) {
-                  setPushStatus('Fehler');
-                  return showAlert("Fehler", "Es konnte kein Push-Token erzeugt werden.");
-              }
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    setPushStatus('Abgelehnt ❌');
+                    return;
+                }
 
-              await getFamilyDocRef(currentFamily.id).update({
-                  members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: token } : m)
-              });
-              setPushStatus('Aktiviert ✅'); 
-              showAlert("Erfolg", "Push-Mitteilungen wurden erfolgreich aktiviert!");
+                const token = await messaging.getToken({
+                    vapidKey: vapidKey.trim(),
+                    serviceWorkerRegistration: swReg
+                });
 
-            } catch (error) { setPushStatus('Fehler'); showAlert("Fehler", "Fehler beim Token-Abruf: " + error.message); }
+                if (!token) {
+                    setPushStatus('Fehler');
+                    return showAlert("Fehler", "Es konnte kein Push-Token erzeugt werden.");
+                }
+
+                await getFamilyDocRef(currentFamily.id).update({
+                    members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: token } : m)
+                });
+                
+                setPushStatus('Aktiviert ✅'); 
+                showAlert("Erfolg", "Push-Mitteilungen wurden erfolgreich aktiviert!");
+
+            } catch (error) { 
+                console.error(error); 
+                setPushStatus('Fehler'); 
+                showAlert("Push-Fehler", "Der Dienst konnte nicht gestartet werden. iPhone: Bitte die Seite erst zum Home-Bildschirm hinzufügen! Mac: Bitte in Safari öffnen."); 
+            }
           };
 
           const handleSendNotification = async (customReasonObj = null, customTargets = null, isResend = false) => {
@@ -894,6 +891,7 @@
               setExpenseModal({ mode: 'edit', expense });
           };
 
+          // FIXED LOGIK: Nur die auswählbaren Personen verändern, aber splitCount STARR lassen!
           const toggleSplitTarget = (name) => {
               setExpenseForm(prev => {
                   const exists = prev.splitTargets.includes(name);
@@ -1004,10 +1002,10 @@
 
           if (isAdminMode) {
               return (
-                  <div className="flex flex-col w-full h-full absolute inset-0 bg-[var(--app-bg)] z-40">
+                  <div className="flex flex-col w-full h-full absolute inset-0 bg-[var(--app-bg)] z-40 overflow-hidden">
                       <Modal data={modal} onClose={() => setModal(null)} />
                       <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full">
-                          <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end sticky top-0">
+                          <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end">
                               <h1 className="text-[28px] font-extrabold text-black dark:text-white tracking-tight leading-none mt-6">Admin-Dashboard</h1>
                               <button onClick={() => setIsAdminMode(false)} className="text-[#FF3B30] font-semibold active:opacity-70">Logout</button>
                           </header>
@@ -1072,7 +1070,6 @@
           }
 
           if (!currentFamily || !currentUser) {
-            // NUR HIER ist der Hintergrund starr schwarz
             return (
               <div className="flex flex-col w-full h-full absolute inset-0 overflow-y-auto bg-[#000000] text-white z-40 items-center justify-center p-6 font-sans">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
@@ -1139,8 +1136,7 @@
               {/* Flex Container für die iOS PWA */}
               <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
                   
-                  {/* HEADER klebt oben */}
-                  <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full sticky top-0">
+                  <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full">
                     <div className="text-center w-full min-w-0">
                       <h1 className="text-[34px] font-bold text-black dark:text-white tracking-tight leading-tight truncate mt-6">
                         {activeTab === 'home' && `Familie ${currentFamily?.name || ''}`}
@@ -1156,12 +1152,12 @@
                     )}
                   </header>
 
-                  {/* Dieser <main> Bereich scrollt butterweich durch! */}
+                  {/* Dieser Bereich SCROLLT native und weich! */}
                   <main className="scrollable-area px-4 pt-6 w-full relative">
                     
                     {/* --- HOME TAB --- */}
                     {activeTab === 'home' && (
-                      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         <section>
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2">Grund</h2>
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
@@ -1229,7 +1225,7 @@
 
                     {/* --- EXPENSES TAB --- */}
                     {activeTab === 'expenses' && (
-                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                           
                           {!expenseModal && (
                               <div className="flex justify-between items-center px-2">
@@ -1248,7 +1244,7 @@
                                           {expenseModal.mode === 'split' && `Neue geteilte Auslage`}
                                           {expenseModal.mode === 'edit' && `Auslage bearbeiten`}
                                       </h3>
-                                      <button onClick={() => setExpenseModal(null)} className="w-8 h-8 bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-full flex justify-center items-center active:opacity-70 text-black dark:text-white"><Icon name="X" size={18}/></button>
+                                      <button onClick={() => setExpenseModal(null)} className="w-8 h-8 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-full flex justify-center items-center active:opacity-70 text-black dark:text-white"><Icon name="X" size={18}/></button>
                                   </div>
                                   
                                   <div className="space-y-4 w-full">
@@ -1360,16 +1356,16 @@
 
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         {(!safeHistory.filter(h => !h.isExpense && !h.isResend).length) ? (
                           <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
                           safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
+                            const isRecipient = targetList.includes(currentUser?.name);
+                            const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
                             
-                            const myAckEntry = (item.acknowledgedBy || []).find(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
-                            const hasAcknowledged = !!myAckEntry;
-                            
+                            // Re-Send Logik
                             const isRecentSender = item.timestamp && (item.sender === currentUser?.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
                             
                             const renderRecipientStatus = (name) => {
@@ -1415,7 +1411,7 @@
                                 </div>
 
                                 {/* Wenn man Empfänger ist UND noch nicht bestätigt hat */}
-                                {targetList.includes(currentUser?.name) && !hasAcknowledged && item.sender !== currentUser?.name && (
+                                {isRecipient && !hasAcknowledged && item.sender !== currentUser?.name && (
                                   <div className="mt-4 flex flex-col gap-2">
                                     <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Komme sofort'); }} className="w-full bg-[#34C759]/10 text-[#34C759] font-semibold text-[15px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
                                       <Icon name="Check" size={18} strokeWidth={2.5} /><span>Komme sofort</span>
@@ -1439,7 +1435,7 @@
 
                     {/* --- SETTINGS TAB --- */}
                     {activeTab === 'settings' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         
                         <section>
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="BellOff" size={14}/> Nicht stören</h2>
@@ -1552,7 +1548,6 @@
                   </main>
               </div>
 
-              {/* Feste Tab-Bar unten */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
@@ -1561,7 +1556,10 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                    if (typeof __firebase_config !== 'undefined') {
+                        return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+                    }
+                    const saved = localStorage.getItem('firebaseConfig');
                     return saved ? JSON.parse(saved) : null;
                 } catch (e) {
                     return null;
@@ -1582,7 +1580,6 @@
                     if (!firebase.apps.length) app = firebase.initializeApp(finalConfig);
                     else app = firebase.app();
                     
-                    // ReCAPTCHA nur online aktivieren, um Fehler zu vermeiden
                     if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
                         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.includes('file')) {
                             try { 
@@ -1607,7 +1604,7 @@
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
-                        <button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
+                        <button onClick={() => { localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
                             Neue Config laden
                         </button>
                     </div>
