@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <!-- WICHTIG: viewport-fit=cover erlaubt der App, den gesamten Bildschirm inkl. Notch auszufüllen -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -30,21 +31,28 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* ECHTZEIT-SENSOR LAYOUT: Zwingt iOS in das echte, sichtbare Fenster */
+        /* --- DIE PERFEKTE IOS LAYOUT-LÖSUNG --- */
         :root {
             --app-bg: #F2F2F7;
-            --app-height: 100vh; /* Wird durch JS sofort exakt berechnet */
         }
         @media (prefers-color-scheme: dark) {
             :root { --app-bg: #000000; }
         }
 
-        html, body { 
+        /* 1. Nutzt den kompletten Raum, ohne weiße/schwarze Ränder */
+        html {
+            background-color: var(--app-bg);
+            height: -webkit-fill-available;
+        }
+        
+        /* 2. Body sperrt das Bouncen der ganzen App */
+        body { 
             background-color: var(--app-bg); 
             margin: 0; 
             padding: 0;
             width: 100%; 
-            height: 100%;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
             overflow: hidden; 
             overscroll-behavior-y: none; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
@@ -53,16 +61,15 @@
         
         #root { 
             width: 100%; 
-            height: var(--app-height); 
+            height: 100vh;
+            height: -webkit-fill-available;
             display: flex;
             flex-direction: column;
-            position: relative; /* Menüleiste richtet sich HIERRAN aus */
-            overflow: hidden;
         }
         
+        /* 3. NUR das Innere darf scrollen. Puffer für die Navbar integriert! */
         .scrollable-area {
             flex: 1 1 auto;
-            min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch; 
@@ -71,7 +78,7 @@
         
         .scrollable-area::-webkit-scrollbar { display: none; }
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
+        .pt-safe-top { padding-top: calc(16px + env(safe-area-inset-top, 44px)); }
         
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
@@ -86,7 +93,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- 1. GLOBALE FEHLERBEHANDLUNG & CONSOLE CLEANUP ---
         const originalConsoleError = console.error;
         console.error = function(...args) {
             const msg = String(args[0]);
@@ -115,12 +121,10 @@
             console.error('Unhandled rejection:', event.reason);
         });
 
-        // --- 2. REACT SETUP ---
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
-        const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
         
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
@@ -189,7 +193,6 @@
             });
         };
 
-        // --- CUSTOM MODAL ---
         function Modal({ data, onClose }) {
             if (!data) return null;
             
@@ -324,7 +327,7 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
+                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
                         onConfigLoaded(parsed);
                     } catch (err) { setError("Fehler: " + err.message); }
                 };
@@ -351,6 +354,7 @@
             );
         }
 
+        // --- DIE MENÜLEISTE SITZT WIEDER GANZ UNTEN ---
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -360,11 +364,10 @@
           ];
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
 
-          // Die Menüleiste wird absolut HIER platziert, ganz unten in der Root-Ebene.
           return (
             <div 
-              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 20px) + 16px)' }}
+              className={`fixed bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 20px))' }}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -419,7 +422,6 @@
           const [isSending, setIsSending] = useState(false);
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
-          // --- SICHERHEITS-NETZE ---
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
@@ -447,37 +449,20 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // DAS IST DER ECHTZEIT-SENSOR DER DAS DREHEN UND DIE HÖHE BEHEBT!
+          // Keyboard-Fix, der die App nach Eingabe sanft zurückfallen lässt
           useEffect(() => {
-            const setAppHeight = () => {
-                const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-                document.documentElement.style.setProperty('--app-height', `${vh}px`);
-            };
-            
-            setAppHeight(); // Beim Start sofort berechnen
-            window.addEventListener('resize', setAppHeight);
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', setAppHeight);
-                window.visualViewport.addEventListener('scroll', setAppHeight);
-            }
-
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                setTimeout(() => { window.scrollTo(0, 0); }, 50); // Tastatur Sanftes schließen
+                setTimeout(() => { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); }, 50);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
             window.addEventListener('focusout', handleFocusOut);
             
             return () => { 
-                window.removeEventListener('resize', setAppHeight);
-                if (window.visualViewport) {
-                    window.visualViewport.removeEventListener('resize', setAppHeight);
-                    window.visualViewport.removeEventListener('scroll', setAppHeight);
-                }
                 window.removeEventListener('focusin', handleFocusIn); 
                 window.removeEventListener('focusout', handleFocusOut); 
             };
@@ -583,11 +568,11 @@
               if ('serviceWorker' in navigator) {
                   navigator.serviceWorker.addEventListener('message', handleSWMessage);
               }
+              // Firebase onMessage (wirft bei uns absichtlich KEINE showNotification, um Double-Pushes zu vermeiden)
               if (messaging) {
                   try {
                       const unsub = messaging.onMessage((payload) => {
-                          if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
-                          showAlert(payload.notification?.title || "Neue Benachrichtigung", payload.notification?.body || "");
+                          console.log('Nachricht im Vordergrund:', payload);
                       });
                       return () => {
                           unsub();
@@ -745,18 +730,20 @@
             try {
                 const supported = firebase.messaging.isSupported ? await firebase.messaging.isSupported() : true;
                 if (!supported) return showAlert("Fehler", "Push ist auf diesem Gerät/Browser nicht verfügbar.");
-            } catch (e) { return showAlert("Fehler", "Push-Unterstützung konnte nicht geprüft werden."); }
+            } catch (e) {}
 
             if (!messaging) {
                 try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
             }
             
             let storedConfig = {};
+            let firebaseConfigObj = {};
             try { 
-                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                const rawConfig = localStorage.getItem('firebaseConfig');
                 if (rawConfig) {
                     const parsed = JSON.parse(rawConfig);
                     storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
+                    firebaseConfigObj = parsed.firebaseConfig || parsed;
                 }
             } catch(e) {}
             
@@ -769,7 +756,8 @@
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
-                    swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                    const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
+                    swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
                     console.error("SW Registration Error:", e);
                     return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
@@ -874,9 +862,7 @@
                 if (changed) {
                     await docRef.update({ history: updatedHistory });
                 }
-            } catch (e) {
-                console.error("Fehler beim Bestätigen:", e);
-            }
+            } catch (e) {}
           };
 
           // --- Expense Handlers ---
@@ -1154,8 +1140,8 @@
                   />
               )}
 
-              {/* HIER DIE VERWENDUNG DES ECHTZEIT-SENSORS */}
-              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]" style={{ height: 'var(--app-height)' }}>
+              {/* Flex Container für die iOS PWA */}
+              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
                   
                   <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full sticky top-0">
                     <div className="text-center w-full min-w-0">
@@ -1173,6 +1159,7 @@
                     )}
                   </header>
 
+                  {/* Dieser Bereich SCROLLT native und weich! */}
                   <main className="scrollable-area px-4 pt-6 w-full relative">
                     
                     {/* --- HOME TAB --- */}
@@ -1385,10 +1372,8 @@
                             const isRecipient = targetList.includes(currentUser?.name);
                             const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
                             
-                            // JEDER kann nun auf die Kachel klicken, um Details zu sehen oder zu antworten!
                             const handleCardClick = () => {
                                 if (navigator.vibrate) navigator.vibrate(10);
-                                // Wenn man Empfänger ist UND noch NICHT geantwortet hat -> Antwort-Menü öffnen
                                 if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
                                     setModal({ 
                                         type: 'custom_ack', 
@@ -1401,7 +1386,6 @@
                                         onCancel: () => setModal(null) 
                                     });
                                 } else {
-                                    // Alle anderen (Sender oder Leute die schon geantwortet haben) sehen die Übersicht
                                     setTrackingEventId(item.id);
                                 }
                             };
@@ -1566,9 +1550,8 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    // BEHÄLT DEN LOGIN ABSOLUT SICHER! 
                     if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
-                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                    const saved = localStorage.getItem('firebaseConfig');
                     return saved ? JSON.parse(saved) : null;
                 } catch (e) { return null; }
             });
@@ -1609,7 +1592,7 @@
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
-                        <button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
+                        <button onClick={() => { localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
                             Neue Config laden
                         </button>
                     </div>
