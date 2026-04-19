@@ -33,7 +33,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* * DER PERFEKTE IOS LAYOUT FIX * */
+        /* * DER ECHTZEIT-HÖHEN-FIX * */
         :root {
             --app-bg: #F2F2F7;
         }
@@ -41,44 +41,39 @@
             :root { --app-bg: #000000; }
         }
 
-        html {
-            height: -webkit-fill-available;
-            background-color: var(--app-bg);
-        }
-        
-        body { 
+        html, body { 
             background-color: var(--app-bg); 
             margin: 0; 
             padding: 0;
             width: 100%; 
-            min-height: 100vh;
-            min-height: -webkit-fill-available;
+            /* Nimmt standardmäßig 100vh, wird aber durch JS überschrieben */
+            height: var(--app-height, 100vh); 
             overflow: hidden; 
-            overscroll-behavior-y: none; 
+            overscroll-behavior: none; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
         }
         
         #root { 
             width: 100%; 
-            height: 100vh;
-            height: -webkit-fill-available;
+            height: 100%;
             display: flex;
             flex-direction: column;
         }
         
-        /* Das ist der native Scrolling-Bereich für den Content */
+        /* Butterweiches Wischen */
         .scrollable-area {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch; 
-            padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px)); /* Viel Platz für die Navbar */
+            /* Genug Puffer für die tief sitzende Menüleiste */
+            padding-bottom: calc(70px + env(safe-area-inset-bottom, 20px)); 
         }
         
         .scrollable-area::-webkit-scrollbar { display: none; }
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 12px); }
+        .pb-safe-menu { padding-bottom: max(env(safe-area-inset-bottom), 12px); }
         .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
         
         input[type="file"] { display: none; }
@@ -87,7 +82,6 @@
 </head>
 <body class="text-black dark:text-white antialiased">
     
-    <!-- Ladebildschirm Fallback -->
     <div id="fallback" style="position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
         FamilyConnect startet...
     </div>
@@ -95,8 +89,17 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- 1. GLOBALE FEHLERBEHANDLUNG & CONSOLE CLEANUP ---
+        // --- 1. ECHTZEIT-HÖHEN SENSOR & FEHLERBEHANDLUNG ---
         
+        // Zwingt das iPhone, die echte Höhe in Millisekunden neu zu berechnen
+        const updateAppHeight = () => {
+            document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+            window.scrollTo(0, 0);
+        };
+        window.addEventListener('resize', updateAppHeight);
+        updateAppHeight(); // Sofortiger Start-Fix
+
+        // Blockiert lästige Firebase AppCheck ReCAPTCHA Errors lautlos
         const originalConsoleError = console.error;
         console.error = function(...args) {
             const msg = String(args[0]);
@@ -131,7 +134,6 @@
         const { createRoot } = ReactDOM;
 
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
-        const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
         
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
@@ -191,8 +193,7 @@
           Plus: '<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
           X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
-          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-          FileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>'
+          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
         };
 
         const Icon = ({ name, size = 24, strokeWidth = 2, className = "", onClick }) => {
@@ -338,7 +339,7 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
+                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
                         onConfigLoaded(parsed);
                     } catch (err) { setError("Fehler: " + err.message); }
                 };
@@ -346,7 +347,7 @@
                 reader.readAsText(file);
             };
 
-            // Pechschwarzer Hintergrund nur beim Setup (wird nie scrollen müssen)
+            // Pechschwarzer Hintergrund nur beim Setup
             return (
                 <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
@@ -375,10 +376,10 @@
           ];
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
 
-          // Fixed bottom-0 positioniert die Leiste extrem sicher. pt-2 pb-safe baut den Puffer IN die Leiste ein!
+          // bottom-0 pinnt die Leiste hart nach unten. pb-safe-menu sorgt für den Puffer IN der Leiste
           return (
             <div 
-              className={`fixed bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-2 pb-safe transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              className={`fixed bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 pb-safe-menu transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -401,6 +402,7 @@
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
           
+          // Liest sicher die Daten aus dem Cache - KEIN LOGOUT!
           const [localFamilyId, setLocalFamilyId] = useState(() => localStorage.getItem('familyId'));
           const [localUserName, setLocalUserName] = useState(() => localStorage.getItem('userName'));
 
@@ -460,7 +462,7 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard-Fix für iOS
+          // Elegantes Ausblenden der TabBar bei Fokus
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 const tag = e.target.tagName;
@@ -499,7 +501,7 @@
             return () => unsubscribe();
           }, []);
 
-          // DB Listener
+          // DB Listener: Schmeißt dich niemals von alleine raus!
           useEffect(() => {
             if (!firebaseUser || !localFamilyId || !localUserName) {
                 if (firebaseUser && !isAdminMode) setAppLoaded(true);
@@ -514,7 +516,8 @@
                 const updatedUser = rawMembers.find(m => m && typeof m === 'object' && m.name === localUserName);
                 
                 if (!updatedUser || updatedUser.status === 'pending') {
-                    console.warn("Nutzerdaten temporär nicht verfügbar.");
+                    // VERHINDERT, dass iOS wegen Netzwerk-Lags ausloggt!
+                    console.warn("User-Daten temporär nicht bereit.");
                     return; 
                 }
 
@@ -524,7 +527,7 @@
                 setAppLoaded(true);
               }
             }, (error) => {
-                console.warn("Verbindungsfehler zur Datenbank:", error);
+                console.warn("Datenbank-Fehler (meist harmlose Netzwerkunterbrechung):", error);
             });
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
@@ -736,28 +739,27 @@
                 try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
             }
             
+            // Verlässlich VAPID Key holen
             let storedConfig = {};
-            let firebaseConfigObj = {};
             try { 
-                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                const rawConfig = localStorage.getItem('firebaseConfig');
                 if (rawConfig) {
                     const parsed = JSON.parse(rawConfig);
                     storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
-                    firebaseConfigObj = parsed.firebaseConfig || parsed;
                 }
             } catch(e) {}
             
             const vapidKey = storedConfig.vapidKey || currentFamily?.vapidKey;
             
             if (!vapidKey || !vapidKey.trim()) {
-                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte stelle sicher, dass das Feld 'vapidKey' in deiner hochgeladenen config.json steht.");
+                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte lade die config.json noch einmal hoch.");
             }
             
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
-                    const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
-                    swReg = await navigator.serviceWorker.register(swUrl);
+                    // Einfache, robuste SW Registrierung ohne komplexe URL-Parameter
+                    swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
                 } catch(e) {
                     console.error("SW Registration Error:", e);
                     return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
@@ -863,7 +865,9 @@
                 if (changed) {
                     await docRef.update({ history: updatedHistory });
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error("Fehler beim Bestätigen:", e);
+            }
           };
 
           // --- Expense Handlers ---
@@ -1023,7 +1027,7 @@
                                   <section className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-sm border border-[#E5E5EA] dark:border-[#38383A]">
                                       <h2 className="text-[18px] font-bold mb-4 text-black dark:text-white">Neue Familie anlegen</h2>
                                       <div className="flex flex-col sm:flex-row gap-3">
-                                          <input type="text" placeholder="Name der Familie" className="w-full sm:flex-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-gray-500" value={newFamilyName} onChange={e => setNewFamilyName(e.target.value)} />
+                                          <input type="text" placeholder="Name der Familie" className="w-full sm:flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-gray-500" value={newFamilyName} onChange={e => setNewFamilyName(e.target.value)} />
                                           <button onClick={adminCreateFamily} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Erstellen</button>
                                       </div>
                                   </section>
@@ -1052,7 +1056,7 @@
                                                       <div className="space-y-3 mb-5">
                                                           {localSafeMembers.length === 0 && <p className="text-[#8E8E93] text-sm">Keine Mitglieder.</p>}
                                                           {localSafeMembers.map(m => (
-                                                              <div key={m.name} className="flex justify-between items-center p-3.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[14px]">
+                                                              <div key={m.name} className="flex justify-between items-center p-3.5 bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px]">
                                                                   <div className="flex items-center gap-3">
                                                                       <span className="font-semibold text-[16px] text-black dark:text-white">{m.name}</span>
                                                                       {m.status === 'pending' ? <span className="bg-[#FF9500]/20 text-[#FF9500] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Ausstehend</span> : <span className="bg-[#34C759]/20 text-[#34C759] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Aktiv</span>}
@@ -1565,14 +1569,11 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    if (typeof __firebase_config !== 'undefined') {
-                        return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
-                    }
-                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                    // BEHÄLT DEN LOGIN SICHER!
+                    if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
+                    const saved = localStorage.getItem('firebaseConfig');
                     return saved ? JSON.parse(saved) : null;
-                } catch (e) {
-                    return null;
-                }
+                } catch (e) { return null; }
             });
             const [status, setStatus] = useState("booting"); 
             const [errorMsg, setErrorMsg] = useState("");
@@ -1591,9 +1592,7 @@
                     
                     if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
                         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.includes('file')) {
-                            try { 
-                                firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true).catch(()=>{}); 
-                            } catch (e) {}
+                            try { firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true).catch(()=>{}); } catch (e) {}
                         }
                     }
                     db = firebase.firestore();
@@ -1613,7 +1612,7 @@
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
-                        <button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
+                        <button onClick={() => { localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
                             Neue Config laden
                         </button>
                     </div>
