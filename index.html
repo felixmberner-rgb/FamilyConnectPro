@@ -31,16 +31,16 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* --- ECHTZEIT-SENSOR LAYOUT --- */
+        /* --- DER ECHTZEIT-SENSOR LAYOUT FIX --- */
         :root {
             --app-bg: #F2F2F7;
-            --app-height: 100vh; /* Wird in Echtzeit vom JS überschrieben! */
+            --app-height: 100vh; /* Wird vom JS sofort mit den Millimeter-Werten überschrieben */
         }
         @media (prefers-color-scheme: dark) {
             :root { --app-bg: #000000; }
         }
 
-        /* Der Body blockiert jedes Bouncen */
+        /* Komplett starres Fundament, verbietet iOS jedes Bouncen */
         html, body { 
             position: fixed; 
             inset: 0;
@@ -55,7 +55,7 @@
             -webkit-text-size-adjust: 100%;
         }
         
-        /* Die Root-Ebene passt sich auf den Millimeter an die berechnete iPhone-Höhe an */
+        /* Das Container-Herzstück, das exakt die echte gemessene iPhone-Höhe annimmt */
         #root { 
             position: absolute;
             top: 0;
@@ -67,21 +67,17 @@
             overflow: hidden;
         }
         
-        /* Nur dieser Bereich darf scrollen */
         .scrollable-area {
             flex: 1 1 auto;
             min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch; 
-            padding-bottom: calc(80px + env(safe-area-inset-bottom, 12px));
+            padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
         }
         
         .scrollable-area::-webkit-scrollbar { display: none; }
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        
-        /* Puffer für die tief sitzende TabBar */
-        .pb-safe-menu { padding-bottom: env(safe-area-inset-bottom, 12px); }
         .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
         
         input[type="file"] { display: none; }
@@ -131,6 +127,7 @@
         const { createRoot } = ReactDOM;
 
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
+        const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
         
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
@@ -322,7 +319,6 @@
             );
         }
 
-        // HIER: Der Setup Loader mit sicherem Speichern (Verhindert Endlos-Loop)
         function ConfigLoader({ onConfigLoaded }) {
             const [error, setError] = useState("");
             
@@ -334,16 +330,14 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem('familyConnectAppConfig', JSON.stringify(parsed));
-                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
+                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
                         onConfigLoaded(parsed);
-                    } catch (err) { setError("Fehler: Ungültiges Dateiformat."); }
+                    } catch (err) { setError("Fehler: " + err.message); }
                 };
                 reader.onerror = () => setError("Fehler beim Lesen der Datei.");
                 reader.readAsText(file);
             };
 
-            // Pechschwarzer Hintergrund nur beim Setup
             return (
                 <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
@@ -363,8 +357,8 @@
             );
         }
 
-        // --- GANZ UNTEN FIXIERT ---
-        // Durch 'absolute' und 'bottom-0' klebt die Bar millimetergenau am unteren Rand von #root
+        // --- GANZ UNTEN FIXIERT --- 
+        // position: absolute bezieht sich nun auf das echtzeit-gemessene #root Element
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -376,7 +370,8 @@
 
           return (
             <div 
-              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-2 pb-safe-menu transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -399,7 +394,7 @@
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
           
-          // Liest absolut sicher deine Nutzerdaten!
+          // Liest sicher die Daten aus dem Cache - KEIN LOGOUT!
           const [localFamilyId, setLocalFamilyId] = useState(() => localStorage.getItem('familyId'));
           const [localUserName, setLocalUserName] = useState(() => localStorage.getItem('userName'));
 
@@ -458,16 +453,22 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // --- ECHTZEIT SENSOR FÜR DAS DREHEN UND DIE TASTATUR ---
+          // --- ECHTZEIT SENSOR (Triggert automatisch das Neuladen der Höhe, als würdest du drehen!) ---
           useEffect(() => {
             const setAppHeight = () => {
                 const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
                 document.documentElement.style.setProperty('--app-height', `${vh}px`);
-                window.scrollTo(0, 0); // Behebt den Scroll-Bug nach Tastatureingabe
             };
             
-            setAppHeight(); // Sofort beim Start berechnen
+            // Initial sofort ausführen
+            setAppHeight(); 
+            // Diese Timer "simulieren" das Drehen in den ersten 800ms, bis Safari sich beruhigt hat
+            setTimeout(setAppHeight, 100);
+            setTimeout(setAppHeight, 300);
+            setTimeout(setAppHeight, 800);
+
             window.addEventListener('resize', setAppHeight);
+            window.addEventListener('orientationchange', () => { setTimeout(setAppHeight, 200); });
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', setAppHeight);
                 window.visualViewport.addEventListener('scroll', setAppHeight);
@@ -478,7 +479,7 @@
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                setTimeout(() => { window.scrollTo(0, 0); }, 50);
+                setTimeout(() => { window.scrollTo(0, 0); setAppHeight(); }, 50);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -486,6 +487,7 @@
             
             return () => { 
                 window.removeEventListener('resize', setAppHeight);
+                window.removeEventListener('orientationchange', setAppHeight);
                 if (window.visualViewport) {
                     window.visualViewport.removeEventListener('resize', setAppHeight);
                     window.visualViewport.removeEventListener('scroll', setAppHeight);
@@ -512,7 +514,7 @@
             return () => unsubscribe();
           }, []);
 
-          // DB Listener: Schmeißt dich niemals von alleine raus!
+          // DB Listener: Wirft dich NIEMALS eigenständig raus!
           useEffect(() => {
             if (!firebaseUser || !localFamilyId || !localUserName) {
                 if (firebaseUser && !isAdminMode) setAppLoaded(true);
@@ -597,6 +599,7 @@
               }
               if (messaging) {
                   try {
+                      // Wird nur getriggert, wenn App AKTIV im Vordergrund ist
                       const unsub = messaging.onMessage((payload) => {
                           if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
                           showAlert(payload.notification?.title || "Neue Benachrichtigung", payload.notification?.body || "");
@@ -764,11 +767,13 @@
             }
             
             let storedConfig = {};
+            let firebaseConfigObj = {};
             try { 
-                const saved1 = localStorage.getItem('familyConnectAppConfig');
-                const saved2 = localStorage.getItem('firebaseConfig');
-                if (saved1 || saved2) {
-                    storedConfig = JSON.parse(saved1 || saved2);
+                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY);
+                if (rawConfig) {
+                    const parsed = JSON.parse(rawConfig);
+                    storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
+                    firebaseConfigObj = parsed.firebaseConfig || parsed;
                 }
             } catch(e) {}
             
@@ -781,16 +786,15 @@
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
-                    // Update den SW, falls es noch der alte ist
-                    swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                    await swReg.update(); 
+                    const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
+                    swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
                     console.error("SW Registration Error:", e);
                     return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
                 }
-            } else {
-                await swReg.update();
             }
+
+            if (!swReg) return showAlert("Fehler", "Es konnte kein Service Worker registriert werden.");
 
             setPushStatus('Wird angefragt...');
             try {
@@ -888,9 +892,7 @@
                 if (changed) {
                     await docRef.update({ history: updatedHistory });
                 }
-            } catch (e) {
-                console.error("Fehler beim Bestätigen:", e);
-            }
+            } catch (e) {}
           };
 
           const resetExpenseForm = (overrides = {}) => {
@@ -1103,7 +1105,6 @@
           }
 
           if (!currentFamily || !currentUser) {
-            // Nur das Login-Menü ist pechschwarz (bg-black)
             return (
               <div className="flex flex-col w-full h-full absolute inset-0 overflow-y-auto bg-[#000000] text-white z-40 items-center justify-center p-6 font-sans">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
@@ -1417,14 +1418,6 @@
                             
                             const renderRecipientStatus = (name) => {
                               const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
-                              const isAck = !!ackEntry;
-                              
-                              let ackText = '';
-                              if (isAck && ackEntry.includes(':')) {
-                                  ackText = ackEntry.split(':')[1];
-                                  if (ackText === 'Bestätigt') ackText = ''; 
-                              }
-
                               return (
                                 <span key={name} className={`font-semibold ${getStatusColor(ackEntry)}`}>
                                   {name}{targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
@@ -1575,28 +1568,8 @@
                   </main>
               </div>
 
-              {/* --- TABBAR IST ABSOLUT GANZ UNTEN FIXIERT --- */}
-              <div 
-                className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-2 pb-safe-menu transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              >
-                <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
-                  <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeTab === 'home' ? 0 : activeTab === 'history' ? 100 : activeTab === 'expenses' ? 200 : 300}%)` }}>
-                    <div className="w-12 md:w-14 h-full bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full"></div>
-                  </div>
-                  <button onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab('home'); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
-                    <Icon name="Bell" size={activeTab === 'home' ? 24 : 22} strokeWidth={activeTab === 'home' ? 2.5 : 2} className={`transition-colors duration-300 ${activeTab === 'home' ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
-                  </button>
-                  <button onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab('history'); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
-                    <Icon name="Clock" size={activeTab === 'history' ? 24 : 22} strokeWidth={activeTab === 'history' ? 2.5 : 2} className={`transition-colors duration-300 ${activeTab === 'history' ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
-                  </button>
-                  <button onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab('expenses'); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
-                    <Icon name="Euro" size={activeTab === 'expenses' ? 24 : 22} strokeWidth={activeTab === 'expenses' ? 2.5 : 2} className={`transition-colors duration-300 ${activeTab === 'expenses' ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
-                  </button>
-                  <button onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab('settings'); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
-                    <Icon name="Settings" size={activeTab === 'settings' ? 24 : 22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} className={`transition-colors duration-300 ${activeTab === 'settings' ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
-                  </button>
-                </div>
-              </div>
+              {/* HIER WICHTIG: Die Tabbar positioniert sich ABSOLUT an der root Ebene, was den Home-Balken ignoriert und sie tief nach unten drückt */}
+              <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
         }
@@ -1604,16 +1577,11 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    const saved1 = localStorage.getItem('familyConnectAppConfig');
-                    const saved2 = localStorage.getItem('firebaseConfig');
-                    const saved = saved1 || saved2;
-                    if (saved) return JSON.parse(saved);
-                    
-                    if (typeof __firebase_config !== 'undefined') {
-                        return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
-                    }
+                    // BEHÄLT DEN LOGIN ABSOLUT SICHER! 
+                    if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
+                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                    return saved ? JSON.parse(saved) : null;
                 } catch (e) { return null; }
-                return null;
             });
             const [status, setStatus] = useState("booting"); 
             const [errorMsg, setErrorMsg] = useState("");
@@ -1627,8 +1595,6 @@
                 setStatus("booting");
                 try {
                     const finalConfig = config.firebaseConfig ? config.firebaseConfig : config;
-                    if (!finalConfig.apiKey) throw new Error("Fehlende API-Key Daten in der Config.");
-                    
                     if (!firebase.apps.length) app = firebase.initializeApp(finalConfig);
                     else app = firebase.app();
                     
