@@ -70,7 +70,7 @@
         
         .scrollable-area::-webkit-scrollbar { display: none; }
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
         .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
         
         input[type="file"] { display: none; }
@@ -189,6 +189,7 @@
             });
         };
 
+        // --- CUSTOM MODAL ---
         function Modal({ data, onClose }) {
             if (!data) return null;
             
@@ -241,6 +242,7 @@
             );
         }
 
+        // Live Tracking Overlay
         function TrackingOverlay({ event, currentFamily, currentUser, safeMembers, onClose, onResend }) {
             if (!event) return null;
             const [cooldown, setCooldown] = useState(60);
@@ -322,7 +324,7 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
+                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
                         onConfigLoaded(parsed);
                     } catch (err) { setError("Fehler: " + err.message); }
                 };
@@ -349,6 +351,7 @@
             );
         }
 
+        // HIER: TabBar exakt am perfekten iOS-Abstand (bottom-4) fixiert
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -360,8 +363,7 @@
 
           return (
             <div 
-              className={`fixed bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 20px) + 16px)' }}
+              className={`fixed bottom-4 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -415,7 +417,6 @@
           const [isSending, setIsSending] = useState(false);
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
-          // --- SICHERHEITS-NETZE ---
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
@@ -482,7 +483,7 @@
             return () => unsubscribe();
           }, []);
 
-          // DB Listener: Schmeißt dich niemals von alleine raus!
+          // DB Listener
           useEffect(() => {
             if (!firebaseUser || !localFamilyId || !localUserName) {
                 if (firebaseUser && !isAdminMode) setAppLoaded(true);
@@ -555,7 +556,7 @@
               }
           }, [currentFamily, currentUser]);
 
-          // --- FIX: Service Worker Message Handler & Foreground Push Listener ---
+          // Service Worker Message Handler für Tab-Wechsel beim Push-Klick
           useEffect(() => {
               const handleSWMessage = (event) => {
                   if (event.data && event.data.type === 'TAB_CHANGE') {
@@ -739,24 +740,28 @@
             }
             
             let storedConfig = {};
+            let firebaseConfigObj = {};
             try { 
-                const rawConfig = localStorage.getItem('firebaseConfig');
+                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
                 if (rawConfig) {
                     const parsed = JSON.parse(rawConfig);
                     storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
+                    firebaseConfigObj = parsed.firebaseConfig || parsed;
                 }
             } catch(e) {}
             
             const vapidKey = storedConfig.vapidKey || currentFamily?.vapidKey;
             
             if (!vapidKey || !vapidKey.trim()) {
-                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte lade die config.json noch einmal hoch.");
+                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte stelle sicher, dass das Feld 'vapidKey' in deiner hochgeladenen config.json steht.");
             }
             
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
-                    swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                    // Robuste SW Registrierung inkl. Parameter für Mac PWA
+                    const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
+                    swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
                     console.error("SW Registration Error:", e);
                     return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
@@ -834,7 +839,6 @@
             setTimeout(() => setIsSending(false), 800);
           };
 
-          // Echtzeit-Bestätigung mit Fresh Fetch
           const handleAcknowledge = async (historyItemId, responseType = 'Bestätigt') => {
             if(navigator.vibrate) navigator.vibrate([20, 30]);
             const responseString = `${currentUser.name}:${responseType}`;
@@ -867,7 +871,6 @@
             }
           };
 
-          // --- Expense Handlers ---
           const resetExpenseForm = (overrides = {}) => {
               setExpenseForm({
                   amount: '',
@@ -999,7 +1002,6 @@
           };
 
           // --- RENDER LOGIK ---
-          
           if (!appLoaded) {
               return (
                   <div className="fixed inset-0 bg-[var(--app-bg)] flex flex-col items-center justify-center z-50">
@@ -1557,6 +1559,7 @@
                   </main>
               </div>
 
+              {/* Feste Tab-Bar unten am Rand */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
@@ -1565,9 +1568,9 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    // BEHÄLT DEN LOGIN ABSOLUT SICHER! 
+                    // BEHÄLT DEN LOGIN SICHER!
                     if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
-                    const saved = localStorage.getItem('firebaseConfig');
+                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
                     return saved ? JSON.parse(saved) : null;
                 } catch (e) { return null; }
             });
@@ -1608,7 +1611,7 @@
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
-                        <button onClick={() => { localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
+                        <button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
                             Neue Config laden
                         </button>
                     </div>
