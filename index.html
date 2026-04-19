@@ -11,6 +11,7 @@
     
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
+    <!-- Hochstabile CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -31,47 +32,33 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* Ultimativer iOS Safari Fix für Tastatur und Höhe */
-        html, body { 
-            position: fixed;
-            inset: 0;
-            width: 100%; 
-            height: 100%; 
-            background-color: #F2F2F7;
-            overflow: hidden; 
-            overscroll-behavior: none;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+        /* Ultimatives Native-App Layout: Verhindert iOS Safari Bugs */
+        html, body, #root { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             margin: 0; 
             padding: 0;
+            overflow: hidden; 
+            overscroll-behavior: none;
+            background-color: #F2F2F7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
         }
         
         #root { 
-            width: 100%; 
-            /* Fallback für ältere Browser */
-            height: 100dvh;
-            /* Der Lebensretter-Trick: JS injiziert die exakte Pixelhöhe des sichtbaren Fensters */
-            height: var(--app-height, 100dvh);
             display: flex;
             flex-direction: column;
-            position: absolute;
-            top: 0;
-            left: 0;
         }
-
-        /* Der scrollbare innere Container: Sichert butterweiches Wischen! */
-        .scrollable-area {
-            flex: 1 1 auto;
-            min-height: 0; /* Zwingt Flexbox, den Inhalt scrollen zu lassen */
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
-        }
-        .scrollable-area::-webkit-scrollbar { display: none; }
         
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
         .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
+        
+        /* Die Scrollbar für den Hauptbereich verstecken */
+        ::-webkit-scrollbar { display: none; }
         
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
@@ -88,6 +75,16 @@
 
     <script type="text/babel">
         // --- 1. GLOBALE FEHLERBEHANDLUNG & CONSOLE CLEANUP ---
+        
+        // Fängt den nervigen Firebase AppCheck ReCAPTCHA Error aus der Konsole ab
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+            const msg = String(args[0]);
+            if (msg.includes('appCheck/recaptcha-error')) return;
+            if (args[0] && args[0].message && String(args[0].message).includes('appCheck/recaptcha-error')) return;
+            originalConsoleError.apply(console, args);
+        };
+
         const setFallbackMessage = (message) => {
             const fallback = document.getElementById('fallback');
             if (!fallback) return;
@@ -102,8 +99,9 @@
 
         window.addEventListener('unhandledrejection', (event) => {
             const reason = String(event.reason);
+            // Ignoriert harmlose Safari-ServiceWorker Warnungen restlos
             if (reason.includes("URL protocol") || reason.includes("appCheck/recaptcha-error")) {
-                event.preventDefault(); 
+                event.preventDefault();
                 return;
             }
             console.error('Unhandled rejection:', event.reason);
@@ -113,6 +111,7 @@
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
+        // VOM NUTZER BEREITGESTELLTER CAPTCHA KEY
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
         const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
         
@@ -141,12 +140,13 @@
             return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE');
         };
 
+        // Farblogik für die Kacheln im Verlauf
         const getStatusColor = (ackString) => {
-            if (!ackString) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60'; // Ausstehend
-            if (ackString.includes('Komme sofort')) return 'text-[#34C759]'; // Grün
-            if (ackString.includes('In 5 Minuten')) return 'text-[#FF9500]'; // Orange
-            if (ackString.includes('Fangt schon mal an')) return 'text-[#FF3B30]'; // Rot
-            return 'text-[#34C759]'; // Fallback
+            if (!ackString) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60'; 
+            if (ackString.includes('Komme sofort')) return 'text-[#34C759]'; 
+            if (ackString.includes('In 5 Minuten')) return 'text-[#FF9500]'; 
+            if (ackString.includes('Fangt schon mal an')) return 'text-[#FF3B30]'; 
+            return 'text-[#34C759]'; 
         };
 
         // --- 4. ICONS ---
@@ -174,8 +174,7 @@
           Plus: '<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
           X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
-          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-          FileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>'
+          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
         };
 
         const Icon = ({ name, size = 24, strokeWidth = 2, className = "", onClick }) => {
@@ -260,7 +259,7 @@
 
             return (
                 <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-md animate-fade-in md:items-center">
-                    <div className="bg-[#F2F2F7] dark:bg-black w-full md:max-w-md md:rounded-[24px] rounded-t-[24px] p-6 pb-safe shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto scroll-smooth">
+                    <div className="bg-[#F2F2F7] dark:bg-black w-full md:max-w-md md:rounded-[24px] rounded-t-[24px] p-6 pb-safe shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto scroll-smooth" style={{WebkitOverflowScrolling: 'touch'}}>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-[22px] font-bold tracking-tight text-black dark:text-white">Ruf Status</h2>
                             <button onClick={onClose} className="w-8 h-8 bg-gray-200/60 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300 active:opacity-70"><Icon name="X" size={18}/></button>
@@ -359,7 +358,7 @@
 
           return (
             <div 
-              className={`fixed bottom-4 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
+              className={`absolute bottom-6 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -441,17 +440,8 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Der magische Keyboard-Fix mit dynamischer Höhe
+          // Keyboard-Fix für iOS Safari
           useEffect(() => {
-            const setAppHeight = () => {
-                if (window.visualViewport) {
-                    document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
-                } else {
-                    document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
-                }
-                window.scrollTo(0, 0); 
-            };
-
             const handleFocusIn = (e) => { 
                 const tag = e.target.tagName;
                 const type = e.target.type;
@@ -461,36 +451,16 @@
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
+                // Schiebt das Fenster in Millisekunden sanft nach unten
                 setTimeout(() => {
-                    setAppHeight();
-                    window.scrollTo(0, 0);
-                    document.body.scrollTop = 0;
+                    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
                 }, 50);
-                setTimeout(() => {
-                    setAppHeight();
-                    window.scrollTo(0, 0);
-                }, 300);
             };
             
-            setAppHeight();
-            
-            window.addEventListener('resize', setAppHeight);
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', setAppHeight);
-                window.visualViewport.addEventListener('scroll', () => {
-                    if (window.visualViewport.offsetTop > 0) window.scrollTo(0, 0);
-                });
-            }
-
             window.addEventListener('focusin', handleFocusIn); 
             window.addEventListener('focusout', handleFocusOut);
             
             return () => { 
-                window.removeEventListener('resize', setAppHeight);
-                if (window.visualViewport) {
-                    window.visualViewport.removeEventListener('resize', setAppHeight);
-                    window.visualViewport.removeEventListener('scroll', setAppHeight);
-                }
                 window.removeEventListener('focusin', handleFocusIn); 
                 window.removeEventListener('focusout', handleFocusOut); 
             };
@@ -735,7 +705,11 @@
 
           const requestPushPermission = async () => {
             if (!window.isSecureContext) return showAlert("Fehler", "Push funktioniert nur über HTTPS.");
-            if (!('Notification' in window) || !('serviceWorker' in navigator)) return showAlert("Push-Fehler", "Push wird in diesem Modus nicht unterstützt. Bitte als Web-App auf dem Home-Bildschirm speichern.");
+            
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                return showAlert("Push-Fehler", "Push wird in diesem Modus nicht unterstützt. Bitte als Web-App auf dem Home-Bildschirm speichern.");
+            }
+
             if (!firebase?.messaging) return showAlert("Fehler", "Firebase Messaging ist nicht verfügbar.");
 
             try {
@@ -747,7 +721,6 @@
                 try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
             }
             
-            // VAPID Key Tiefenscan mit Parameter für den Mac ServiceWorker
             let storedConfig = {};
             let firebaseConfigObj = {};
             try { 
@@ -768,7 +741,6 @@
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
-                    // Dynamischer Start für Mac Safari (übergibt Firebase Credentials an den Worker)
                     const swUrl = `./firebase-messaging-sw.js?apiKey=${firebaseConfigObj.apiKey || ''}&projectId=${firebaseConfigObj.projectId || ''}&senderId=${firebaseConfigObj.messagingSenderId || ''}&appId=${firebaseConfigObj.appId || ''}`;
                     swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
@@ -914,6 +886,7 @@
               setExpenseModal({ mode: 'edit', expense });
           };
 
+          // FIXED LOGIK: Nur die auswählbaren Personen verändern, aber splitCount STARR lassen!
           const toggleSplitTarget = (name) => {
               setExpenseForm(prev => {
                   const exists = prev.splitTargets.includes(name);
@@ -946,7 +919,7 @@
                   const splitCount = parseInt(expenseForm.splitCount, 10);
                   
                   if (isNaN(splitCount) || splitCount < 1) {
-                      return showAlert("Fehler", "Die Anzahl der Personen muss mindestens 1 sein.");
+                      return showAlert("Fehler", "Bitte gib an, durch wie viele Personen der Betrag geteilt wird.");
                   }
                   if (expenseForm.splitTargets.length === 0) {
                       return showAlert("Fehler", "Bitte wähle mindestens eine Person aus.");
@@ -1155,8 +1128,9 @@
                   />
               )}
 
-              {/* Flex Container für die iOS PWA. Hier ist das Wackeln verboten! */}
+              {/* Flex Container für die iOS PWA. Absolut starr verankert! */}
               <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative min-h-0 sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
+                  
                   <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full">
                     <div className="text-center w-full min-w-0">
                       <h1 className="text-[34px] font-bold text-black dark:text-white tracking-tight leading-tight truncate mt-6">
@@ -1173,7 +1147,7 @@
                     )}
                   </header>
 
-                  {/* Dieser <main> Bereich scrollt! Alles andere bleibt fest. */}
+                  {/* Dieser <main> Bereich scrollt! Header und TabBar bleiben statisch. */}
                   <main className="scrollable-area px-4 pt-6 pb-36 w-full relative">
                     
                     {/* --- HOME TAB --- */}
