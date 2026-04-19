@@ -11,7 +11,6 @@
     
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
-    <!-- Stabile CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -32,7 +31,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* Ultimatives Native-App Layout: Starr auf dem Bildschirm verankert */
+        /* Ultimatives Native-App Layout: Die App ist starr, nur der innere Container scrollt! */
         html, body { 
             position: fixed;
             inset: 0;
@@ -57,7 +56,7 @@
         /* Dieser Bereich erzwingt butterweiches iOS Scrolling */
         .scrollable-area {
             flex: 1 1 auto;
-            height: 0; /* Zwingend für iOS Flexbox-Scrolling! */
+            height: 0; 
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
@@ -137,7 +136,7 @@
             return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE');
         };
 
-        // --- 4. ICONS ---
+        // --- 4. ICONS (inkl. neuem Euro Icon) ---
         const ICONS = {
           Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
           BellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
@@ -159,6 +158,7 @@
           Key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
           Trash2: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
           Banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+          Euro: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
           Plus: '<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
           X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
@@ -174,8 +174,37 @@
             });
         };
 
+        // --- CUSTOM MODAL ---
         function Modal({ data, onClose }) {
             if (!data) return null;
+            
+            if (data.type === 'custom_ack') {
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity">
+                        <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-white/50 dark:border-[#38383A]/50">
+                            <div className="text-center mb-6">
+                                <h3 className="font-semibold text-[19px] mb-2 text-black dark:text-white leading-snug">{data.title}</h3>
+                                <p className="text-[#3C3C4399] dark:text-[#EBEBF5]/60 text-[15px] leading-relaxed whitespace-pre-wrap">{data.message}</p>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <button onClick={() => data.onRespond('Komme sofort')} className="w-full py-3.5 rounded-[14px] bg-[#34C759] text-white font-semibold text-[17px] active:opacity-70 transition-opacity flex items-center justify-center gap-2">
+                                    <Icon name="Check" size={20} strokeWidth={2.5}/> Komme sofort
+                                </button>
+                                <button onClick={() => data.onRespond('In 5 Minuten')} className="w-full py-3.5 rounded-[14px] bg-[#FF9500] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
+                                    In 5 Minuten
+                                </button>
+                                <button onClick={() => data.onRespond('Fangt schon mal an')} className="w-full py-3.5 rounded-[14px] bg-[#007AFF] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
+                                    Fangt schon mal an
+                                </button>
+                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[14px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#FF3B30] font-semibold text-[17px] active:opacity-70 transition-opacity mt-2">
+                                    Später
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
             return (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity">
                     <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[14px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-white/50 dark:border-[#38383A]/50">
@@ -224,7 +253,15 @@
                         
                         <div className="space-y-3">
                             {(event.targets || []).map(targetName => {
-                                const hasAck = (event.acknowledgedBy || []).includes(targetName);
+                                const ackEntry = (event.acknowledgedBy || []).find(ack => ack === targetName || ack.startsWith(targetName + ':'));
+                                const hasAck = !!ackEntry;
+                                
+                                let ackText = 'Hat bestätigt!';
+                                if (hasAck && ackEntry.includes(':')) {
+                                    ackText = ackEntry.split(':')[1];
+                                    if (ackText === 'Bestätigt') ackText = 'Hat bestätigt!';
+                                }
+
                                 const targetMember = safeMembers.find(m => m.name === targetName);
                                 const isDND = targetMember?.dndUntil && new Date(targetMember.dndUntil) > new Date();
 
@@ -234,7 +271,7 @@
                                             {hasAck ? <Icon name="CheckCircle2" className="text-[#34C759]" /> : isDND ? <Icon name="BellOff" className="text-[#FF9500]" /> : <div className="w-6 h-6 rounded-full border-2 border-gray-200 dark:border-gray-600 animate-pulse" />}
                                             <div>
                                                 <p className="font-semibold text-[17px] text-black dark:text-white">{targetName}</p>
-                                                <p className="text-[13px] font-normal text-[#3C3C4399] dark:text-[#EBEBF5]/60">{hasAck ? 'Hat bestätigt!' : isDND ? 'Bitte nicht stören aktiv' : 'Wartet auf Antwort...'}</p>
+                                                <p className="text-[13px] font-normal text-[#3C3C4399] dark:text-[#EBEBF5]/60">{hasAck ? ackText : isDND ? 'Bitte nicht stören aktiv' : 'Wartet auf Antwort...'}</p>
                                             </div>
                                         </div>
                                         {!hasAck && !isDND && (
@@ -298,7 +335,7 @@
           const tabs = [
             { id: 'home', icon: 'Bell' },
             { id: 'history', icon: 'Clock' },
-            { id: 'expenses', icon: 'Banknote' },
+            { id: 'expenses', icon: 'Euro' }, /* Euro Icon hinzugefügt */
             { id: 'settings', icon: 'Settings' }
           ];
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
@@ -379,7 +416,7 @@
             { id: 'coffee', label: 'Kaffee', sentence: 'Es gibt Kaffee und Kuchen!', icon: 'UtensilsCrossed', category: 'meal' },
             { id: 'dinner', label: 'Abendessen', sentence: 'Das Abendessen ist fertig!', icon: 'Moon', category: 'meal' },
             { id: 'table', label: 'Tischdecken', sentence: 'Hilfe beim Tischdecken wird benötigt!', icon: 'Utensils', category: 'push_only' },
-            { id: 'message', label: 'Kommen', sentence: 'Bitte komm kurz zu mir!', icon: 'MessageCircle', category: 'other' },
+            { id: 'message', label: 'Wohnzimmer', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
             { id: 'movie', label: 'Film', sentence: 'Der Film fängt gleich an!', icon: 'Film', category: 'other' },
             { id: 'game', label: 'Spielen', sentence: 'Wir wollen spielen, komm dazu!', icon: 'Gamepad2', category: 'other' },
           ];
@@ -387,7 +424,7 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard-Fix für iOS
+          // Keyboard-Fix für iOS: Strengere Erkennung und sanfterer Reset
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 const tag = e.target.tagName;
@@ -472,24 +509,39 @@
               }
           }, [isAdminMode]);
 
-          // Auto-Popup Listener
+          // Auto-Popup Listener (GLOBAL)
           useEffect(() => {
-              if (currentFamily && currentUser && activeTab === 'history') {
+              if (currentFamily && currentUser) {
                   const latestEvent = safeHistory.find(h => !h.isExpense && !h.isResend);
-                  if (latestEvent && (latestEvent.targets || []).includes(currentUser.name) && !(latestEvent.acknowledgedBy || []).includes(currentUser.name) && latestEvent.sender !== currentUser.name) {
-                      if (latestEvent.timestamp) {
-                          const d = new Date(latestEvent.timestamp);
-                          if (!isNaN(d.getTime())) {
-                              const eventAge = Date.now() - d.getTime();
-                              if (eventAge < 3 * 60 * 1000 && !sessionStorage.getItem(`prompted_${latestEvent.id}`)) {
+                  if (latestEvent && (latestEvent.targets || []).includes(currentUser.name)) {
+                      
+                      // Check, ob dieser Ruf schon bestätigt wurde (als String oder mit Typ)
+                      const alreadyAcked = (latestEvent.acknowledgedBy || []).some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
+                      
+                      if (!alreadyAcked && latestEvent.sender !== currentUser.name) {
+                          if (latestEvent.timestamp) {
+                              const eventAge = Date.now() - new Date(latestEvent.timestamp).getTime();
+                              // Zeitfenster auf 5 Minuten erhöht
+                              if (eventAge < 5 * 60 * 1000 && !sessionStorage.getItem(`prompted_${latestEvent.id}`)) {
                                   sessionStorage.setItem(`prompted_${latestEvent.id}`, 'true');
-                                  showConfirm(`Ruf von ${latestEvent.sender}`, `${latestEvent.reason}\n\nMöchtest du direkt bestätigen, dass du kommst?`, () => handleAcknowledge(latestEvent.id));
+                                  
+                                  // Öffne Custom Modal
+                                  setModal({ 
+                                      type: 'custom_ack', 
+                                      title: `Ruf von ${latestEvent.sender}`, 
+                                      message: `${latestEvent.reason}\n\nWie möchtest du antworten?`, 
+                                      onRespond: (responseType) => {
+                                          handleAcknowledge(latestEvent.id, responseType);
+                                          setModal(null);
+                                      },
+                                      onCancel: () => setModal(null) 
+                                  });
                               }
                           }
                       }
                   }
               }
-          }, [currentFamily, currentUser, activeTab]);
+          }, [currentFamily, currentUser]);
 
           // Foreground Push Listener
           useEffect(() => {
@@ -544,7 +596,7 @@
               
               await getFamilyDocRef(cleanId).update({ members: updatedMembers });
               
-              // Sofortiger Login-Effekt
+              // Sofortiger Login!
               setCurrentFamily(data);
               setCurrentUser(updatedMembers[memberIndex]);
               localStorage.setItem('familyId', cleanId); 
@@ -571,7 +623,7 @@
               
               if (!member || member.status === 'pending') return setAuthError('Falsches Passwort oder noch nicht beigetreten.');
               
-              // Sofortiger Login-Effekt ohne Neuladen
+              // Sofortiger Login!
               setCurrentFamily(data);
               setCurrentUser(member);
               localStorage.setItem('familyId', data.id); 
@@ -641,7 +693,12 @@
 
           const requestPushPermission = async () => {
             if (!window.isSecureContext) return alert("Push funktioniert nur über HTTPS.");
-            if (!('Notification' in window) || !('serviceWorker' in navigator)) return alert("Push wird in diesem Modus nicht unterstützt (Bitte als Web-App auf dem Home-Bildschirm speichern).");
+            
+            // Anpassung der Fehlermeldung für Mac & iOS
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                return alert("Push-Aktivierung fehlgeschlagen. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen. Auf dem Mac: Eventuell blockiert eine Safari-Einstellung den Hintergrunddienst.");
+            }
+
             if (!firebase?.messaging) return alert("Firebase Messaging ist nicht verfügbar.");
 
             try {
@@ -653,12 +710,13 @@
                 try { messaging = firebase.messaging(); } catch (e) { return alert("Fehler: Push-Dienst konnte nicht gestartet werden."); }
             }
             
-            // VAPID Key Tiefenscan
+            // VAPID Key Tiefenscan (Holt den Key verlässlich aus der hochgeladenen config.json)
             let storedConfig = {};
             try { 
                 const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY);
                 if (rawConfig) {
                     const parsed = JSON.parse(rawConfig);
+                    // Sucht nach vapidKey auf allen Ebenen des JSON Objekts
                     storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
                 }
             } catch(e) {}
@@ -675,7 +733,8 @@
                     // Not-Registrierung, falls Safari den Worker vergessen hat
                     swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
                 } catch(e) {
-                    return alert("Fehler: Auf dem iPhone muss die App zuerst über das Teilen-Menü 'Zum Home-Bildschirm' hinzugefügt werden, um Push zu aktivieren! Bitte öffne die App von dort neu.");
+                    console.error("SW Registration Error:", e);
+                    return alert("Fehler bei der Registrierung des Push-Dienstes. Auf dem iPhone: Bitte über das Teilen-Menü 'Zum Home-Bildschirm' hinzufügen. Auf dem Mac: Stelle sicher, dass du Safari nutzt und nicht im Inkognito-Modus bist.");
                 }
             }
 
@@ -750,9 +809,22 @@
             setTimeout(() => setIsSending(false), 800);
           };
 
-          const handleAcknowledge = async (historyItemId) => {
+          // Detailierte Bestätigungs-Logik
+          const handleAcknowledge = async (historyItemId, responseType = 'Bestätigt') => {
             if(navigator.vibrate) navigator.vibrate([20, 30]);
-            await getFamilyDocRef(currentFamily.id).update({ history: safeHistory.map(item => item?.id === historyItemId && !(item.acknowledgedBy || []).includes(currentUser.name) ? { ...item, acknowledgedBy: [...(item.acknowledgedBy || []), currentUser.name] } : item) });
+            
+            const responseString = `${currentUser.name}:${responseType}`;
+
+            const updatedHistory = safeHistory.map(item => {
+                if (item.id === historyItemId) {
+                    const alreadyAcked = (item.acknowledgedBy || []).some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
+                    if (!alreadyAcked) {
+                        return { ...item, acknowledgedBy: [...(item.acknowledgedBy || []), responseString] };
+                    }
+                }
+                return item;
+            });
+            await getFamilyDocRef(currentFamily.id).update({ history: updatedHistory });
           };
 
           // --- Expense Handlers ---
@@ -1262,16 +1334,27 @@
                           safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
                             const isRecipient = targetList.includes(currentUser?.name);
-                            const hasAcknowledged = (item.acknowledgedBy || []).includes(currentUser?.name);
+                            
+                            const myAckEntry = (item.acknowledgedBy || []).find(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
+                            const hasAcknowledged = !!myAckEntry;
                             
                             const isRecentSender = item.timestamp && (item.sender === currentUser?.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
                             
                             const renderRecipientStatus = (name) => {
-                              const ack = (item.acknowledgedBy || []).includes(name);
+                              const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
+                              const isAck = !!ackEntry;
+                              
+                              let ackText = '';
+                              if (isAck && ackEntry.includes(':')) {
+                                  ackText = ackEntry.split(':')[1];
+                                  if (ackText === 'Bestätigt') ackText = ''; // Ausblenden, wenn Standard
+                              }
+
                               return (
-                                <span key={name} className={`inline-flex items-center space-x-1 ${ack ? 'text-[#34C759] font-semibold' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>
+                                <span key={name} className={`inline-flex items-center space-x-1 ${isAck ? 'text-[#34C759] font-semibold' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>
                                   <span>{name}</span>
-                                  {ack && <Icon name="CheckCircle2" size={12} className="text-[#34C759] inline" />}
+                                  {isAck && ackText && <span className="text-xs">({ackText})</span>}
+                                  {isAck && <Icon name="CheckCircle2" size={12} className="text-[#34C759] inline" />}
                                   {targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
                                 </span>
                               );
@@ -1300,9 +1383,19 @@
                                 </div>
 
                                 {isRecipient && !hasAcknowledged && item.sender !== currentUser?.name && (
-                                  <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id); }} className="w-full mt-4 bg-[#007AFF]/10 text-[#007AFF] font-semibold text-[16px] py-3.5 rounded-[14px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
-                                    <Icon name="Check" size={20} strokeWidth={2.5} /><span>Bestätigen</span>
-                                  </button>
+                                  <div className="mt-4 flex flex-col gap-2">
+                                    <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Komme sofort'); }} className="w-full bg-[#34C759]/10 text-[#34C759] font-semibold text-[15px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
+                                      <Icon name="Check" size={18} strokeWidth={2.5} /><span>Komme sofort</span>
+                                    </button>
+                                    <div className="flex gap-2">
+                                      <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'In 5 Minuten'); }} className="flex-1 bg-[#FF9500]/10 text-[#FF9500] font-semibold text-[14px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity">
+                                        In 5 Min
+                                      </button>
+                                      <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Fangt schon mal an'); }} className="flex-1 bg-[#007AFF]/10 text-[#007AFF] font-semibold text-[14px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity">
+                                        Fangt an
+                                      </button>
+                                    </div>
+                                  </div>
                                 )}
                               </div>
                             );
@@ -1322,7 +1415,7 @@
                                   <div className="flex flex-col justify-center h-full gap-4 bg-[#FF9500]/10 p-5 rounded-[16px] border border-[#FF9500]/20 text-center">
                                       <div>
                                           <p className="font-semibold text-[#FF9500] text-[17px]">Aktiviert bis</p>
-                                          <p className="text-[15px] text-[#FF9500]/80 font-medium">{formatTime(currentUser?.dndUntil)} Uhr</p>
+                                          <p className="text-[15px] text-[#FF9500]/80 font-medium">{currentUser?.dndUntil ? new Date(currentUser.dndUntil).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''} Uhr</p>
                                       </div>
                                       <button onClick={() => setDND(0)} className="bg-[#FF9500] text-white font-semibold px-4 py-3 rounded-[12px] active:opacity-80 w-full">Beenden</button>
                                   </div>
