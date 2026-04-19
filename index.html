@@ -31,11 +31,11 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* Stabiles Vollbild-Layout: Keine Streifen, kein Bouncen der gesamten Page */
+        /* Natives iOS Vollbild-Layout */
         html, body { 
             width: 100%; 
-            height: 100%; 
-            overflow: hidden; 
+            height: 100dvh; /* Die magische Regel für iOS Safari (ohne Navigation Bar Ränder) */
+            overflow: hidden; /* Sperrt das iOS "Bouncen" für den Hintergrund */
             background-color: #F2F2F7;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             margin: 0; 
@@ -51,7 +51,16 @@
             position: relative;
         }
 
+        /* Der scrollbare innere Container */
+        .scrollable-area {
+            flex: 1 1 auto;
+            min-height: 0; /* Zwingt Flexbox, den Inhalt scrollen zu lassen */
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
         .scrollable-area::-webkit-scrollbar { display: none; }
+        
         .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
         .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
@@ -62,7 +71,6 @@
 </head>
 <body class="bg-[#F2F2F7] dark:bg-black text-black dark:text-white antialiased">
     
-    <!-- Ladebildschirm Fallback -->
     <div id="fallback" class="bg-[#F2F2F7] dark:bg-black" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
         FamilyConnect startet...
     </div>
@@ -71,16 +79,6 @@
 
     <script type="text/babel">
         // --- 1. GLOBALE FEHLERBEHANDLUNG & CONSOLE CLEANUP ---
-        
-        // Fängt den nervigen Firebase AppCheck ReCAPTCHA Error aus der Konsole ab
-        const originalConsoleError = console.error;
-        console.error = function(...args) {
-            const msg = String(args[0]);
-            if (msg.includes('appCheck/recaptcha-error')) return;
-            if (args[0] && args[0].message && String(args[0].message).includes('appCheck/recaptcha-error')) return;
-            originalConsoleError.apply(console, args);
-        };
-
         const setFallbackMessage = (message) => {
             const fallback = document.getElementById('fallback');
             if (!fallback) return;
@@ -93,11 +91,11 @@
             setFallbackMessage('App konnte nicht gestartet werden. Bitte lade die Seite neu.');
         });
 
+        // Fängt die Firebase ReCAPTCHA und ServiceWorker Fehler ab und blockiert sie in der Konsole
         window.addEventListener('unhandledrejection', (event) => {
             const reason = String(event.reason);
-            // Ignoriert harmlose Safari-ServiceWorker & AppCheck Warnungen
-            if (reason.includes("URL protocol") || reason.includes("appCheck/recaptcha-error")) {
-                event.preventDefault();
+            if (reason.includes("URL protocol") || reason.includes("appCheck/recaptcha-error") || reason.includes("ReCAPTCHA error")) {
+                event.preventDefault(); 
                 return;
             }
             console.error('Unhandled rejection:', event.reason);
@@ -107,7 +105,6 @@
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
-        // Dein korrekter Captcha Key
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
         const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
         
@@ -134,6 +131,15 @@
             if (!ts) return '';
             const d = new Date(ts);
             return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE');
+        };
+
+        // Farblogik für die Kacheln im Verlauf
+        const getStatusColor = (ackString) => {
+            if (!ackString) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60'; // Ausstehend
+            if (ackString.includes('Komme sofort')) return 'text-[#34C759]'; // Grün
+            if (ackString.includes('In 5 Minuten')) return 'text-[#FF9500]'; // Orange
+            if (ackString.includes('Fangt schon mal an')) return 'text-[#FF3B30]'; // Rot
+            return 'text-[#34C759]'; // Fallback
         };
 
         // --- 4. ICONS ---
@@ -192,11 +198,11 @@
                                 <button onClick={() => data.onRespond('In 5 Minuten')} className="w-full py-3.5 rounded-[14px] bg-[#FF9500] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
                                     In 5 Minuten
                                 </button>
-                                <button onClick={() => data.onRespond('Fangt schon mal an')} className="w-full py-3.5 rounded-[14px] bg-[#007AFF] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
+                                <button onClick={() => data.onRespond('Fangt schon mal an')} className="w-full py-3.5 rounded-[14px] bg-[#FF3B30] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
                                     Fangt schon mal an
                                 </button>
-                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[14px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#FF3B30] font-semibold text-[17px] active:opacity-70 transition-opacity mt-2">
-                                    Später
+                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[14px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-semibold text-[17px] active:opacity-70 transition-opacity mt-2">
+                                    Später antworten
                                 </button>
                             </div>
                         </div>
@@ -231,6 +237,10 @@
             if (!event) return null;
             const [cooldown, setCooldown] = useState(60);
 
+            const isSender = event.sender === currentUser?.name;
+            const isRecent = event.timestamp && (Date.now() - new Date(event.timestamp).getTime() < 5 * 60 * 1000);
+            const canResend = isSender && isRecent;
+
             useEffect(() => {
                 const start = Date.now();
                 const timer = setInterval(() => {
@@ -258,7 +268,6 @@
                                 let ackText = 'Hat bestätigt!';
                                 if (hasAck && ackEntry.includes(':')) {
                                     ackText = ackEntry.split(':')[1];
-                                    if (ackText === 'Bestätigt') ackText = 'Hat bestätigt!';
                                 }
 
                                 const targetMember = safeMembers.find(m => m.name === targetName);
@@ -267,13 +276,15 @@
                                 return (
                                     <div key={targetName} className="flex items-center justify-between bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-4 rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
                                         <div className="flex items-center gap-3">
-                                            {hasAck ? <Icon name="CheckCircle2" className="text-[#34C759]" /> : isDND ? <Icon name="BellOff" className="text-[#FF9500]" /> : <div className="w-6 h-6 rounded-full border-2 border-gray-200 dark:border-gray-600 animate-pulse" />}
+                                            {hasAck ? <Icon name="CheckCircle2" className={getStatusColor(ackEntry)} /> : isDND ? <Icon name="BellOff" className="text-[#FF9500]" /> : <div className="w-6 h-6 rounded-full border-2 border-gray-200 dark:border-gray-600 animate-pulse" />}
                                             <div>
                                                 <p className="font-semibold text-[17px] text-black dark:text-white">{targetName}</p>
-                                                <p className="text-[13px] font-normal text-[#3C3C4399] dark:text-[#EBEBF5]/60">{hasAck ? ackText : isDND ? 'Bitte nicht stören aktiv' : 'Wartet auf Antwort...'}</p>
+                                                <p className={`text-[13px] font-normal ${hasAck ? getStatusColor(ackEntry) : 'text-[#3C3C4399] dark:text-[#EBEBF5]/60'}`}>
+                                                    {hasAck ? ackText : isDND ? 'Bitte nicht stören aktiv' : 'Wartet auf Antwort...'}
+                                                </p>
                                             </div>
                                         </div>
-                                        {!hasAck && !isDND && (
+                                        {!hasAck && !isDND && canResend && (
                                             <button 
                                                 disabled={cooldown > 0}
                                                 onClick={() => { setCooldown(60); onResend(targetName, event.reason); }}
@@ -341,7 +352,7 @@
 
           return (
             <div 
-              className={`fixed bottom-4 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
+              className={`fixed bottom-6 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-48 opacity-0' : 'translate-y-0 opacity-100'} pb-safe`}
             >
               <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -682,25 +693,21 @@
                   doc.setFont("helvetica", "bold"); doc.setFontSize(36); doc.setTextColor(0, 122, 255); doc.text(family.id, 105, 215, { align: "center" });
                   doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(142, 142, 147); doc.text("Wichtig: Dein Vorname muss vom Administrator", 105, 260, { align: "center" }); doc.text("freigeschaltet sein, bevor du beitreten kannst.", 105, 266, { align: "center" });
                   doc.save(`FamilyConnect_${family.name}_Setup.pdf`);
-              } catch (err) { alert(err.message || "Fehler beim Generieren der PDF."); }
+              } catch (err) { showAlert("Fehler", err.message || "Fehler beim Generieren der PDF."); }
           };
 
           const requestPushPermission = async () => {
-            if (!window.isSecureContext) return alert("Push funktioniert nur über HTTPS.");
-            
-            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-                return alert("Push-Aktivierung fehlgeschlagen. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen. Auf dem Mac: Eventuell blockiert eine Safari-Einstellung den Hintergrunddienst.");
-            }
-
-            if (!firebase?.messaging) return alert("Firebase Messaging ist nicht verfügbar.");
+            if (!window.isSecureContext) return showAlert("Fehler", "Push funktioniert nur über HTTPS.");
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) return showAlert("Push-Fehler", "Push wird in diesem Modus nicht unterstützt. Bitte als Web-App auf dem Home-Bildschirm speichern.");
+            if (!firebase?.messaging) return showAlert("Fehler", "Firebase Messaging ist nicht verfügbar.");
 
             try {
                 const supported = firebase.messaging.isSupported ? await firebase.messaging.isSupported() : true;
-                if (!supported) return alert("Push ist auf diesem Gerät/Browser nicht verfügbar.");
-            } catch (e) { return alert("Push-Unterstützung konnte nicht geprüft werden."); }
+                if (!supported) return showAlert("Fehler", "Push ist auf diesem Gerät/Browser nicht verfügbar.");
+            } catch (e) { return showAlert("Fehler", "Push-Unterstützung konnte nicht geprüft werden."); }
 
             if (!messaging) {
-                try { messaging = firebase.messaging(); } catch (e) { return alert("Fehler: Push-Dienst konnte nicht gestartet werden."); }
+                try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
             }
             
             let storedConfig = {};
@@ -717,7 +724,7 @@
             const vapidKey = storedConfig.vapidKey || currentFamily?.vapidKey;
             
             if (!vapidKey || !vapidKey.trim()) {
-                return alert("Kein VAPID-Key gefunden! Bitte stelle sicher, dass das Feld 'vapidKey' in deiner hochgeladenen config.json steht.");
+                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte stelle sicher, dass das Feld 'vapidKey' in deiner hochgeladenen config.json steht.");
             }
             
             let swReg = await navigator.serviceWorker.getRegistration();
@@ -727,11 +734,11 @@
                     swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
                     console.error("SW Registration Error:", e);
-                    return alert("Fehler bei der Registrierung des Push-Dienstes. Auf dem iPhone: Bitte über das Teilen-Menü 'Zum Home-Bildschirm' hinzufügen. Auf dem Mac: Stelle sicher, dass du Safari nutzt und Push-Mitteilungen erlaubst.");
+                    return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
                 }
             }
 
-            if (!swReg) return alert("Es konnte kein Service Worker registriert werden.");
+            if (!swReg) return showAlert("Fehler", "Es konnte kein Service Worker registriert werden.");
 
             setPushStatus('Wird angefragt...');
             try {
@@ -748,16 +755,16 @@
 
               if (!token) {
                   setPushStatus('Fehler');
-                  return alert("Es konnte kein Push-Token erzeugt werden.");
+                  return showAlert("Fehler", "Es konnte kein Push-Token erzeugt werden.");
               }
 
               await getFamilyDocRef(currentFamily.id).update({
                   members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: token } : m)
               });
               setPushStatus('Aktiviert ✅'); 
-              alert("Erfolgreich!");
+              showAlert("Erfolg", "Push-Mitteilungen wurden erfolgreich aktiviert!");
 
-            } catch (error) { console.error(error); setPushStatus('Fehler'); alert("Kritischer Fehler beim Token-Abruf."); }
+            } catch (error) { console.error(error); setPushStatus('Fehler'); showAlert("Fehler", "Kritischer Fehler beim Token-Abruf."); }
           };
 
           const handleSendNotification = async (customReasonObj = null, customTargets = null, isResend = false) => {
@@ -802,7 +809,7 @@
             setTimeout(() => setIsSending(false), 800);
           };
 
-          // Echtzeit-Bestätigung mit Fresh Fetch zur Vermeidung von Verzögerungen
+          // Echtzeit-Bestätigung mit Fresh Fetch
           const handleAcknowledge = async (historyItemId, responseType = 'Bestätigt') => {
             if(navigator.vibrate) navigator.vibrate([20, 30]);
             const responseString = `${currentUser.name}:${responseType}`;
@@ -1109,7 +1116,7 @@
                   />
               )}
 
-              {/* Flex Container für die iOS PWA */}
+              {/* Flex Container für die iOS PWA. Hier ist das Wackeln verboten! */}
               <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative min-h-0 sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
                   <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full">
                     <div className="text-center w-full min-w-0">
@@ -1225,7 +1232,7 @@
                                   <div className="space-y-4 w-full">
                                       {expenseModal.mode === 'split' && (
                                           <div className="bg-[#007AFF]/10 p-4 rounded-[14px] mb-4 text-[13px] text-[#007AFF] leading-relaxed">
-                                              Gib den <b>Gesamtbetrag</b> ein und durch wie viele Personen er geteilt wird.
+                                              Gib den <b>Gesamtbetrag</b> ein und die fixe Anzahl der Personen, durch die geteilt wird. Wähle unten dann die Personen aus.
                                           </div>
                                       )}
                                       
@@ -1238,10 +1245,10 @@
                                       
                                       {expenseModal.mode === 'split' && (
                                           <div className="pt-4 border-t border-[#E5E5EA] dark:border-[#38383A]">
-                                              <p className="text-[14px] font-semibold text-[#3C3C43] dark:text-[#EBEBF5] mb-2">Geteilt durch wie viele Personen? (inkl. dir)</p>
+                                              <p className="text-[14px] font-semibold text-[#3C3C43] dark:text-[#EBEBF5] mb-2">Geteilt durch wie viele Personen? (fixer Wert)</p>
                                               <input type="number" inputMode="numeric" pattern="[0-9]*" min="1" className="w-full box-border bg-[#F2F2F7] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] mb-5 focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={expenseForm.splitCount} onChange={e => setExpenseForm({...expenseForm, splitCount: e.target.value})} />
                                               
-                                              <p className="text-[14px] font-semibold text-[#3C3C43] dark:text-[#EBEBF5] mb-2">Wer schuldet dir seinen Anteil?</p>
+                                              <p className="text-[14px] font-semibold text-[#3C3C43] dark:text-[#EBEBF5] mb-2">Für wen willst du das eintragen?</p>
                                               <div className="flex flex-wrap gap-2">
                                                   {activeMembersList.filter(m => m?.name !== currentUser?.name).map(m => {
                                                       const isSel = expenseForm.splitTargets.includes(m.name);
@@ -1253,9 +1260,9 @@
                                                   })}
                                               </div>
                                               
-                                              {expenseForm.amount && expenseForm.splitCount > 0 && expenseForm.splitTargets.length > 0 && (
+                                              {expenseForm.amount && expenseForm.splitCount > 0 && (
                                                   <div className="mt-5 text-center bg-[#34C759]/10 text-[#34C759] font-semibold p-4 rounded-[14px]">
-                                                      Jede Person schuldet dir: <br />
+                                                      Anteil pro Person: <br />
                                                       <span className="text-[22px]">{(parseFloat(String(expenseForm.amount).replace(',', '.')) / parseInt(expenseForm.splitCount)).toFixed(2)}€</span>
                                                   </div>
                                               )}
@@ -1337,35 +1344,10 @@
                         ) : (
                           safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
-                            const isRecipient = targetList.includes(currentUser?.name);
                             
-                            const myAckEntry = (item.acknowledgedBy || []).find(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
-                            const hasAcknowledged = !!myAckEntry;
-                            
-                            const isRecentSender = item.timestamp && (item.sender === currentUser?.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
-                            
-                            const renderRecipientStatus = (name) => {
-                              const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
-                              const isAck = !!ackEntry;
-                              
-                              let ackText = '';
-                              if (isAck && ackEntry.includes(':')) {
-                                  ackText = ackEntry.split(':')[1];
-                                  if (ackText === 'Bestätigt') ackText = ''; 
-                              }
-
-                              return (
-                                <span key={name} className={`inline-flex items-center space-x-1 ${isAck ? 'text-[#34C759] font-semibold' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>
-                                  <span>{name}</span>
-                                  {isAck && ackText && <span className="text-xs">({ackText})</span>}
-                                  {isAck && <Icon name="CheckCircle2" size={12} className="text-[#34C759] inline" />}
-                                  {targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
-                                </span>
-                              );
-                            };
-
+                            // History Items sind jetzt immer klickbar für alle, um das Overlay zu öffnen
                             return (
-                              <div key={item.id} onClick={() => { if(isRecentSender) setTrackingEventId(item.id); }} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between ${isRecentSender ? 'cursor-pointer active:scale-[0.98] transition-transform shadow-md border-[#007AFF]/30' : ''}`}>
+                              <div key={item.id} onClick={() => setTrackingEventId(item.id)} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4 min-w-0">
                                       <div className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-[#007AFF]/10 text-[#007AFF]">
@@ -1380,27 +1362,20 @@
                                       </div>
                                     </div>
 
+                                    {/* Kompakte Namensliste mit Farbcodes statt langen Texten */}
                                     <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
                                       <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
-                                      {targetList.map(name => renderRecipientStatus(name))}
+                                      {targetList.map((name, idx) => {
+                                        const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
+                                        const colorClass = getStatusColor(ackEntry);
+                                        return (
+                                          <span key={name} className={`font-semibold ${colorClass}`}>
+                                            {name}{idx < targetList.length - 1 ? <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span> : ''}
+                                          </span>
+                                        );
+                                      })}
                                     </div>
                                 </div>
-
-                                {isRecipient && !hasAcknowledged && item.sender !== currentUser?.name && (
-                                  <div className="mt-4 flex flex-col gap-2">
-                                    <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Komme sofort'); }} className="w-full bg-[#34C759]/10 text-[#34C759] font-semibold text-[15px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
-                                      <Icon name="Check" size={18} strokeWidth={2.5} /><span>Komme sofort</span>
-                                    </button>
-                                    <div className="flex gap-2">
-                                      <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'In 5 Minuten'); }} className="flex-1 bg-[#FF9500]/10 text-[#FF9500] font-semibold text-[14px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity">
-                                        In 5 Min
-                                      </button>
-                                      <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id, 'Fangt schon mal an'); }} className="flex-1 bg-[#007AFF]/10 text-[#007AFF] font-semibold text-[14px] py-2.5 rounded-[12px] active:opacity-70 transition-opacity">
-                                        Fangt an
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             );
                           })
@@ -1557,7 +1532,9 @@
                     else app = firebase.app();
                     
                     if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
-                        try { firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true); } catch (e) {}
+                        try { 
+                            firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true).catch(()=>{}); 
+                        } catch (e) {}
                     }
                     db = firebase.firestore();
                     auth = firebase.auth();
