@@ -30,58 +30,71 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* --- DER ECHTZEIT-SENSOR LAYOUT FIX --- */
-        :root {
-            --app-bg: #F2F2F7;
-            --app-height: 100vh; /* Wird vom JS sofort mit den echten Millimeter-Werten überschrieben */
-        }
-        @media (prefers-color-scheme: dark) {
-            :root { --app-bg: #000000; }
-        }
+    :root {
+        --app-bg: #F2F2F7;
+        /* svh = Small Viewport Height. Das ist auf dem iPhone exakt der 
+           Bereich zwischen der oberen Notch und der unteren Safari-Leiste. */
+        --app-height: 100svh; 
+    }
 
-        /* Komplett starres Fundament, verbietet iOS jedes Bouncen */
-        html, body { 
-            position: fixed; 
-            inset: 0;
-            width: 100%; 
-            height: 100%;
-            background-color: var(--app-bg); 
-            margin: 0; 
-            padding: 0;
-            overflow: hidden; 
-            overscroll-behavior-y: none; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            -webkit-text-size-adjust: 100%;
-        }
-        
-        /* Das Container-Herzstück, das exakt die echte gemessene iPhone-Höhe annimmt */
-        #root { 
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%; 
-            height: var(--app-height); 
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        
-        .scrollable-area {
-            flex: 1 1 auto;
-            min-height: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch; 
-            padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
-        }
-        
-        .scrollable-area::-webkit-scrollbar { display: none; }
-        .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
-        
-        input[type="file"] { display: none; }
-        input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
-    </style>
+    @media (prefers-color-scheme: dark) {
+        :root { --app-bg: #000000; }
+    }
+
+    /* Das Fundament: Verhindert das "Gummiband-Scrollen" des ganzen Bildschirms */
+    html, body { 
+        position: fixed; 
+        inset: 0;
+        width: 100%; 
+        height: 100%; 
+        background-color: var(--app-bg); 
+        margin: 0; 
+        padding: 0;
+        overflow: hidden; 
+        overscroll-behavior: none;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+        -webkit-text-size-adjust: 100%;
+    }
+    
+    /* Der Hauptcontainer: Er nimmt exakt die verfügbare Höhe ein */
+    #root { 
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: var(--app-height); 
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* Der Bereich, der scrollen darf */
+    .scrollable-area {
+        flex: 1; /* Nimmt den restlichen Platz ein */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; 
+        /* Padding unten: Höhe deines Menüs (ca. 60-80px) + iPhone-Balken */
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
+    }
+    
+    /* Falls du eine Menüleiste ganz unten hast (z.B. .nav-bar) */
+    .bottom-nav {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        /* WICHTIG: Berücksichtigt den "Home-Balken" des iPhones */
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+        background: rgba(255,255,255,0.8);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+
+    .scrollable-area::-webkit-scrollbar { display: none; }
+    .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
+</style>
+
 </head>
 <body class="text-black dark:text-white antialiased">
     
