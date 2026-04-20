@@ -36,7 +36,7 @@
             :root { --app-bg: #000000; }
         }
 
-        /* ABSOLUT STABILES FUNDAMENT (ohne fehleranfällige JS Hacks) */
+        /* ZURÜCK ZUR STABILEN BASIS */
         body { 
             margin: 0; 
             padding: 0;
@@ -45,14 +45,6 @@
             -webkit-text-size-adjust: 100%;
             overflow: hidden; 
             overscroll-behavior-y: none;
-        }
-        
-        #root {
-            width: 100%;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            height: 100dvh;
         }
 
         .scrollable-area {
@@ -91,10 +83,20 @@
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <!-- Das Element für die App -->
-    <div id="root"></div>
+    <div id="root" class="w-full relative flex flex-col h-[100dvh]"></div>
 
     <script type="text/babel">
+        // --- 0. APPLE WATCH CONFIG-RETTUNG ---
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const urlCfg = params.get('cfg');
+            if (urlCfg) {
+                const decodedCfg = JSON.parse(decodeURIComponent(escape(atob(urlCfg))));
+                localStorage.setItem('familyConnectAppConfig', JSON.stringify(decodedCfg));
+                localStorage.setItem('firebaseConfig', JSON.stringify(decodedCfg));
+            }
+        } catch(e) { console.warn("Fehler beim Laden der URL Config:", e); }
+
         // --- 1. GLOBALE FEHLERBEHANDLUNG ---
         const originalConsoleError = console.error;
         console.error = function(...args) {
@@ -164,7 +166,7 @@
           Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
           BellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
           Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-          Settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+          Settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
           Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
           Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
           UtensilsCrossed: '<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',
@@ -185,7 +187,8 @@
           X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
           Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-          Home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'
+          Home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+          Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>'
         };
 
         const REASONS = [
@@ -195,7 +198,7 @@
             { id: 'coffee', label: 'Kaffee', sentence: 'Es gibt Kaffee und Kuchen!', icon: 'UtensilsCrossed', category: 'meal' },
             { id: 'dinner', label: 'Abendessen', sentence: 'Das Abendessen ist fertig!', icon: 'Moon', category: 'meal' },
             { id: 'table', label: 'Tischdecken', sentence: 'Hilfe beim Tischdecken wird benötigt!', icon: 'Utensils', category: 'push_only' },
-            { id: 'message', label: 'Wohnzimmer', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
+            { id: 'message', label: 'Ins Wohnzimmer rufen', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
             { id: 'movie', label: 'Film', sentence: 'Der Film fängt gleich an!', icon: 'Film', category: 'other' },
             { id: 'game', label: 'Spielen', sentence: 'Wir wollen spielen, komm dazu!', icon: 'Gamepad2', category: 'other' },
         ];
@@ -269,10 +272,6 @@
             if (!event) return null;
             const [cooldowns, setCooldowns] = useState({});
 
-            const isSender = event.sender === currentUser?.name || event.sender === 'Extern';
-            const isRecent = event.timestamp && (Date.now() - new Date(event.timestamp).getTime() < 5 * 60 * 1000);
-            const canResend = isSender && isRecent;
-
             useEffect(() => {
                 const calculateCooldowns = () => {
                     const newCooldowns = {};
@@ -286,10 +285,7 @@
                 };
 
                 setCooldowns(calculateCooldowns());
-                const timer = setInterval(() => {
-                    setCooldowns(calculateCooldowns());
-                }, 1000);
-                
+                const timer = setInterval(() => setCooldowns(calculateCooldowns()), 1000);
                 return () => clearInterval(timer);
             }, [event.id, event.timestamp, event.targets]);
 
@@ -315,6 +311,10 @@
                                 const targetMember = safeMembers.find(m => m.name === targetName);
                                 const isDND = targetMember?.dndUntil && new Date(targetMember.dndUntil) > new Date();
                                 const currentCooldown = cooldowns[targetName] || 0;
+                                
+                                const isExpired = (Date.now() - new Date(event.timestamp).getTime()) > 5 * 60 * 1000;
+                                const isSender = event.sender === currentUser?.name || event.sender === 'Extern';
+                                const canResend = isSender && !isExpired;
 
                                 return (
                                     <div key={targetName} className="flex items-center justify-between bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-4 rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
@@ -323,7 +323,7 @@
                                             <div>
                                                 <p className="font-semibold text-[17px] text-black dark:text-white">{targetName}</p>
                                                 <p className={`text-[13px] font-normal ${hasAck ? getStatusColor(ackEntry) : 'text-[#3C3C4399] dark:text-[#EBEBF5]/60'}`}>
-                                                    {hasAck ? ackText : isDND ? 'Bitte nicht stören aktiv' : 'Wartet auf Antwort...'}
+                                                    {hasAck ? ackText : isDND ? 'Bitte nicht stören aktiv' : isExpired ? 'Nicht geantwortet' : 'Wartet auf Antwort...'}
                                                 </p>
                                             </div>
                                         </div>
@@ -393,8 +393,8 @@
           const tabs = [
             { id: 'home', icon: 'Bell' },
             { id: 'history', icon: 'Clock' },
-            { id: 'expenses', icon: 'Euro' },
-            { id: 'household', icon: 'Home' }, // Neuer Tab!
+            { id: 'household', icon: 'Sparkles' },
+            { id: 'expenses', icon: 'Euro' }, 
             { id: 'settings', icon: 'Settings' }
           ];
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
@@ -406,7 +406,7 @@
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: `calc((100% - 12px) / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }}>
-                  <div className="w-12 md:w-14 h-full bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full"></div>
+                  <div className="w-10 md:w-12 h-full bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full"></div>
                 </div>
                 {tabs.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -421,7 +421,7 @@
           );
         };
 
-        // --- HILFSFUNKTIONEN FÜR HAUSHALT ---
+        // --- HAUSHALT HELPER ---
         const getNextSaturday = () => {
             const d = new Date();
             const diff = (6 - d.getDay() + 7) % 7;
@@ -461,10 +461,10 @@
           const [expenseModal, setExpenseModal] = useState(null); 
           const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', date: getLocalTodayString(), splitCount: 1, splitTargets: [] });
 
-          // Haushalt State
+          // --- HAUSHALT STATES ---
           const [householdAdminMode, setHouseholdAdminMode] = useState(false);
-          const [householdHistoryModal, setHouseholdHistoryModal] = useState(null); // Speichert die Chore-ID für die Detailansicht
-          const [householdSwapModal, setHouseholdSwapModal] = useState(null); // Speichert die Task-ID für Swap Request
+          const [householdHistoryModal, setHouseholdHistoryModal] = useState(null);
+          const [newChoreName, setNewChoreName] = useState("");
 
           const [activeTab, setActiveTab] = useState(() => {
               const params = new URLSearchParams(window.location.search);
@@ -481,11 +481,15 @@
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
           const safeHistory = Array.isArray(currentFamily?.history) ? currentFamily.history.filter(h => h && typeof h === 'object' && h.id) : [];
 
-          // Haushalts-Daten aus der DB
-          const householdConfig = currentFamily?.householdConfig || { 
-              chores: [{id:'1', name:'großes Bad putzen'}, {id:'2', name:'kleines Bad putzen'}, {id:'3', name:'Treppe und Vorhäuschen kehren & putzen'}], 
-              members: [] 
-          };
+          // Haushalts-Daten aus DB SAFELY laden (Verhindert den Lade-Crash!)
+          const defaultChores = [
+              { id: 'c1', name: 'großes Bad putzen' },
+              { id: 'c2', name: 'kleines Bad putzen' },
+              { id: 'c3', name: 'Treppe und Vorhäuschen kehren & putzen' }
+          ];
+          const householdConfig = currentFamily?.householdConfig || {};
+          const safeHouseholdMembers = householdConfig.members || [];
+          const safeHouseholdChores = householdConfig.chores || defaultChores;
           const householdTasks = currentFamily?.householdTasks || [];
 
           const isAdmin = safeMembers.length > 0 && safeMembers[0].name === currentUser?.name;
@@ -499,7 +503,7 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Helper 5 Minuten
+          // Helper für 5 Min Timeout
           const isExpired = (timestamp) => (Date.now() - new Date(timestamp).getTime()) > 5 * 60 * 1000;
 
           useEffect(() => {
@@ -577,31 +581,31 @@
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
 
-          // --- HAUSHALT: AUTO-GENERIERUNG UND PUSH ---
+          // --- 2.5 HAUSHALT AUTO-GENERATOR & 9-UHR PUSH ---
           useEffect(() => {
-              if (appLoaded && currentFamily && householdConfig.members.length > 0) {
+              if (appLoaded && currentFamily && safeHouseholdMembers.length > 0 && safeHouseholdChores.length > 0) {
                   const checkAndGenerate = async () => {
                       const upcomingSat = getNextSaturday();
                       const satTasks = householdTasks.filter(t => t.date === upcomingSat);
                       
-                      // 1. Tasks für kommenden Samstag generieren (falls nicht existent)
-                      if (satTasks.length < householdConfig.chores.length) {
+                      // Tasks generieren
+                      if (satTasks.length < safeHouseholdChores.length) {
                           const dateObj = new Date(upcomingSat);
                           const weekNum = getWeekNumber(dateObj);
                           
                           let newTasks = [...householdTasks];
                           let changed = false;
                           
-                          householdConfig.chores.forEach((chore, i) => {
+                          safeHouseholdChores.forEach((chore, i) => {
                               if (!satTasks.find(t => t.choreId === chore.id)) {
-                                  const memberIndex = (weekNum + i) % householdConfig.members.length;
+                                  const memberIndex = (weekNum + i) % safeHouseholdMembers.length;
                                   newTasks.push({
                                       id: generateId(),
                                       choreId: chore.id,
                                       choreName: chore.name,
                                       date: upcomingSat,
-                                      assignedTo: householdConfig.members[memberIndex],
-                                      status: 'pending', // pending, open, completed
+                                      assignedTo: safeHouseholdMembers[memberIndex],
+                                      status: 'pending',
                                       swapRequestedWith: null
                                   });
                                   changed = true;
@@ -609,17 +613,15 @@
                           });
                           
                           if (changed) {
-                              try {
-                                  await getFamilyDocRef(currentFamily.id).update({ householdTasks: newTasks.slice(-150) }); // Historie klein halten
-                              } catch(e) {}
+                              try { await getFamilyDocRef(currentFamily.id).update({ householdTasks: newTasks.slice(-150) }); } catch(e) {}
                           }
                       }
 
-                      // 2. Automatischer 9 Uhr Erinnerungs-Push am Samstag
+                      // 9 Uhr Push Erinnerung
                       const now = new Date();
-                      if (now.getDay() === 6 && now.getHours() >= 9) { // Heute ist Samstag nach 9 Uhr
+                      if (now.getDay() === 6 && now.getHours() >= 9) {
                           const todayStr = now.toISOString().split('T')[0];
-                          const historyHasToday = safeHistory.some(h => h.isHousehold && h.timestamp.startsWith(todayStr));
+                          const historyHasToday = safeHistory.some(h => h.isHousehold && h.timestamp && h.timestamp.startsWith(todayStr));
                           
                           if (!historyHasToday && currentUser) {
                               const todaysTasks = householdTasks.filter(t => t.date === todayStr && t.assignedTo);
@@ -636,9 +638,7 @@
                                       isResend: false,
                                       isHousehold: true 
                                   };
-                                  try {
-                                      await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) });
-                                  } catch(e) {}
+                                  try { await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) }); } catch(e) {}
                               }
                           }
                       }
@@ -658,7 +658,7 @@
               }
           }, [isAdminMode]);
 
-          // --- AUTO-PUSH REGISTRIERUNG ---
+          // --- 3. AUTO-PUSH BEIM START ---
           useEffect(() => {
               if (appLoaded && currentFamily && currentUser) {
                   const timer = setTimeout(() => {
@@ -672,10 +672,10 @@
               if (currentFamily && currentUser) {
                   const latestEvent = safeHistory.find(h => !h.isExpense && !h.isResend && !h.isHousehold);
                   if (latestEvent && (latestEvent.targets || []).includes(currentUser.name)) {
+                      
                       const alreadyAcked = (latestEvent.acknowledgedBy || []).some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
                       
                       if (!alreadyAcked && latestEvent.sender !== currentUser.name) {
-                          // Nur anzeigen, wenn NICHT abgelaufen (unter 5 Minuten)
                           if (!isExpired(latestEvent.timestamp)) {
                               if (!sessionStorage.getItem(`prompted_${latestEvent.id}`)) {
                                   sessionStorage.setItem(`prompted_${latestEvent.id}`, 'true');
@@ -876,6 +876,72 @@
               } catch (err) { showAlert("Fehler", err.message || "Fehler beim Generieren der PDF."); }
           };
 
+          // --- HAUSHALTS HANDLER ---
+          const handleHouseholdAction = async (taskId, action, data = null) => {
+              const updatedTasks = [...householdTasks];
+              const taskIndex = updatedTasks.findIndex(t => t.id === taskId);
+              if (taskIndex === -1) return;
+
+              if (action === 'complete') {
+                  updatedTasks[taskIndex].status = 'completed';
+                  updatedTasks[taskIndex].completedAt = new Date().toISOString();
+                  updatedTasks[taskIndex].completedBy = currentUser.name;
+              } else if (action === 'absent') {
+                  updatedTasks[taskIndex].status = 'open';
+                  updatedTasks[taskIndex].assignedTo = null;
+              } else if (action === 'takeover') {
+                  updatedTasks[taskIndex].status = 'pending';
+                  updatedTasks[taskIndex].assignedTo = currentUser.name;
+                  updatedTasks[taskIndex].swapRequestedWith = null;
+              } else if (action === 'request_swap') {
+                  updatedTasks[taskIndex].swapRequestedWith = data;
+                  const newHistoryItem = { 
+                      id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, 
+                      reason: `Vertretung gesucht für: ${updatedTasks[taskIndex].choreName}`, 
+                      targets: [data], acknowledgedBy: [], isExpense: false, isResend: false, isHousehold: true 
+                  };
+                  await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) });
+              } else if (action === 'accept_swap') {
+                  updatedTasks[taskIndex].assignedTo = currentUser.name;
+                  updatedTasks[taskIndex].swapRequestedWith = null;
+              } else if (action === 'reject_swap') {
+                  updatedTasks[taskIndex].swapRequestedWith = null;
+              } else if (action === 'admin_reassign') {
+                  updatedTasks[taskIndex].assignedTo = data;
+                  updatedTasks[taskIndex].status = 'pending';
+                  updatedTasks[taskIndex].swapRequestedWith = null;
+              }
+
+              try {
+                  await getFamilyDocRef(currentFamily.id).update({ householdTasks: updatedTasks });
+                  if(navigator.vibrate) navigator.vibrate(10);
+              } catch (e) { showAlert("Fehler", "Aktion fehlgeschlagen."); }
+          };
+
+          const toggleHouseholdMember = async (name) => {
+              const newMembers = safeHouseholdMembers.includes(name) 
+                  ? safeHouseholdMembers.filter(m => m !== name) 
+                  : [...safeHouseholdMembers, name];
+              await getFamilyDocRef(currentFamily.id).update({ householdConfig: { ...householdConfig, members: newMembers, chores: safeHouseholdChores } });
+          };
+
+          const handleAddChore = async () => {
+              if (!newChoreName.trim()) return;
+              const newChore = { id: generateId(), name: newChoreName.trim() };
+              await getFamilyDocRef(currentFamily.id).update({ 
+                  householdConfig: { ...householdConfig, chores: [...safeHouseholdChores, newChore], members: safeHouseholdMembers } 
+              });
+              setNewChoreName("");
+          };
+
+          const handleDeleteChore = async (choreId) => {
+              const updatedChores = safeHouseholdChores.filter(c => c.id !== choreId);
+              await getFamilyDocRef(currentFamily.id).update({ 
+                  householdConfig: { ...householdConfig, chores: updatedChores, members: safeHouseholdMembers } 
+              });
+          };
+
+          // --- SILENT PUSH ---
           const requestPushPermission = async (silent = false) => {
             if (!window.isSecureContext) {
                 if (!silent) showAlert("Fehler", "Push funktioniert nur über HTTPS.");
@@ -1046,55 +1112,6 @@
             } catch (e) {
                 console.error("Fehler beim Bestätigen:", e);
             }
-          };
-
-          // --- HAUSHALT FUNKTIONEN ---
-          const handleHouseholdAction = async (taskId, action, data = null) => {
-              const updatedTasks = [...householdTasks];
-              const taskIndex = updatedTasks.findIndex(t => t.id === taskId);
-              if (taskIndex === -1) return;
-
-              if (action === 'complete') {
-                  updatedTasks[taskIndex].status = 'completed';
-                  updatedTasks[taskIndex].completedAt = new Date().toISOString();
-                  updatedTasks[taskIndex].completedBy = currentUser.name;
-              } else if (action === 'absent') {
-                  updatedTasks[taskIndex].status = 'open';
-                  updatedTasks[taskIndex].assignedTo = null;
-              } else if (action === 'takeover') {
-                  updatedTasks[taskIndex].status = 'pending';
-                  updatedTasks[taskIndex].assignedTo = currentUser.name;
-                  updatedTasks[taskIndex].swapRequestedWith = null;
-              } else if (action === 'request_swap') {
-                  updatedTasks[taskIndex].swapRequestedWith = data;
-                  const newHistoryItem = { 
-                      id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, 
-                      reason: `Vertretung gesucht für: ${updatedTasks[taskIndex].choreName}`, 
-                      targets: [data], acknowledgedBy: [], isExpense: false, isResend: false 
-                  };
-                  await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) });
-              } else if (action === 'accept_swap') {
-                  updatedTasks[taskIndex].assignedTo = currentUser.name;
-                  updatedTasks[taskIndex].swapRequestedWith = null;
-              } else if (action === 'reject_swap') {
-                  updatedTasks[taskIndex].swapRequestedWith = null;
-              } else if (action === 'admin_reassign') {
-                  updatedTasks[taskIndex].assignedTo = data;
-                  updatedTasks[taskIndex].status = 'pending';
-                  updatedTasks[taskIndex].swapRequestedWith = null;
-              }
-
-              try {
-                  await getFamilyDocRef(currentFamily.id).update({ householdTasks: updatedTasks });
-                  if(navigator.vibrate) navigator.vibrate(10);
-              } catch (e) { showAlert("Fehler", "Aktion fehlgeschlagen."); }
-          };
-
-          const toggleHouseholdMember = async (name) => {
-              const newMembers = householdConfig.members.includes(name) 
-                  ? householdConfig.members.filter(m => m !== name) 
-                  : [...householdConfig.members, name];
-              await getFamilyDocRef(currentFamily.id).update({ householdConfig: { ...householdConfig, members: newMembers } });
           };
 
           const resetExpenseForm = (overrides = {}) => {
@@ -1307,6 +1324,27 @@
           }
 
           if (!currentFamily || !currentUser) {
+            
+            if (localFamilyId) {
+              return (
+                <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
+                  <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
+                    <Icon name="ShieldCheck" size={56} className="text-[#FF9500] mx-auto mb-5 animate-pulse" />
+                    <h2 className="text-[22px] font-bold mb-3">Verbinde...</h2>
+                    <p className="text-[15px] text-gray-500 dark:text-[#EBEBF5]/60 mb-6 leading-relaxed">
+                      Lade aktuelle Familiendaten... <br/><br/>
+                      <span className="text-[13px] opacity-80">
+                      Bitte überprüfe deine Internetverbindung, falls es länger dauert.
+                      </span>
+                    </p>
+                    <button onClick={handleLogout} className="text-[#FF3B30] font-semibold active:opacity-70 text-[15px] mt-2">
+                      Abmelden
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div className="h-[100dvh] w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
@@ -1389,7 +1427,7 @@
                                   return (
                                       <div key={task.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-4 rounded-[16px]">
                                           <div className="flex justify-between items-start mb-2">
-                                              <span className="font-bold text-[15px]">{formatDate(task.date)}</span>
+                                              <span className="font-bold text-[15px] text-black dark:text-white">{formatDate(task.date)}</span>
                                               <span className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded-full ${task.status === 'completed' ? 'bg-[#34C759]/20 text-[#34C759]' : task.status === 'open' ? 'bg-[#FF9500]/20 text-[#FF9500]' : 'bg-[#007AFF]/20 text-[#007AFF]'}`}>
                                                   {task.status === 'completed' ? 'Erledigt' : task.status === 'open' ? 'Offen' : 'Eingeteilt'}
                                               </span>
@@ -1402,7 +1440,6 @@
                                                   Erledigt am {new Date(task.completedAt).toLocaleDateString('de-DE')} um {new Date(task.completedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} Uhr durch {task.completedBy}
                                               </div>
                                           )}
-                                          {/* Nachträgliches Bestätigen (nur vorherige Woche und wenn ich eingeteilt war) */}
                                           {isPast && task.status !== 'completed' && isMe && (
                                               <button onClick={() => { handleHouseholdAction(task.id, 'complete'); setHouseholdHistoryModal(null); }} className="mt-3 w-full py-2.5 bg-[#34C759]/10 text-[#34C759] font-bold text-[14px] rounded-[12px]">
                                                   Nachträglich bestätigen
@@ -1421,13 +1458,13 @@
                   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity">
                       <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-[#E5E5EA] dark:border-[#38383A]">
                           <div className="flex justify-between items-center mb-4">
-                              <h3 className="font-bold text-[18px]">Vertretung anfragen</h3>
+                              <h3 className="font-bold text-[18px] text-black dark:text-white">Vertretung anfragen</h3>
                               <button onClick={() => setHouseholdSwapModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex justify-center items-center"><Icon name="X" size={16}/></button>
                           </div>
                           <p className="text-[14px] text-[#8E8E93] mb-4">Wen möchtest du bitten, deinen Dienst zu übernehmen?</p>
                           <div className="space-y-2 mb-4 max-h-[40vh] overflow-y-auto">
                               {activeMembersList.filter(m => m.name !== currentUser.name).map(m => (
-                                  <button key={m.name} onClick={() => { handleHouseholdAction(householdSwapModal, 'request_swap', m.name); setHouseholdSwapModal(null); showAlert("Erfolgreich", `Vertretungsanfrage an ${m.name} gesendet!`); }} className="w-full p-3 text-left bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[12px] font-semibold active:opacity-70">
+                                  <button key={m.name} onClick={() => { handleHouseholdAction(householdSwapModal, 'request_swap', m.name); setHouseholdSwapModal(null); showAlert("Erfolgreich", `Vertretungsanfrage an ${m.name} gesendet!`); }} className="w-full p-3 text-left bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-black dark:text-white rounded-[12px] font-semibold active:opacity-70">
                                       {m.name}
                                   </button>
                               ))}
@@ -1657,78 +1694,6 @@
                       </div>
                     )}
 
-                    {/* --- HISTORY TAB --- */}
-                    {activeTab === 'history' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend).length) ? (
-                          <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
-                        ) : (
-                          safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
-                            const targetList = item.targets || item.recipients || [];
-                            
-                            const handleCardClick = () => {
-                                if (navigator.vibrate) navigator.vibrate(10);
-                                const isRecipient = targetList.includes(currentUser?.name);
-                                const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
-                                
-                                if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
-                                    // NEU: Nach 5 Minuten wird das Popup verweigert!
-                                    if (isExpired(item.timestamp)) {
-                                        showAlert("Abgelaufen", "Nicht geantwortet.");
-                                    } else {
-                                        setModal({ 
-                                            type: 'custom_ack', 
-                                            title: `Ruf von ${item.sender}`, 
-                                            message: `${item.reason}`, 
-                                            onRespond: (responseType) => {
-                                                handleAcknowledge(item.id, responseType);
-                                                setModal(null);
-                                            },
-                                            onCancel: () => setModal(null) 
-                                        });
-                                    }
-                                } else {
-                                    setTrackingEventId(item.id);
-                                }
-                            };
-                            
-                            const renderRecipientStatus = (name) => {
-                              const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
-                              return (
-                                <span key={name} className={`font-semibold ${getStatusColor(ackEntry)}`}>
-                                  {name}{targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
-                                </span>
-                              );
-                            };
-
-                            return (
-                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
-                                <div className="space-y-4">
-                                    <div className="flex items-center space-x-4 min-w-0">
-                                      <div className={`w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 ${item.isHousehold ? 'bg-[#AF52DE]/10 text-[#AF52DE]' : 'bg-[#007AFF]/10 text-[#007AFF]'}`}>
-                                        <Icon name={item.isHousehold ? "Home" : "Clock"} size={24} />
-                                      </div>
-                                      <div className="flex-1 min-w-0 pr-2">
-                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.reason}</p>
-                                        <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Von <span className="font-medium text-[#3C3C43] dark:text-gray-300">{item.sender}</span></p>
-                                      </div>
-                                      <div className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 self-start mt-1 flex-shrink-0">
-                                        {formatTime(item.timestamp)}
-                                      </div>
-                                    </div>
-
-                                    <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
-                                      <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
-                                      {targetList.map(name => renderRecipientStatus(name))}
-                                    </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
-
                     {/* --- HAUSHALT TAB --- */}
                     {activeTab === 'household' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
@@ -1743,10 +1708,25 @@
 
                             {householdAdminMode ? (
                                 <div className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5">
+                                    
+                                    <h3 className="font-bold text-[18px] mb-4 text-black dark:text-white">Aufgaben verwalten</h3>
+                                    <div className="space-y-2 mb-6">
+                                        {safeHouseholdChores.map(chore => (
+                                            <div key={chore.id} className="flex justify-between items-center bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[14px]">
+                                                <span className="font-semibold text-[15px] text-black dark:text-white">{chore.name}</span>
+                                                <button onClick={() => handleDeleteChore(chore.id)} className="text-[#FF3B30] active:opacity-70"><Icon name="Trash2" size={16} /></button>
+                                            </div>
+                                        ))}
+                                        <div className="flex gap-2 mt-2">
+                                            <input type="text" placeholder="Neue Aufgabe" className="flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none text-[15px] font-medium text-black dark:text-white" value={newChoreName} onChange={e => setNewChoreName(e.target.value)} />
+                                            <button onClick={handleAddChore} className="bg-[#007AFF] text-white px-4 py-3 rounded-[12px] font-semibold active:opacity-80"><Icon name="Plus" size={20}/></button>
+                                        </div>
+                                    </div>
+
                                     <h3 className="font-bold text-[18px] mb-4 text-black dark:text-white">Wer soll berücksichtigt werden?</h3>
                                     <div className="space-y-2 mb-6">
                                         {activeMembersList.map(m => {
-                                            const isIncluded = householdConfig.members.includes(m.name);
+                                            const isIncluded = safeHouseholdMembers.includes(m.name);
                                             return (
                                                 <div key={m.name} onClick={() => toggleHouseholdMember(m.name)} className={`flex items-center justify-between p-3.5 rounded-[14px] cursor-pointer transition-colors ${isIncluded ? 'bg-[#007AFF]/10 border border-[#007AFF]/30' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}>
                                                     <span className={`font-semibold ${isIncluded ? 'text-[#007AFF]' : 'text-black dark:text-white'}`}>{m.name}</span>
@@ -1755,8 +1735,9 @@
                                             );
                                         })}
                                     </div>
-                                    <h3 className="font-bold text-[18px] mb-4 text-black dark:text-white">Anstehende Aufgaben bearbeiten</h3>
-                                    <p className="text-[14px] text-[#8E8E93] mb-4">Hier kannst du als Admin manuell festlegen, wer die Aufgabe an diesem Samstag übernimmt.</p>
+                                    
+                                    <h3 className="font-bold text-[18px] mb-4 text-black dark:text-white">Anstehende Aufgaben überschreiben</h3>
+                                    <p className="text-[14px] text-[#8E8E93] mb-4">Hier kannst du manuell festlegen, wer die Aufgabe an diesem Samstag übernimmt.</p>
                                     <div className="space-y-4">
                                         {householdTasks.filter(t => t.date === upcomingSatDate).map(task => (
                                             <div key={task.id} className="p-4 bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[16px]">
@@ -1856,6 +1837,77 @@
                         </div>
                     )}
 
+                    {/* --- HISTORY TAB --- */}
+                    {activeTab === 'history' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend).length) ? (
+                          <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
+                        ) : (
+                          safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
+                            const targetList = item.targets || item.recipients || [];
+                            
+                            const handleCardClick = () => {
+                                if (navigator.vibrate) navigator.vibrate(10);
+                                const isRecipient = targetList.includes(currentUser?.name);
+                                const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
+                                
+                                if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
+                                    if (isExpired(item.timestamp)) {
+                                        showAlert("Abgelaufen", "Nicht geantwortet.");
+                                    } else {
+                                        setModal({ 
+                                            type: 'custom_ack', 
+                                            title: `Ruf von ${item.sender}`, 
+                                            message: `${item.reason}`, 
+                                            onRespond: (responseType) => {
+                                                handleAcknowledge(item.id, responseType);
+                                                setModal(null);
+                                            },
+                                            onCancel: () => setModal(null) 
+                                        });
+                                    }
+                                } else {
+                                    setTrackingEventId(item.id);
+                                }
+                            };
+                            
+                            const renderRecipientStatus = (name) => {
+                              const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
+                              return (
+                                <span key={name} className={`font-semibold ${getStatusColor(ackEntry)}`}>
+                                  {name}{targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
+                                </span>
+                              );
+                            };
+
+                            return (
+                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
+                                <div className="space-y-4">
+                                    <div className="flex items-center space-x-4 min-w-0">
+                                      <div className={`w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 ${item.isHousehold ? 'bg-[#AF52DE]/10 text-[#AF52DE]' : 'bg-[#007AFF]/10 text-[#007AFF]'}`}>
+                                        <Icon name={item.isHousehold ? "Home" : "Clock"} size={24} />
+                                      </div>
+                                      <div className="flex-1 min-w-0 pr-2">
+                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.reason}</p>
+                                        <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Von <span className="font-medium text-[#3C3C43] dark:text-gray-300">{item.sender}</span></p>
+                                      </div>
+                                      <div className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 self-start mt-1 flex-shrink-0">
+                                        {formatTime(item.timestamp)}
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
+                                      <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
+                                      {targetList.map(name => renderRecipientStatus(name))}
+                                    </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+
                     {/* --- SETTINGS TAB --- */}
                     {activeTab === 'settings' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
@@ -1893,7 +1945,7 @@
                               <div className="flex items-center space-x-3">
                                 <div className="bg-[#007AFF]/10 p-2.5 rounded-[12px]"><Icon name="Smartphone" size={20} className="text-[#007AFF]"/></div>
                                 <div>
-                                  <p className="font-font-semibold text-[16px] text-black dark:text-white">Apple Push</p>
+                                  <p className="font-semibold text-[16px] text-black dark:text-white">Apple Push</p>
                                   <p className="text-[13px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal">Status: <span className={currentUser?.fcmToken ? "text-[#34C759] font-medium" : "text-[#FF9500] font-medium"}>{pushStatus}</span></p>
                                 </div>
                               </div>
@@ -1959,7 +2011,7 @@
                            </section>
                         )}
                         
-                        {/* --- APPLE WATCH KURZBEFEHLE (NUR NOCH 2 STÜCK & FUNKTIONIEREND) --- */}
+                        {/* --- APPLE WATCH KURZBEFEHLE (NUR 2 LINKS) --- */}
                         <section className="md:col-span-2">
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Apple Kurzbefehle & Watch</h2>
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5">
@@ -2024,7 +2076,6 @@
           );
         }
 
-        // --- SHORTCUT BACKEND-SIMULATOR FÜR APPLE WATCH ---
         function ShortcutTrigger({ reason, fid }) {
             const [statusText, setStatusText] = useState('Sende Ruf...');
 
@@ -2107,7 +2158,6 @@
 
             const [config, setConfig] = useState(() => {
                 try {
-                    // Wenn es von der Apple Watch kommt, lade die Config direkt aus der URL!
                     const urlCfg = params.get('cfg');
                     if (urlCfg) {
                         const decodedStr = decodeURIComponent(escape(atob(urlCfg)));
