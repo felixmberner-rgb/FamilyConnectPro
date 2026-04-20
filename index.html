@@ -1596,7 +1596,15 @@
                     
                     if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V") {
                         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.includes('file')) {
-                            try { firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true).catch(()=>{}); } catch (e) {}
+                            try { 
+                                // UPDATE: Firebase App Check mit dem modernen reCAPTCHA Enterprise Provider initialisieren
+                                firebase.appCheck().activate(
+                                    new firebase.appCheck.ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY), 
+                                    true // Token Auto-Refresh aktivieren
+                                ); 
+                            } catch (e) {
+                                console.warn("AppCheck Setup Fehler:", e);
+                            }
                         }
                     }
                     db = firebase.firestore();
