@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,6 @@
     
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
-    <!-- Stabile CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = { darkMode: 'media' }
@@ -34,7 +33,7 @@
         /* --- DER ECHTZEIT-SENSOR LAYOUT FIX --- */
         :root {
             --app-bg: #F2F2F7;
-            --app-height: 100vh; /* Wird vom JS sofort mit den Millimeter-Werten überschrieben */
+            --app-height: 100vh; /* Wird vom JS sofort mit den echten Millimeter-Werten überschrieben */
         }
         @media (prefers-color-scheme: dark) {
             :root { --app-bg: #000000; }
@@ -248,7 +247,6 @@
             );
         }
 
-        // Live Tracking Overlay
         function TrackingOverlay({ event, currentFamily, currentUser, safeMembers, onClose, onResend }) {
             if (!event) return null;
             const [cooldown, setCooldown] = useState(60);
@@ -330,9 +328,10 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(parsed));
+                        localStorage.setItem('familyConnectAppConfig', JSON.stringify(parsed));
+                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
                         onConfigLoaded(parsed);
-                    } catch (err) { setError("Fehler: " + err.message); }
+                    } catch (err) { setError("Fehler: Ungültiges Dateiformat."); }
                 };
                 reader.onerror = () => setError("Fehler beim Lesen der Datei.");
                 reader.readAsText(file);
@@ -357,8 +356,8 @@
             );
         }
 
-        // --- GANZ UNTEN FIXIERT --- 
-        // position: absolute bezieht sich nun auf das echtzeit-gemessene #root Element
+        // --- GANZ UNTEN FIXIERT ---
+        // absolute positioniert sich an #root (und das hat die exakte dynamische Höhe!)
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -394,7 +393,7 @@
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
           
-          // Liest sicher die Daten aus dem Cache - KEIN LOGOUT!
+          // Liest sicher die Daten aus dem Cache - KEIN AUTOMATISCHER LOGOUT!
           const [localFamilyId, setLocalFamilyId] = useState(() => localStorage.getItem('familyId'));
           const [localUserName, setLocalUserName] = useState(() => localStorage.getItem('userName'));
 
@@ -453,16 +452,15 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // --- ECHTZEIT SENSOR (Triggert automatisch das Neuladen der Höhe, als würdest du drehen!) ---
+          // --- ECHTZEIT SENSOR (Triggert Neuladen der Höhe automatisch) ---
           useEffect(() => {
             const setAppHeight = () => {
                 const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
                 document.documentElement.style.setProperty('--app-height', `${vh}px`);
             };
             
-            // Initial sofort ausführen
             setAppHeight(); 
-            // Diese Timer "simulieren" das Drehen in den ersten 800ms, bis Safari sich beruhigt hat
+            // Simuliert das Neuladen für den perfekten Sitz
             setTimeout(setAppHeight, 100);
             setTimeout(setAppHeight, 300);
             setTimeout(setAppHeight, 800);
@@ -514,7 +512,7 @@
             return () => unsubscribe();
           }, []);
 
-          // DB Listener: Wirft dich NIEMALS eigenständig raus!
+          // DB Listener: Schmeißt dich niemals von alleine raus!
           useEffect(() => {
             if (!firebaseUser || !localFamilyId || !localUserName) {
                 if (firebaseUser && !isAdminMode) setAppLoaded(true);
@@ -653,7 +651,13 @@
               const updatedMembers = [...cleanMembers];
               updatedMembers[memberIndex] = { ...updatedMembers[memberIndex], password: formInput.password.trim(), status: 'active', fcmToken: '', voiceMonkeyMeal: '', voiceMonkeyOther: '', dndUntil: null };
               
-              await getFamilyDocRef(cleanId).update({ members: updatedMembers });
+              // WICHTIG: Sichert den VAPID-Key auch im Backend, wenn er noch fehlt!
+              const updateData = { members: updatedMembers };
+              let storedConfig = {};
+              try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
+              if (!data.vapidKey && storedConfig.vapidKey) updateData.vapidKey = storedConfig.vapidKey;
+
+              await getFamilyDocRef(cleanId).update(updateData);
               
               setCurrentFamily(data);
               setCurrentUser(updatedMembers[memberIndex]);
@@ -681,6 +685,13 @@
               
               if (!member || member.status === 'pending') return setAuthError('Falsches Passwort oder noch nicht beigetreten.');
               
+              // WICHTIG: Sichert den VAPID-Key, falls der Admin ihn vergessen hat hochzuladen
+              let storedConfig = {};
+              try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
+              if (!data.vapidKey && storedConfig.vapidKey) {
+                  await getFamilyDocRef(cleanId).update({ vapidKey: storedConfig.vapidKey });
+              }
+
               setCurrentFamily(data);
               setCurrentUser(member);
               localStorage.setItem('familyId', data.id); 
@@ -699,7 +710,16 @@
           const adminCreateFamily = async () => {
               if (!newFamilyName.trim()) return showAlert("Fehler", "Bitte Familiennamen eingeben.");
               const newId = generateId();
-              await getFamilyDocRef(newId).set({ id: newId, name: newFamilyName.trim(), vapidKey: '', expenses: [], history: [], members: [] });
+              
+              let storedConfig = {};
+              try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
+
+              await getFamilyDocRef(newId).set({ 
+                  id: newId, 
+                  name: newFamilyName.trim(), 
+                  vapidKey: storedConfig.vapidKey || '', // Cloud-Sicherung des Keys
+                  expenses: [], history: [], members: [] 
+              });
               setNewFamilyName('');
           };
 
@@ -766,10 +786,11 @@
                 try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
             }
             
+            // --- DIE CLOUD-VAPID-LOGIK (Kein permanentes Hochladen mehr!) ---
             let storedConfig = {};
             let firebaseConfigObj = {};
             try { 
-                const rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY);
+                const rawConfig = localStorage.getItem('firebaseConfig') || localStorage.getItem('familyConnectAppConfig');
                 if (rawConfig) {
                     const parsed = JSON.parse(rawConfig);
                     storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
@@ -777,24 +798,26 @@
                 }
             } catch(e) {}
             
-            const vapidKey = storedConfig.vapidKey || currentFamily?.vapidKey;
+            // Lädt den Key bevorzugt aus der Cloud, damit niemand die Datei neu hochladen muss!
+            const vapidKey = currentFamily?.vapidKey || storedConfig.vapidKey;
             
             if (!vapidKey || !vapidKey.trim()) {
-                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte lade die config.json noch einmal hoch.");
+                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte lade als Administrator die config.json noch einmal hoch.");
             }
             
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
+                    // Robuste SW Registrierung inkl. Scope Fallback
                     const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
                     swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
                     console.error("SW Registration Error:", e);
                     return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
                 }
+            } else {
+                await swReg.update();
             }
-
-            if (!swReg) return showAlert("Fehler", "Es konnte kein Service Worker registriert werden.");
 
             setPushStatus('Wird angefragt...');
             try {
@@ -892,7 +915,9 @@
                 if (changed) {
                     await docRef.update({ history: updatedHistory });
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error("Fehler beim Bestätigen:", e);
+            }
           };
 
           const resetExpenseForm = (overrides = {}) => {
@@ -1395,11 +1420,12 @@
                         ) : (
                           safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
-                            const isRecipient = targetList.includes(currentUser?.name);
-                            const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
                             
                             const handleCardClick = () => {
                                 if (navigator.vibrate) navigator.vibrate(10);
+                                const isRecipient = targetList.includes(currentUser?.name);
+                                const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
+                                
                                 if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
                                     setModal({ 
                                         type: 'custom_ack', 
@@ -1568,7 +1594,7 @@
                   </main>
               </div>
 
-              {/* HIER WICHTIG: Die Tabbar positioniert sich ABSOLUT an der root Ebene, was den Home-Balken ignoriert und sie tief nach unten drückt */}
+              {/* HIER WICHTIG: Die Tabbar klebt absolut unten am dynamisch gemessenen Displayrand */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
@@ -1577,11 +1603,13 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    // BEHÄLT DEN LOGIN ABSOLUT SICHER! 
-                    if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
+                    // BEHÄLT DEINEN LOGIN! 
                     const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
-                    return saved ? JSON.parse(saved) : null;
-                } catch (e) { return null; }
+                    if (saved) return JSON.parse(saved);
+                    
+                    if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
+                } catch (e) {}
+                return null;
             });
             const [status, setStatus] = useState("booting"); 
             const [errorMsg, setErrorMsg] = useState("");
