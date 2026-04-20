@@ -30,66 +30,62 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* --- DER ECHTZEIT-SENSOR LAYOUT FIX --- */
         :root {
             --app-bg: #F2F2F7;
-            --app-height: 100vh; /* Wird vom JS sofort mit den echten Millimeter-Werten überschrieben */
         }
         @media (prefers-color-scheme: dark) {
             :root { --app-bg: #000000; }
         }
 
-        /* Komplett starres Fundament, verbietet iOS jedes Bouncen */
-        html, body { 
-            position: fixed; 
-            inset: 0;
-            width: 100%; 
-            height: 100%;
-            background-color: var(--app-bg); 
+        /* Das Fundament aus der Version ohne schwarzen Balken: 
+           Kein position fixed, keine height Hacks. Der Browser atmet frei! */
+        body { 
             margin: 0; 
             padding: 0;
-            overflow: hidden; 
-            overscroll-behavior-y: none; 
+            background-color: var(--app-bg); 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
+            overflow: hidden; /* Verhindert das iOS-Gummiband auf globaler Ebene */
+            overscroll-behavior-y: none;
         }
         
-        /* Das Container-Herzstück, das exakt die echte gemessene iPhone-Höhe annimmt */
-        #root { 
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%; 
-            height: var(--app-height); 
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        
+        /* Der Bereich, der scrollen darf */
         .scrollable-area {
             flex: 1 1 auto;
             min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch; 
-            padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
+            /* Viel Platz unten, damit der Inhalt nicht hinter der Menüleiste verschwindet */
+            padding-bottom: calc(100px + env(safe-area-inset-bottom, 20px));
         }
         
         .scrollable-area::-webkit-scrollbar { display: none; }
-        .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
+        
+        /* Das schöne Glas-Design der Leiste */
+        .ios-blur { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(30px); 
+            -webkit-backdrop-filter: blur(30px); 
+        }
+        @media (prefers-color-scheme: dark) {
+            .ios-blur { background: rgba(28, 28, 30, 0.85); }
+        }
+
         .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
         
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
     </style>
+
 </head>
-<body class="text-black dark:text-white antialiased">
+<body class="text-black dark:text-white antialiased flex justify-center w-full">
     
     <div id="fallback" style="position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
         FamilyConnect startet...
     </div>
 
-    <div id="root"></div>
+    <div id="root" class="w-full relative flex flex-col"></div>
 
     <script type="text/babel">
         // --- 1. GLOBALE FEHLERBEHANDLUNG ---
@@ -338,7 +334,7 @@
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-[100dvh] overflow-y-auto">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" />
                         <div>
@@ -356,8 +352,10 @@
             );
         }
 
-        // --- GANZ UNTEN FIXIERT ---
-        // absolute positioniert sich an #root (und das hat die exakte dynamische Höhe!)
+        /* --- DIE KORRIGIERTE TAB-BAR --- 
+           bottom-0 sorgt dafür, dass sie ganz unten startet. 
+           Das paddingBottom schiebt die inneren Icons sanft nach oben über den Balken. 
+        */
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
@@ -369,10 +367,10 @@
 
           return (
             <div 
-              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
             >
-              <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
+              <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
                   <div className="w-12 md:w-14 h-full bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full"></div>
                 </div>
@@ -393,7 +391,6 @@
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
           
-          // Liest sicher die Daten aus dem Cache - KEIN AUTOMATISCHER LOGOUT!
           const [localFamilyId, setLocalFamilyId] = useState(() => localStorage.getItem('familyId'));
           const [localUserName, setLocalUserName] = useState(() => localStorage.getItem('userName'));
 
@@ -452,44 +449,20 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // --- ECHTZEIT SENSOR (Triggert Neuladen der Höhe automatisch) ---
+          // --- NUR NOCH DER KEYBOARD SENSOR ---
           useEffect(() => {
-            const setAppHeight = () => {
-                const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-                document.documentElement.style.setProperty('--app-height', `${vh}px`);
-            };
-            
-            setAppHeight(); 
-            // Simuliert das Neuladen für den perfekten Sitz
-            setTimeout(setAppHeight, 100);
-            setTimeout(setAppHeight, 300);
-            setTimeout(setAppHeight, 800);
-
-            window.addEventListener('resize', setAppHeight);
-            window.addEventListener('orientationchange', () => { setTimeout(setAppHeight, 200); });
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', setAppHeight);
-                window.visualViewport.addEventListener('scroll', setAppHeight);
-            }
-
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                setTimeout(() => { window.scrollTo(0, 0); setAppHeight(); }, 50);
+                setTimeout(() => { window.scrollTo(0, 0); }, 50);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
             window.addEventListener('focusout', handleFocusOut);
             
             return () => { 
-                window.removeEventListener('resize', setAppHeight);
-                window.removeEventListener('orientationchange', setAppHeight);
-                if (window.visualViewport) {
-                    window.visualViewport.removeEventListener('resize', setAppHeight);
-                    window.visualViewport.removeEventListener('scroll', setAppHeight);
-                }
                 window.removeEventListener('focusin', handleFocusIn); 
                 window.removeEventListener('focusout', handleFocusOut); 
             };
@@ -512,7 +485,7 @@
             return () => unsubscribe();
           }, []);
 
-          // DB Listener: Schmeißt dich niemals von alleine raus!
+          // DB Listener
           useEffect(() => {
             if (!firebaseUser || !localFamilyId || !localUserName) {
                 if (firebaseUser && !isAdminMode) setAppLoaded(true);
@@ -554,7 +527,7 @@
               }
           }, [isAdminMode]);
 
-          // Auto-Popup Listener (GLOBAL)
+          // Auto-Popup Listener
           useEffect(() => {
               if (currentFamily && currentUser) {
                   const latestEvent = safeHistory.find(h => !h.isExpense && !h.isResend);
@@ -585,7 +558,7 @@
               }
           }, [currentFamily, currentUser]);
 
-          // Service Worker Listener für Push-Klick-Weiterleitung
+          // Service Worker Listener
           useEffect(() => {
               const handleSWMessage = (event) => {
                   if (event.data && event.data.type === 'TAB_CHANGE') {
@@ -597,7 +570,6 @@
               }
               if (messaging) {
                   try {
-                      // Wird nur getriggert, wenn App AKTIV im Vordergrund ist
                       const unsub = messaging.onMessage((payload) => {
                           if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
                           showAlert(payload.notification?.title || "Neue Benachrichtigung", payload.notification?.body || "");
@@ -651,7 +623,6 @@
               const updatedMembers = [...cleanMembers];
               updatedMembers[memberIndex] = { ...updatedMembers[memberIndex], password: formInput.password.trim(), status: 'active', fcmToken: '', voiceMonkeyMeal: '', voiceMonkeyOther: '', dndUntil: null };
               
-              // WICHTIG: Sichert den VAPID-Key auch im Backend, wenn er noch fehlt!
               const updateData = { members: updatedMembers };
               let storedConfig = {};
               try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
@@ -685,7 +656,6 @@
               
               if (!member || member.status === 'pending') return setAuthError('Falsches Passwort oder noch nicht beigetreten.');
               
-              // WICHTIG: Sichert den VAPID-Key, falls der Admin ihn vergessen hat hochzuladen
               let storedConfig = {};
               try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
               if (!data.vapidKey && storedConfig.vapidKey) {
@@ -717,7 +687,7 @@
               await getFamilyDocRef(newId).set({ 
                   id: newId, 
                   name: newFamilyName.trim(), 
-                  vapidKey: storedConfig.vapidKey || '', // Cloud-Sicherung des Keys
+                  vapidKey: storedConfig.vapidKey || '', 
                   expenses: [], history: [], members: [] 
               });
               setNewFamilyName('');
@@ -786,7 +756,6 @@
                 try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
             }
             
-            // --- DIE CLOUD-VAPID-LOGIK (Kein permanentes Hochladen mehr!) ---
             let storedConfig = {};
             let firebaseConfigObj = {};
             try { 
@@ -798,7 +767,6 @@
                 }
             } catch(e) {}
             
-            // Lädt den Key bevorzugt aus der Cloud, damit niemand die Datei neu hochladen muss!
             const vapidKey = currentFamily?.vapidKey || storedConfig.vapidKey;
             
             if (!vapidKey || !vapidKey.trim()) {
@@ -808,7 +776,6 @@
             let swReg = await navigator.serviceWorker.getRegistration();
             if (!swReg) {
                 try {
-                    // Robuste SW Registrierung inkl. Scope Fallback
                     const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
                     swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
@@ -1054,7 +1021,7 @@
           
           if (!appLoaded) {
               return (
-                  <div className="fixed inset-0 bg-[var(--app-bg)] flex flex-col items-center justify-center z-50">
+                  <div className="h-[100dvh] w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50">
                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                   </div>
               );
@@ -1062,7 +1029,7 @@
 
           if (isAdminMode) {
               return (
-                  <div className="flex flex-col w-full h-full absolute inset-0 bg-[var(--app-bg)] z-40 overflow-hidden">
+                  <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
                       <Modal data={modal} onClose={() => setModal(null)} />
                       <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full">
                           <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end sticky top-0">
@@ -1131,7 +1098,7 @@
 
           if (!currentFamily || !currentUser) {
             return (
-              <div className="flex flex-col w-full h-full absolute inset-0 overflow-y-auto bg-[#000000] text-white z-40 items-center justify-center p-6 font-sans">
+              <div className="h-[100dvh] w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
                 <div className="absolute bottom-[0%] right-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#5856D6] blur-[100px] opacity-20 pointer-events-none"></div>
 
@@ -1179,7 +1146,7 @@
           const trackingEvent = trackingEventId ? safeHistory.find(h => h.id === trackingEventId) : null;
 
           return (
-            <div className="flex flex-col w-full h-full absolute inset-0 overflow-hidden bg-[var(--app-bg)] z-10">
+            <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
               <Modal data={modal} onClose={() => setModal(null)} />
               
               {trackingEvent && (
@@ -1594,7 +1561,6 @@
                   </main>
               </div>
 
-              {/* HIER WICHTIG: Die Tabbar klebt absolut unten am dynamisch gemessenen Displayrand */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
@@ -1603,7 +1569,6 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
-                    // BEHÄLT DEINEN LOGIN! 
                     const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
                     if (saved) return JSON.parse(saved);
                     
@@ -1644,7 +1609,7 @@
             
             if (status === "error") {
                 return (
-                    <div className="fixed inset-0 bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center z-50">
+                    <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
@@ -1657,7 +1622,7 @@
 
             if (status === "booting") {
                 return (
-                   <div className="fixed inset-0 bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center z-50">
+                   <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50">
                       <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                    </div>
                 );
