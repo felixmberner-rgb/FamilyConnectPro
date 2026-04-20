@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -458,7 +459,7 @@
             };
           }, []);
 
-          // --- 1. LADE-FREEZE FIX (Auth) ---
+          // --- 1. LOGIN & AUTH SCHUTZ ---
           useEffect(() => {
             const initAuth = async () => {
               try {
@@ -469,31 +470,32 @@
                 }
               } catch (error) { 
                 console.error("Auth error:", error); 
-                // VERHINDERT DEN EWIGEN LADEBILDSCHIRM BEI APP-CHECK ODER OFFLINE FEHLERN!
-                setAppLoaded(true); 
               }
             };
             initAuth();
 
-            const unsubscribe = auth.onAuthStateChanged(async (u) => {
+            const unsubscribe = auth.onAuthStateChanged((u) => {
               setFirebaseUser(u);
-              // WENN DER LOGIN FEHLSCHLÄGT ODER LEER IST, LADEN BEENDEN!
-              if (!u) {
+              // NUR zum Anmeldebildschirm, wenn WIRKLICH keine FamilyID da ist (neuer User / abgemeldet)
+              if (!u && !localFamilyId) {
                   setAppLoaded(true);
               }
             });
             return () => unsubscribe();
-          }, []);
+          }, [localFamilyId]);
 
-          // --- 2. LADE-FREEZE FIX (Datenbank) ---
+          // --- 2. DATENBANK-SCHUTZ (Kein Rauswurf bei Netzwerk/ReCaptcha-Problemen!) ---
           useEffect(() => {
-            if (!firebaseUser || !localFamilyId || !localUserName) {
-                // WENN DATEN FEHLEN, LADEN SOFORT BEENDEN DAMIT LOGIN ERSCHEINT!
+            // Wenn der User keine Login-Daten im Handy gespeichert hat -> Ab zum Login-Screen
+            if (!localFamilyId || !localUserName) {
                 setAppLoaded(true);
                 return;
             }
 
-            const unsubscribe = getFamilyDocRef(localFamilyId).onSnapshot((docSnap) => {
+            // Wenn er welche hat, warten wir geduldig auf Firebase...
+            if (!firebaseUser) return;
+
+            const unsubscribe = getFamilyDocRef(localFamilyId).onSnapshot({ includeMetadataChanges: true }, (docSnap) => {
               if (docSnap.exists) {
                 const data = docSnap.data();
                 const rawMembers = Array.isArray(data.members) ? data.members : [];
@@ -501,23 +503,22 @@
                 
                 if (!updatedUser || updatedUser.status === 'pending') {
                     console.warn("User-Daten temporär nicht bereit.");
-                    setAppLoaded(true); // Trotzdem laden beenden!
-                    return; 
+                    return; // NICHT abmelden, einfach warten.
                 }
 
                 setCurrentFamily(data);
                 setCurrentUser(updatedUser);
                 if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
-                setAppLoaded(true);
-              } else {
-                setAppLoaded(true); // Laden beenden, auch wenn Dokument fehlt
+                setAppLoaded(true); // ERFOLG! App anzeigen.
               }
             }, (error) => {
-                console.warn("Datenbank-Fehler (AppCheck blockiert?):", error);
-                setAppLoaded(true); // GANZ WICHTIG: Wenn AppCheck blockiert, Laden beenden!
+                // WENN RECAPTCHA ODER INTERNET BLOCKIERT: 
+                // Niemals appLoaded(true) setzen! Firebase repariert das im Hintergrund.
+                // Dank "offline persistence" wird ohnehin fast sofort das lokale Backup geladen!
+                console.warn("Datenbank blockiert (Warte auf AppCheck/Netzwerk...):", error);
             });
             return () => unsubscribe();
-          }, [firebaseUser, localFamilyId, localUserName]);
+          }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
 
           useEffect(() => {
               if (isAdminMode) {
@@ -586,6 +587,8 @@
               };
           }, []);
 
+          // --- HANDLER FUNKTIONEN ---
+
           const handleAdminAuth = async () => {
               setAuthError('');
               if (!formInput.password) return setAuthError('Bitte Passwort eingeben.');
@@ -599,7 +602,7 @@
                       if (docSnap.data().password === formInput.password.trim()) setIsAdminMode(true);
                       else setAuthError('Falsches Master-Passwort.');
                   }
-              } catch (e) { setAuthError('Fehler beim Admin-Login. AppCheck blockiert?'); }
+              } catch (e) { setAuthError('Fehler beim Admin-Login. Bitte kurz warten.'); }
           };
 
           const handleJoinFamily = async () => {
@@ -636,7 +639,7 @@
               setLocalFamilyId(cleanId); 
               setLocalUserName(updatedMembers[memberIndex].name);
               setAppLoaded(true);
-            } catch (err) { setAuthError('Fehler beim Beitreten. AppCheck blockiert?'); }
+            } catch (err) { setAuthError('Verbindungsfehler. Bitte versuche es erneut.'); }
           };
 
           const handleLogin = async () => {
@@ -668,7 +671,7 @@
               setLocalFamilyId(data.id); 
               setLocalUserName(member.name);
               setAppLoaded(true);
-            } catch (err) { setAuthError('Verbindung zur Datenbank abgelehnt. Hast du App-Check blockiert?'); }
+            } catch (err) { setAuthError('Fehler bei der Anmeldung. Bitte kurz warten.'); }
           };
 
           const handleLogout = () => { 
@@ -1590,11 +1593,18 @@
                     if (!firebase.apps.length) app = firebase.initializeApp(finalConfig);
                     else app = firebase.app();
                     
-                    if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V") {
+                    // OFFLINE PERSISTENZ: Lädt die Familie aus dem Cache noch bevor reCAPTCHA sich meldet!
+                    db = firebase.firestore();
+                    try {
+                        db.enablePersistence({ synchronizeTabs: true }).catch(() => {
+                            console.warn("Offline-Modus konnte nicht aktiviert werden.");
+                        });
+                    } catch (e) {}
+
+                    if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
                         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.includes('file')) {
                             try {
                                 const appCheck = firebase.appCheck();
-                                // KORREKTER AUFRUF FÜR ENTERPRISE IN FIREBASE V10 COMPAT
                                 if (typeof firebase.appCheck.ReCaptchaEnterpriseProvider === 'function') {
                                     appCheck.activate(
                                         new firebase.appCheck.ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY),
@@ -1608,7 +1618,7 @@
                             }
                         }
                     }
-                    db = firebase.firestore();
+                    
                     auth = firebase.auth();
                     setStatus("ready");
                 } catch (e) {
@@ -1647,3 +1657,6 @@
     </script>
 </body>
 </html>
+
+
+```
