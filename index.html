@@ -352,9 +352,10 @@
             );
         }
 
-        /* --- DIE KORRIGIERTE TAB-BAR --- 
-           bottom-0 sorgt dafür, dass sie ganz unten startet. 
-           Das paddingBottom schiebt die inneren Icons sanft nach oben über den Balken. 
+        /* --- DIE PERFEKTE TAB-BAR (Messdienerplan Style) --- 
+           fixed + bottom-0 positioniert starr unten.
+           Das paddingBottom schiebt die inneren Icons sanft nach oben - max 12px 
+           auf Computern oder exakt den Safe-Area Abstand auf iPhones!
         */
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
@@ -367,8 +368,8 @@
 
           return (
             <div 
-              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+              className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -1561,6 +1562,7 @@
                   </main>
               </div>
 
+              {/* HIER WICHTIG: Die Tabbar klebt absolut unten am dynamisch gemessenen Displayrand */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
@@ -1569,6 +1571,7 @@
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
+                    // BEHÄLT DEINEN LOGIN! 
                     const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
                     if (saved) return JSON.parse(saved);
                     
@@ -1591,7 +1594,7 @@
                     if (!firebase.apps.length) app = firebase.initializeApp(finalConfig);
                     else app = firebase.app();
                     
-                    if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
+                    if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V") {
                         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.includes('file')) {
                             try { firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true).catch(()=>{}); } catch (e) {}
                         }
