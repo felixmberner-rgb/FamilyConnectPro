@@ -6,14 +6,19 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FamilyConnect">
+    <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
     <title>FamilyConnect</title>
     
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+      tailwind.config = { darkMode: 'media' }
+    </script>
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.4/babel.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -21,46 +26,145 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
 
-    <!-- Zuverlässiges CDN für PDF und QR-Code Generierung -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
-        /* Body-Hintergrund für die normale App ist hell, Login ist explizit schwarz */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #F2F2F7; margin: 0; overscroll-behavior-y: none; }
-        .ios-blur { background: rgba(255, 255, 255, 0.80); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
-        .pt-safe-top { padding-top: env(safe-area-inset-top, 44px); }
-        ::-webkit-scrollbar { display: none; }
+        /* --- DER ECHTZEIT-SENSOR LAYOUT FIX --- */
+        :root {
+            --app-bg: #F2F2F7;
+            --app-height: 100vh; /* Wird vom JS sofort mit den echten Millimeter-Werten überschrieben */
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --app-bg: #000000; }
+        }
+
+        /* Komplett starres Fundament, verbietet iOS jedes Bouncen */
+        html, body { 
+            position: fixed; 
+            inset: 0;
+            width: 100%; 
+            height: 100%;
+            background-color: var(--app-bg); 
+            margin: 0; 
+            padding: 0;
+            overflow: hidden; 
+            overscroll-behavior-y: none; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            -webkit-text-size-adjust: 100%;
+        }
+        
+        /* Das Container-Herzstück, das exakt die echte gemessene iPhone-Höhe annimmt */
+        #root { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%; 
+            height: var(--app-height); 
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .scrollable-area {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch; 
+            padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
+        }
+        
+        .scrollable-area::-webkit-scrollbar { display: none; }
+        .ios-blur { backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
+        .pt-safe-top { padding-top: max(env(safe-area-inset-top), 24px); }
+        
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
-        .scroll-smooth { -webkit-overflow-scrolling: touch; }
     </style>
 </head>
-<body class="text-black antialiased overflow-hidden flex justify-center w-full">
-    <div id="root" class="w-full relative h-[100dvh]"></div>
+<body class="text-black dark:text-white antialiased">
+    
+    <div id="fallback" style="position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
+        FamilyConnect startet...
+    </div>
+
+    <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        // --- 1. GLOBALE FEHLERBEHANDLUNG ---
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+            const msg = String(args[0]);
+            if (msg.includes('appCheck') || msg.includes('recaptcha') || msg.includes('ReCAPTCHA')) return;
+            if (args[0] && args[0].message && (String(args[0].message).includes('appCheck') || String(args[0].message).includes('ReCAPTCHA'))) return;
+            originalConsoleError.apply(console, args);
+        };
+
+        const setFallbackMessage = (message) => {
+            const fallback = document.getElementById('fallback');
+            if (!fallback) return;
+            fallback.style.display = 'flex';
+            fallback.textContent = message;
+        };
+
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error || event.message);
+            setFallbackMessage('App konnte nicht gestartet werden. Bitte lade die Seite neu.');
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = String(event.reason);
+            if (reason.includes("URL protocol") || reason.includes("appCheck") || reason.includes("ReCAPTCHA")) {
+                event.preventDefault(); return;
+            }
+            console.error('Unhandled rejection:', event.reason);
+        });
+
+        // --- 2. REACT SETUP ---
+        const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
-        // =====================================================================
-        // 🛡️ HIER DEINEN RECAPTCHA SCHLÜSSEL EINTRAGEN 🛡️
-        // =====================================================================
         const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
-        // =====================================================================
-
+        const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
+        
         let app, db, auth, messaging;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
 
         const generateId = () => Math.floor(100000 + Math.random() * 900000).toString();
         const getFamilyDocRef = (familyId) => db.doc(`artifacts/${appId}/public/data/families/${familyId}`);
 
+        const getLocalTodayString = () => {
+            const now = new Date();
+            const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+            return local.toISOString().slice(0, 10);
+        };
+
+        const formatTime = (ts) => {
+            if (!ts) return '';
+            const d = new Date(ts);
+            return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        };
+
+        const formatDate = (ts) => {
+            if (!ts) return '';
+            const d = new Date(ts);
+            return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE');
+        };
+
+        const getStatusColor = (ackString) => {
+            if (!ackString) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60'; 
+            if (ackString.includes('Komme sofort')) return 'text-[#34C759]'; 
+            if (ackString.includes('In 5 Minuten')) return 'text-[#FF9500]'; 
+            if (ackString.includes('Fangt schon mal an') || ackString.includes('Fangt an')) return 'text-[#FF3B30]'; 
+            return 'text-[#34C759]'; 
+        };
+
         const ICONS = {
           Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
           BellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
           Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-          Settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+          Settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
           Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
           Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
           UtensilsCrossed: '<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',
@@ -76,12 +180,11 @@
           CheckCircle2: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
           Key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
           Trash2: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
-          Banknote: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+          Euro: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
           Plus: '<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
           X: '<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
-          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-          FileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>'
+          Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
         };
 
         const Icon = ({ name, size = 24, strokeWidth = 2, className = "", onClick }) => {
@@ -94,19 +197,47 @@
 
         function Modal({ data, onClose }) {
             if (!data) return null;
+            
+            if (data.type === 'custom_ack') {
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity">
+                        <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-white/50 dark:border-[#38383A]/50">
+                            <div className="text-center mb-6">
+                                <h3 className="font-semibold text-[19px] mb-2 text-black dark:text-white leading-snug">{data.title}</h3>
+                                <p className="text-[#3C3C4399] dark:text-[#EBEBF5]/60 text-[15px] leading-relaxed whitespace-pre-wrap">{data.message}</p>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <button onClick={() => data.onRespond('Komme sofort')} className="w-full py-3.5 rounded-[14px] bg-[#34C759] text-white font-semibold text-[17px] active:opacity-70 transition-opacity flex items-center justify-center gap-2">
+                                    <Icon name="Check" size={20} strokeWidth={2.5}/> Komme sofort
+                                </button>
+                                <button onClick={() => data.onRespond('In 5 Minuten')} className="w-full py-3.5 rounded-[14px] bg-[#FF9500] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
+                                    In 5 Minuten
+                                </button>
+                                <button onClick={() => data.onRespond('Fangt schon mal an')} className="w-full py-3.5 rounded-[14px] bg-[#FF3B30] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
+                                    Fangt schon mal an
+                                </button>
+                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[14px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-semibold text-[17px] active:opacity-70 transition-opacity mt-2">
+                                    Später antworten
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
             return (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity">
-                    <div className="bg-white/95 backdrop-blur-2xl rounded-[14px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-white/50">
+                    <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[14px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-white/50 dark:border-[#38383A]/50">
                         <div className="text-center mb-6">
-                            <h3 className="font-semibold text-[17px] mb-2 text-black leading-snug">{data.title}</h3>
-                            <p className="text-[#3C3C4399] text-[13px] leading-relaxed whitespace-pre-wrap">{data.message}</p>
+                            <h3 className="font-semibold text-[17px] mb-2 text-black dark:text-white leading-snug">{data.title}</h3>
+                            <p className="text-[#3C3C4399] dark:text-[#EBEBF5]/60 text-[13px] leading-relaxed whitespace-pre-wrap">{data.message}</p>
                         </div>
                         <div className="flex flex-col gap-2">
                             <button onClick={data.onConfirm} className={`w-full py-3.5 rounded-[12px] font-semibold text-[17px] active:opacity-70 transition-opacity ${data.danger ? 'bg-[#FF3B30] text-white' : 'bg-[#007AFF] text-white'}`}>
                                 {data.confirmText || 'OK'}
                             </button>
                             {data.type === 'confirm' && (
-                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[12px] bg-[#F2F2F7] text-[#007AFF] font-semibold text-[17px] active:opacity-70 transition-opacity">
+                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[12px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#007AFF] font-semibold text-[17px] active:opacity-70 transition-opacity">
                                     Abbrechen
                                 </button>
                             )}
@@ -116,48 +247,62 @@
             );
         }
 
-        // Live Tracking Overlay (Nach dem Rufen)
-        function TrackingOverlay({ event, currentUser, currentFamily, onClose, onResend }) {
+        function TrackingOverlay({ event, currentFamily, currentUser, safeMembers, onClose, onResend }) {
             if (!event) return null;
             const [cooldown, setCooldown] = useState(60);
 
+            const isSender = event.sender === currentUser?.name;
+            const isRecent = event.timestamp && (Date.now() - new Date(event.timestamp).getTime() < 5 * 60 * 1000);
+            const canResend = isSender && isRecent;
+
             useEffect(() => {
-                // Lokaler Timer für den 60s Spam-Schutz beim Neu-Rufen
+                const start = Date.now();
                 const timer = setInterval(() => {
-                    setCooldown(prev => prev > 0 ? prev - 1 : 0);
+                    const passed = Math.floor((Date.now() - start) / 1000);
+                    if (passed >= 60) setCooldown(0);
+                    else setCooldown(60 - passed);
                 }, 1000);
                 return () => clearInterval(timer);
-            }, []);
+            }, [event.id]);
 
             return (
                 <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-md animate-fade-in md:items-center">
-                    <div className="bg-[#F2F2F7] w-full md:max-w-md md:rounded-[24px] rounded-t-[24px] p-6 pb-safe shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto scroll-smooth">
+                    <div className="bg-[#F2F2F7] dark:bg-black w-full md:max-w-md md:rounded-[24px] rounded-t-[24px] p-6 pb-safe shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto scroll-smooth">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-[22px] font-bold tracking-tight">Ruf Status</h2>
-                            <button onClick={onClose} className="w-8 h-8 bg-gray-200/60 rounded-full flex items-center justify-center text-gray-500 active:opacity-70"><Icon name="X" size={18}/></button>
+                            <h2 className="text-[22px] font-bold tracking-tight text-black dark:text-white">Ruf Status</h2>
+                            <button onClick={onClose} className="w-8 h-8 bg-gray-200/60 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center text-gray-500 dark:text-gray-300 active:opacity-70"><Icon name="X" size={18}/></button>
                         </div>
-                        <p className="text-[#3C3C4399] mb-6 font-medium bg-white p-4 rounded-[16px] text-[15px] shadow-sm border border-[#E5E5EA]">"{event.reason}"</p>
+                        <p className="text-[#3C3C4399] dark:text-[#EBEBF5]/60 mb-6 font-medium bg-white dark:bg-[#1C1C1E] p-4 rounded-[16px] text-[15px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A]">"{event?.reason}"</p>
                         
                         <div className="space-y-3">
-                            {event.targets.map(targetName => {
-                                const hasAck = event.acknowledgedBy?.includes(targetName);
-                                const targetMember = currentFamily.members.find(m => m.name === targetName);
+                            {(event.targets || []).map(targetName => {
+                                const ackEntry = (event.acknowledgedBy || []).find(ack => ack === targetName || ack.startsWith(targetName + ':'));
+                                const hasAck = !!ackEntry;
+                                
+                                let ackText = 'Hat bestätigt!';
+                                if (hasAck && ackEntry.includes(':')) {
+                                    ackText = ackEntry.split(':')[1];
+                                }
+
+                                const targetMember = safeMembers.find(m => m.name === targetName);
                                 const isDND = targetMember?.dndUntil && new Date(targetMember.dndUntil) > new Date();
 
                                 return (
-                                    <div key={targetName} className="flex items-center justify-between bg-white border border-[#E5E5EA] p-4 rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                                    <div key={targetName} className="flex items-center justify-between bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-4 rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
                                         <div className="flex items-center gap-3">
-                                            {hasAck ? <Icon name="CheckCircle2" className="text-[#34C759]" /> : isDND ? <Icon name="BellOff" className="text-[#FF9500]" /> : <div className="w-6 h-6 rounded-full border-2 border-gray-200 animate-pulse" />}
+                                            {hasAck ? <Icon name="CheckCircle2" className={getStatusColor(ackEntry)} /> : isDND ? <Icon name="BellOff" className="text-[#FF9500]" /> : <div className="w-6 h-6 rounded-full border-2 border-gray-200 dark:border-gray-600 animate-pulse" />}
                                             <div>
-                                                <p className="font-semibold text-[17px]">{targetName}</p>
-                                                <p className="text-[13px] font-normal text-[#3C3C4399]">{hasAck ? 'Hat bestätigt!' : isDND ? 'Bitte nicht stören aktiv' : 'Wartet auf Antwort...'}</p>
+                                                <p className="font-semibold text-[17px] text-black dark:text-white">{targetName}</p>
+                                                <p className={`text-[13px] font-normal ${hasAck ? getStatusColor(ackEntry) : 'text-[#3C3C4399] dark:text-[#EBEBF5]/60'}`}>
+                                                    {hasAck ? ackText : isDND ? 'Bitte nicht stören aktiv' : 'Wartet auf Antwort...'}
+                                                </p>
                                             </div>
                                         </div>
-                                        {!hasAck && !isDND && (
+                                        {!hasAck && !isDND && canResend && (
                                             <button 
                                                 disabled={cooldown > 0}
                                                 onClick={() => { setCooldown(60); onResend(targetName, event.reason); }}
-                                                className={`text-[13px] font-semibold px-4 py-2 rounded-full transition-all ${cooldown > 0 ? 'bg-[#F2F2F7] text-gray-400' : 'bg-[#007AFF]/10 text-[#007AFF] active:opacity-70'}`}
+                                                className={`text-[13px] font-semibold px-4 py-2 rounded-full transition-all ${cooldown > 0 ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-gray-400' : 'bg-[#007AFF]/10 text-[#007AFF] active:opacity-70'}`}
                                             >
                                                 {cooldown > 0 ? `${cooldown}s` : 'Nochmal'}
                                             </button>
@@ -166,7 +311,7 @@
                                 );
                             })}
                         </div>
-                        <button onClick={onClose} className="w-full mt-8 py-3.5 bg-white font-semibold text-[17px] text-[#007AFF] rounded-[14px] active:opacity-70 shadow-sm border border-[#E5E5EA]">Schließen</button>
+                        <button onClick={onClose} className="w-full mt-8 py-3.5 bg-white dark:bg-[#1C1C1E] font-semibold text-[17px] text-[#007AFF] rounded-[14px] active:opacity-70 shadow-sm border border-[#E5E5EA] dark:border-[#38383A]">Schließen</button>
                     </div>
                 </div>
             );
@@ -183,25 +328,18 @@
                 reader.onload = (event) => {
                     try {
                         const parsed = JSON.parse(event.target.result);
-                        const firebaseData = parsed.firebaseConfig || parsed;
-                        
-                        if (!firebaseData || !firebaseData.apiKey) {
-                            throw new Error("Ungültige JSON-Datei. Firebase 'apiKey' fehlt.");
-                        }
-                        
-                        localStorage.setItem('firebaseConfig', JSON.stringify(firebaseData));
-                        onConfigLoaded(firebaseData);
-                    } catch (err) { 
-                        setError("Fehler: " + err.message); 
-                    }
+                        localStorage.setItem('familyConnectAppConfig', JSON.stringify(parsed));
+                        localStorage.setItem('firebaseConfig', JSON.stringify(parsed));
+                        onConfigLoaded(parsed);
+                    } catch (err) { setError("Fehler: Ungültiges Dateiformat."); }
                 };
                 reader.onerror = () => setError("Fehler beim Lesen der Datei.");
                 reader.readAsText(file);
             };
 
             return (
-                <div className="h-[100dvh] flex flex-col items-center justify-center p-8 bg-black text-white w-full absolute inset-0 z-50">
-                    <div className="w-full max-w-sm text-center space-y-8">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto">
+                    <div className="w-full max-w-sm text-center space-y-8 my-auto">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" />
                         <div>
                           <h1 className="text-[34px] font-bold tracking-tight mb-2">System Setup</h1>
@@ -218,46 +356,31 @@
             );
         }
 
+        // --- GANZ UNTEN FIXIERT ---
+        // absolute positioniert sich an #root (und das hat die exakte dynamische Höhe!)
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
             { id: 'history', icon: 'Clock' },
-            { id: 'expenses', icon: 'Banknote' },
+            { id: 'expenses', icon: 'Euro' }, 
             { id: 'settings', icon: 'Settings' }
           ];
-
           const activeIndex = tabs.findIndex(t => t.id === activeTab);
 
           return (
             <div 
-              className={`fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-all duration-400 ease-out ${isKeyboardOpen ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+              className={`absolute bottom-0 left-0 right-0 flex justify-center z-40 pointer-events-none px-4 pt-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
             >
-              <div className="pointer-events-auto bg-white/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-200/50 rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
-                <div 
-                  className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none"
-                  style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}
-                >
-                  <div className="w-12 md:w-14 h-full bg-[#007AFF]/15 rounded-full"></div>
+              <div className="pointer-events-auto bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
+                <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
+                  <div className="w-12 md:w-14 h-full bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full"></div>
                 </div>
-                
                 {tabs.map((tab) => {
                   const isActive = activeTab === tab.id;
                   return (
-                    <button 
-                      key={tab.id}
-                      onClick={() => {
-                        if(navigator.vibrate) navigator.vibrate(10);
-                        setActiveTab(tab.id);
-                      }}
-                      className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity"
-                    >
-                      <Icon 
-                        name={tab.icon}
-                        size={isActive ? 24 : 22} 
-                        strokeWidth={isActive ? 2.5 : 2}
-                        className={`transition-colors duration-300 ${isActive ? 'text-[#007AFF]' : 'text-[#8E8E93]'}`} 
-                      />
+                    <button key={tab.id} onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setActiveTab(tab.id); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity">
+                      <Icon name={tab.icon} size={isActive ? 24 : 22} strokeWidth={isActive ? 2.5 : 2} className={`transition-colors duration-300 ${isActive ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} />
                     </button>
                   );
                 })}
@@ -270,6 +393,7 @@
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
           
+          // Liest sicher die Daten aus dem Cache - KEIN AUTOMATISCHER LOGOUT!
           const [localFamilyId, setLocalFamilyId] = useState(() => localStorage.getItem('familyId'));
           const [localUserName, setLocalUserName] = useState(() => localStorage.getItem('userName'));
 
@@ -288,9 +412,8 @@
           const [formInput, setFormInput] = useState({ familyId: '', familyName: '', name: '', password: '' });
           const [authError, setAuthError] = useState('');
 
-          const todayString = new Date().toISOString().split('T')[0];
           const [expenseModal, setExpenseModal] = useState(null); 
-          const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', date: todayString, splitCount: 1, splitTargets: [] });
+          const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', date: getLocalTodayString(), splitCount: 1, splitTargets: [] });
 
           const [activeTab, setActiveTab] = useState(() => {
               const params = new URLSearchParams(window.location.search);
@@ -302,13 +425,26 @@
           const [isSending, setIsSending] = useState(false);
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
+          const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
+          const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
+          const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
+          const safeHistory = Array.isArray(currentFamily?.history) ? currentFamily.history.filter(h => h && typeof h === 'object' && h.id) : [];
+
+          const isAdmin = safeMembers.length > 0 && safeMembers[0].name === currentUser?.name;
+
+          const activeDND = Boolean(
+              currentUser?.dndUntil &&
+              !isNaN(new Date(currentUser.dndUntil).getTime()) &&
+              new Date(currentUser.dndUntil) > new Date()
+          );
+
           const REASONS = [
             { id: 'breakfast', label: 'Frühstück', sentence: 'Das Frühstück ist fertig!', icon: 'Coffee', category: 'meal' },
             { id: 'lunch', label: 'Mittagessen', sentence: 'Das Mittagessen ist fertig!', icon: 'Utensils', category: 'meal' },
             { id: 'coffee', label: 'Kaffee', sentence: 'Es gibt Kaffee und Kuchen!', icon: 'UtensilsCrossed', category: 'meal' },
             { id: 'dinner', label: 'Abendessen', sentence: 'Das Abendessen ist fertig!', icon: 'Moon', category: 'meal' },
             { id: 'table', label: 'Tischdecken', sentence: 'Hilfe beim Tischdecken wird benötigt!', icon: 'Utensils', category: 'push_only' },
-            { id: 'message', label: 'Kommen', sentence: 'Bitte komm kurz zu mir!', icon: 'MessageCircle', category: 'other' },
+            { id: 'message', label: 'Wohnzimmer', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
             { id: 'movie', label: 'Film', sentence: 'Der Film fängt gleich an!', icon: 'Film', category: 'other' },
             { id: 'game', label: 'Spielen', sentence: 'Wir wollen spielen, komm dazu!', icon: 'Gamepad2', category: 'other' },
           ];
@@ -316,39 +452,67 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Keyboard & Scroll Reset Fix
+          // --- ECHTZEIT SENSOR (Triggert Neuladen der Höhe automatisch) ---
           useEffect(() => {
+            const setAppHeight = () => {
+                const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                document.documentElement.style.setProperty('--app-height', `${vh}px`);
+            };
+            
+            setAppHeight(); 
+            // Simuliert das Neuladen für den perfekten Sitz
+            setTimeout(setAppHeight, 100);
+            setTimeout(setAppHeight, 300);
+            setTimeout(setAppHeight, 800);
+
+            window.addEventListener('resize', setAppHeight);
+            window.addEventListener('orientationchange', () => { setTimeout(setAppHeight, 200); });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', setAppHeight);
+                window.visualViewport.addEventListener('scroll', setAppHeight);
+            }
+
             const handleFocusIn = (e) => { 
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                    setIsKeyboardOpen(true); 
-                }
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                // Behebt den toten Raum nach dem Schließen der Tastatur in Safari
-                setTimeout(() => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }, 100);
+                setTimeout(() => { window.scrollTo(0, 0); setAppHeight(); }, 50);
             };
+            
             window.addEventListener('focusin', handleFocusIn); 
             window.addEventListener('focusout', handleFocusOut);
+            
             return () => { 
+                window.removeEventListener('resize', setAppHeight);
+                window.removeEventListener('orientationchange', setAppHeight);
+                if (window.visualViewport) {
+                    window.visualViewport.removeEventListener('resize', setAppHeight);
+                    window.visualViewport.removeEventListener('scroll', setAppHeight);
+                }
                 window.removeEventListener('focusin', handleFocusIn); 
                 window.removeEventListener('focusout', handleFocusOut); 
             };
           }, []);
 
+          // Auth Initialisierung
           useEffect(() => {
+            const initAuth = async () => {
+              try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                  await auth.signInWithCustomToken(__initial_auth_token);
+                } else { await auth.signInAnonymously(); }
+              } catch (error) { console.error("Auth error:", error); }
+            };
+            initAuth();
+
             const unsubscribe = auth.onAuthStateChanged(async (u) => {
-              if (u) {
-                  setFirebaseUser(u);
-              } else {
-                  try { await auth.signInAnonymously(); } catch(e) { console.error("Anonymous auth error", e); }
-              }
+              setFirebaseUser(u);
             });
             return () => unsubscribe();
           }, []);
 
+          // DB Listener: Schmeißt dich niemals von alleine raus!
           useEffect(() => {
             if (!firebaseUser || !localFamilyId || !localUserName) {
                 if (firebaseUser && !isAdminMode) setAppLoaded(true);
@@ -358,83 +522,111 @@
             const unsubscribe = getFamilyDocRef(localFamilyId).onSnapshot((docSnap) => {
               if (docSnap.exists) {
                 const data = docSnap.data();
-                const updatedUser = data.members.find(m => m.name === localUserName);
+                
+                const rawMembers = Array.isArray(data.members) ? data.members : [];
+                const updatedUser = rawMembers.find(m => m && typeof m === 'object' && m.name === localUserName);
                 
                 if (!updatedUser || updatedUser.status === 'pending') {
-                    alert("Dein Account wurde vom Administrator aus der Familie entfernt.");
-                    handleLogout(); return;
+                    console.warn("User-Daten temporär nicht bereit.");
+                    return; 
                 }
 
-                if (!data.expenses) data.expenses = [];
                 setCurrentFamily(data);
                 setCurrentUser(updatedUser);
                 if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
                 setAppLoaded(true);
-              } else {
-                alert("Diese Familie wurde aufgelöst.");
-                handleLogout();
               }
+            }, (error) => {
+                console.warn("Datenbank-Fehler (meist harmlose Netzwerkunterbrechung):", error);
             });
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
 
-          // --- Admin Listener ---
+          // Admin Listener
           useEffect(() => {
               if (isAdminMode) {
                  const unsub = db.collection(`artifacts/${appId}/public/data/families`).onSnapshot(snap => {
                      const families = [];
-                     snap.forEach(doc => {
-                         if (doc.id !== 'admin_setup') families.push(doc.data());
-                     });
+                     snap.forEach(doc => { if (doc.id !== 'admin_setup') families.push(doc.data() || {}); });
                      setAdminFamilies(families);
                  });
                  return () => unsub();
               }
           }, [isAdminMode]);
 
+          // Auto-Popup Listener (GLOBAL)
           useEffect(() => {
-              if (currentFamily && currentUser && activeTab === 'history') {
-                  const latestEvent = currentFamily.history?.filter(h => !h.isExpense && !h.isResend)?.[0];
-                  if (latestEvent && latestEvent.targets?.includes(currentUser.name) && !latestEvent.acknowledgedBy?.includes(currentUser.name) && latestEvent.sender !== currentUser.name) {
-                      const eventAge = Date.now() - new Date(latestEvent.timestamp).getTime();
-                      if (eventAge < 3 * 60 * 1000 && !sessionStorage.getItem(`prompted_${latestEvent.id}`)) {
-                          sessionStorage.setItem(`prompted_${latestEvent.id}`, 'true');
-                          showConfirm(`Ruf von ${latestEvent.sender}`, `${latestEvent.reason}\n\nMöchtest du direkt bestätigen, dass du kommst?`, () => handleAcknowledge(latestEvent.id));
+              if (currentFamily && currentUser) {
+                  const latestEvent = safeHistory.find(h => !h.isExpense && !h.isResend);
+                  if (latestEvent && (latestEvent.targets || []).includes(currentUser.name)) {
+                      
+                      const alreadyAcked = (latestEvent.acknowledgedBy || []).some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
+                      
+                      if (!alreadyAcked && latestEvent.sender !== currentUser.name) {
+                          if (latestEvent.timestamp) {
+                              const eventAge = Date.now() - new Date(latestEvent.timestamp).getTime();
+                              if (eventAge < 5 * 60 * 1000 && !sessionStorage.getItem(`prompted_${latestEvent.id}`)) {
+                                  sessionStorage.setItem(`prompted_${latestEvent.id}`, 'true');
+                                  
+                                  setModal({ 
+                                      type: 'custom_ack', 
+                                      title: `Ruf von ${latestEvent.sender}`, 
+                                      message: `${latestEvent.reason}\n\nWie möchtest du antworten?`, 
+                                      onRespond: (responseType) => {
+                                          handleAcknowledge(latestEvent.id, responseType);
+                                          setModal(null);
+                                      },
+                                      onCancel: () => setModal(null) 
+                                  });
+                              }
+                          }
                       }
                   }
               }
-          }, [currentFamily, currentUser, activeTab]);
+          }, [currentFamily, currentUser]);
 
+          // Service Worker Listener für Push-Klick-Weiterleitung
           useEffect(() => {
+              const handleSWMessage = (event) => {
+                  if (event.data && event.data.type === 'TAB_CHANGE') {
+                      setActiveTab(event.data.tab);
+                  }
+              };
+              if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.addEventListener('message', handleSWMessage);
+              }
               if (messaging) {
                   try {
+                      // Wird nur getriggert, wenn App AKTIV im Vordergrund ist
                       const unsub = messaging.onMessage((payload) => {
                           if(navigator.vibrate) navigator.vibrate([50, 100, 50]);
                           showAlert(payload.notification?.title || "Neue Benachrichtigung", payload.notification?.body || "");
                       });
-                      return () => unsub();
-                  } catch(e) { console.warn("Meldungs-Listener Fehler:", e); }
+                      return () => {
+                          unsub();
+                          if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+                      };
+                  } catch(e) {}
               }
+              return () => {
+                  if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+              };
           }, []);
 
-          // --- Admin Auth ---
+          // --- HANDLER FUNKTIONEN ---
+
           const handleAdminAuth = async () => {
               setAuthError('');
               if (!formInput.password) return setAuthError('Bitte Passwort eingeben.');
-              
               try {
                   const adminDocRef = getFamilyDocRef('admin_setup');
                   const docSnap = await adminDocRef.get();
-                  
                   if (!docSnap.exists) {
                       await adminDocRef.set({ isAdminDoc: true, password: formInput.password.trim() });
                       setIsAdminMode(true);
                   } else {
-                      if (docSnap.data().password === formInput.password.trim()) {
-                          setIsAdminMode(true);
-                      } else {
-                          setAuthError('Falsches Master-Passwort.');
-                      }
+                      if (docSnap.data().password === formInput.password.trim()) setIsAdminMode(true);
+                      else setAuthError('Falsches Master-Passwort.');
                   }
               } catch (e) { setAuthError('Fehler beim Admin-Login.'); }
           };
@@ -445,39 +637,35 @@
             try {
               const cleanId = formInput.familyId.trim();
               const cleanName = formInput.name.trim().toLowerCase();
-              const cleanPass = formInput.password.trim();
-
               const docSnap = await getFamilyDocRef(cleanId).get();
               if (!docSnap.exists) return setAuthError('Familie nicht gefunden.');
               const data = docSnap.data();
               
-              const memberIndex = data.members.findIndex(m => m.name.toLowerCase() === cleanName);
+              const rawMembers = Array.isArray(data.members) ? data.members : [];
+              const cleanMembers = rawMembers.filter(m => m && typeof m === 'object');
+              const memberIndex = cleanMembers.findIndex(m => m.name.toLowerCase() === cleanName);
               
-              if (memberIndex === -1) {
-                  return setAuthError('Dieser Name wurde vom Administrator noch nicht registriert.');
-              }
-              if (data.members[memberIndex].status !== 'pending') {
-                  return setAuthError('Dieser Account ist bereits aktiv. Bitte nutze "Anmelden".');
-              }
+              if (memberIndex === -1) return setAuthError('Dieser Name wurde vom Administrator noch nicht registriert.');
+              if (cleanMembers[memberIndex].status !== 'pending') return setAuthError('Dieser Account ist bereits aktiv. Bitte nutze "Anmelden".');
               
-              const updatedMembers = [...data.members];
-              updatedMembers[memberIndex] = {
-                  ...updatedMembers[memberIndex],
-                  password: cleanPass,
-                  status: 'active',
-                  fcmToken: '',
-                  voiceMonkeyMeal: '',
-                  voiceMonkeyOther: '',
-                  dndUntil: null
-              };
+              const updatedMembers = [...cleanMembers];
+              updatedMembers[memberIndex] = { ...updatedMembers[memberIndex], password: formInput.password.trim(), status: 'active', fcmToken: '', voiceMonkeyMeal: '', voiceMonkeyOther: '', dndUntil: null };
               
-              await getFamilyDocRef(cleanId).update({ members: updatedMembers });
+              // WICHTIG: Sichert den VAPID-Key auch im Backend, wenn er noch fehlt!
+              const updateData = { members: updatedMembers };
+              let storedConfig = {};
+              try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
+              if (!data.vapidKey && storedConfig.vapidKey) updateData.vapidKey = storedConfig.vapidKey;
+
+              await getFamilyDocRef(cleanId).update(updateData);
               
+              setCurrentFamily(data);
+              setCurrentUser(updatedMembers[memberIndex]);
               localStorage.setItem('familyId', cleanId); 
               localStorage.setItem('userName', updatedMembers[memberIndex].name);
-              
-              setLocalFamilyId(cleanId);
+              setLocalFamilyId(cleanId); 
               setLocalUserName(updatedMembers[memberIndex].name);
+              setAppLoaded(true);
             } catch (err) { setAuthError('Fehler beim Beitreten.'); }
           };
 
@@ -487,67 +675,73 @@
             try {
               const cleanId = formInput.familyId.trim();
               const cleanName = formInput.name.trim().toLowerCase();
-              const cleanPass = formInput.password.trim();
-
               const docSnap = await getFamilyDocRef(cleanId).get();
               if (!docSnap.exists) return setAuthError('Familie nicht gefunden. Überprüfe die ID.');
               
               const data = docSnap.data();
-              const member = data.members.find(m => m.name.toLowerCase() === cleanName && m.password === cleanPass);
+              const rawMembers = Array.isArray(data.members) ? data.members : [];
+              const cleanMembers = rawMembers.filter(m => m && typeof m === 'object');
+              const member = cleanMembers.find(m => m.name.toLowerCase() === cleanName && m.password === formInput.password.trim());
               
               if (!member || member.status === 'pending') return setAuthError('Falsches Passwort oder noch nicht beigetreten.');
               
+              // WICHTIG: Sichert den VAPID-Key, falls der Admin ihn vergessen hat hochzuladen
+              let storedConfig = {};
+              try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
+              if (!data.vapidKey && storedConfig.vapidKey) {
+                  await getFamilyDocRef(cleanId).update({ vapidKey: storedConfig.vapidKey });
+              }
+
+              setCurrentFamily(data);
+              setCurrentUser(member);
               localStorage.setItem('familyId', data.id); 
               localStorage.setItem('userName', member.name);
-              
-              setLocalFamilyId(data.id);
+              setLocalFamilyId(data.id); 
               setLocalUserName(member.name);
-            } catch (err) { 
-              setAuthError('Fehler bei der Anmeldung: ' + err.message); 
-            }
+              setAppLoaded(true);
+            } catch (err) { setAuthError('Fehler bei der Anmeldung.'); }
           };
 
           const handleLogout = () => { 
-              localStorage.removeItem('familyId');
-              localStorage.removeItem('userName');
-              setLocalFamilyId(null);
-              setLocalUserName(null);
-              setCurrentFamily(null);
-              setCurrentUser(null);
+              localStorage.removeItem('familyId'); localStorage.removeItem('userName');
+              setLocalFamilyId(null); setLocalUserName(null); setCurrentFamily(null); setCurrentUser(null);
           };
 
-          // --- Admin Actions ---
           const adminCreateFamily = async () => {
               if (!newFamilyName.trim()) return showAlert("Fehler", "Bitte Familiennamen eingeben.");
               const newId = generateId();
-              const familyData = {
-                  id: newId, name: newFamilyName.trim(), vapidKey: '', expenses: [], history: [], members: []
-              };
-              await getFamilyDocRef(newId).set(familyData);
+              
+              let storedConfig = {};
+              try { storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}'); } catch(e) {}
+
+              await getFamilyDocRef(newId).set({ 
+                  id: newId, 
+                  name: newFamilyName.trim(), 
+                  vapidKey: storedConfig.vapidKey || '', // Cloud-Sicherung des Keys
+                  expenses: [], history: [], members: [] 
+              });
               setNewFamilyName('');
           };
 
           const adminDeleteFamily = async (famId) => {
-              showConfirm("Familie löschen", "Möchtest du diese Familie und alle Daten endgültig löschen?", async () => {
-                  await getFamilyDocRef(famId).delete();
-              }, true);
+              showConfirm("Familie löschen", "Möchtest du diese Familie und alle Daten endgültig löschen?", async () => { await getFamilyDocRef(famId).delete(); }, true);
           };
 
           const adminAddMember = async (fam) => {
               const name = newMemberNames[fam.id];
               if (!name || !name.trim()) return;
-              if (fam.members.find(m => m.name.toLowerCase() === name.trim().toLowerCase())) return showAlert("Fehler", "Name existiert bereits.");
               
-              const newMember = { name: name.trim(), status: 'pending' };
-              await getFamilyDocRef(fam.id).update({ members: [...fam.members, newMember] });
+              const rawFamMembers = Array.isArray(fam.members) ? fam.members.filter(m => m && typeof m === 'object') : [];
+              if (rawFamMembers.find(m => m.name.toLowerCase() === name.trim().toLowerCase())) return showAlert("Fehler", "Name existiert bereits.");
+              await getFamilyDocRef(fam.id).update({ members: [...rawFamMembers, { name: name.trim(), status: 'pending' }] });
               setNewMemberNames({ ...newMemberNames, [fam.id]: '' });
           };
 
           const adminDeleteMember = async (famId, memberName) => {
               showConfirm("Mitglied löschen", `Möchtest du ${memberName} aus der Familie entfernen?`, async () => {
                   const fam = adminFamilies.find(f => f.id === famId);
-                  const updatedMembers = fam.members.filter(m => m.name !== memberName);
-                  await getFamilyDocRef(famId).update({ members: updatedMembers });
+                  const rawFamMembers = Array.isArray(fam.members) ? fam.members.filter(m => m && typeof m === 'object') : [];
+                  await getFamilyDocRef(famId).update({ members: rawFamMembers.filter(m => m.name !== memberName) });
               }, true);
           };
 
@@ -555,93 +749,101 @@
               try {
                   const { jsPDF } = window.jspdf;
                   const QRCodeLib = window.QRCode; 
-                  
-                  if (!QRCodeLib) {
-                      throw new Error("QR-Code Bibliothek wurde nicht geladen. Bitte überprüfe deine Internetverbindung.");
-                  }
-
+                  if (!QRCodeLib) throw new Error("QR-Code Bibliothek lädt nicht. Lade die Seite neu oder prüfe deinen Werbeblocker.");
                   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-                  
                   const appUrl = window.location.origin + window.location.pathname;
                   const qrDataUrl = await QRCodeLib.toDataURL(appUrl, { width: 300, margin: 2, color: { dark: '#007AFF', light: '#FFFFFF' } });
 
-                  doc.setFillColor(242, 242, 247);
-                  doc.rect(0, 0, 210, 297, 'F');
-                  doc.setFillColor(255, 255, 255);
-                  doc.roundedRect(20, 40, 170, 180, 10, 10, 'F');
+                  doc.setFillColor(242, 242, 247); doc.rect(0, 0, 210, 297, 'F');
+                  doc.setFillColor(255, 255, 255); doc.roundedRect(20, 40, 170, 180, 10, 10, 'F');
                   
-                  doc.setFont("helvetica", "bold");
-                  doc.setTextColor(0, 122, 255);
-                  doc.setFontSize(32);
-                  doc.text("FamilyConnect", 105, 65, { align: "center" });
-                  
-                  doc.setTextColor(28, 28, 30);
-                  doc.setFontSize(22);
-                  doc.text(`Familie: ${family.name}`, 105, 85, { align: "center" });
-
-                  doc.setFont("helvetica", "normal");
-                  doc.setFontSize(14);
-                  doc.setTextColor(142, 142, 147);
-                  doc.text("Scanne den QR-Code, um der App beizutreten:", 105, 105, { align: "center" });
+                  doc.setFont("helvetica", "bold"); doc.setTextColor(0, 122, 255); doc.setFontSize(32); doc.text("FamilyConnect", 105, 65, { align: "center" });
+                  doc.setTextColor(28, 28, 30); doc.setFontSize(22); doc.text(`Familie: ${family.name}`, 105, 85, { align: "center" });
+                  doc.setFont("helvetica", "normal"); doc.setFontSize(14); doc.setTextColor(142, 142, 147); doc.text("Scanne den QR-Code, um der App beizutreten:", 105, 105, { align: "center" });
                   doc.addImage(qrDataUrl, 'PNG', 70, 115, 70, 70);
-
-                  doc.setFontSize(14);
-                  doc.setTextColor(28, 28, 30);
-                  doc.text("Eure Familien-ID lautet:", 105, 200, { align: "center" });
-
-                  doc.setFont("helvetica", "bold");
-                  doc.setFontSize(36);
-                  doc.setTextColor(0, 122, 255);
-                  doc.text(family.id, 105, 215, { align: "center" });
-
-                  doc.setFont("helvetica", "normal");
-                  doc.setFontSize(11);
-                  doc.setTextColor(142, 142, 147);
-                  doc.text("Wichtig: Dein Vorname muss vom Administrator", 105, 260, { align: "center" });
-                  doc.text("freigeschaltet sein, bevor du beitreten kannst.", 105, 266, { align: "center" });
-
+                  doc.setFontSize(14); doc.setTextColor(28, 28, 30); doc.text("Eure Familien-ID lautet:", 105, 200, { align: "center" });
+                  doc.setFont("helvetica", "bold"); doc.setFontSize(36); doc.setTextColor(0, 122, 255); doc.text(family.id, 105, 215, { align: "center" });
+                  doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(142, 142, 147); doc.text("Wichtig: Dein Vorname muss vom Administrator", 105, 260, { align: "center" }); doc.text("freigeschaltet sein, bevor du beitreten kannst.", 105, 266, { align: "center" });
                   doc.save(`FamilyConnect_${family.name}_Setup.pdf`);
-              } catch (err) {
-                  console.error("PDF Error:", err);
-                  alert(err.message || "Fehler beim Generieren der PDF.");
-              }
+              } catch (err) { showAlert("Fehler", err.message || "Fehler beim Generieren der PDF."); }
           };
 
           const requestPushPermission = async () => {
-            // Fange das Problem auf iOS ab, wenn die App nicht auf dem Homescreen liegt
-            if (!('Notification' in window)) {
-                return alert("Push wird auf diesem Gerät nicht unterstützt. Bitte drücke im Safari in der Mitte unten auf 'Teilen' und wähle 'Zum Home-Bildschirm'!");
-            }
+            if (!window.isSecureContext) return showAlert("Fehler", "Push funktioniert nur über HTTPS.");
             
-            // Wenn Push vom System aus versehen nicht geladen wurde, manuell initialisieren
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                return showAlert("Push-Fehler", "Push wird in diesem Modus nicht unterstützt. Bitte als Web-App auf dem Home-Bildschirm speichern.");
+            }
+
+            if (!firebase?.messaging) return showAlert("Fehler", "Firebase Messaging ist nicht verfügbar.");
+
+            try {
+                const supported = firebase.messaging.isSupported ? await firebase.messaging.isSupported() : true;
+                if (!supported) return showAlert("Fehler", "Push ist auf diesem Gerät/Browser nicht verfügbar.");
+            } catch (e) {}
+
             if (!messaging) {
-                try {
-                    messaging = firebase.messaging();
-                } catch(e) {
-                    return alert("Fehler: Push-Dienst konnte nicht gestartet werden.");
+                try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
+            }
+            
+            // --- DIE CLOUD-VAPID-LOGIK (Kein permanentes Hochladen mehr!) ---
+            let storedConfig = {};
+            let firebaseConfigObj = {};
+            try { 
+                const rawConfig = localStorage.getItem('firebaseConfig') || localStorage.getItem('familyConnectAppConfig');
+                if (rawConfig) {
+                    const parsed = JSON.parse(rawConfig);
+                    storedConfig = parsed.vapidKey ? parsed : (parsed.firebaseConfig || {});
+                    firebaseConfigObj = parsed.firebaseConfig || parsed;
                 }
+            } catch(e) {}
+            
+            // Lädt den Key bevorzugt aus der Cloud, damit niemand die Datei neu hochladen muss!
+            const vapidKey = currentFamily?.vapidKey || storedConfig.vapidKey;
+            
+            if (!vapidKey || !vapidKey.trim()) {
+                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte lade als Administrator die config.json noch einmal hoch.");
+            }
+            
+            let swReg = await navigator.serviceWorker.getRegistration();
+            if (!swReg) {
+                try {
+                    // Robuste SW Registrierung inkl. Scope Fallback
+                    const swUrl = `./firebase-messaging-sw.js?apiKey=${encodeURIComponent(firebaseConfigObj.apiKey || '')}&projectId=${encodeURIComponent(firebaseConfigObj.projectId || '')}&senderId=${encodeURIComponent(firebaseConfigObj.messagingSenderId || '')}&appId=${encodeURIComponent(firebaseConfigObj.appId || '')}`;
+                    swReg = await navigator.serviceWorker.register(swUrl);
+                } catch(e) {
+                    console.error("SW Registration Error:", e);
+                    return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
+                }
+            } else {
+                await swReg.update();
             }
 
-            const storedConfig = JSON.parse(localStorage.getItem('firebaseConfig') || '{}');
-            const vapidKey = storedConfig.vapidKey || (currentFamily && currentFamily.vapidKey);
-
-            if (!vapidKey || vapidKey.trim() === '') return alert("Kein VAPID-Key hinterlegt! Admin muss diesen im Setup eintragen.");
-            
             setPushStatus('Wird angefragt...');
             try {
               const permission = await Notification.requestPermission();
-              if (permission === 'granted') {
-                  const reg = await navigator.serviceWorker.ready;
-                  const token = await messaging.getToken({ vapidKey: vapidKey.trim(), serviceWorkerRegistration: reg });
-                  if (token) {
-                    const updatedMembers = currentFamily.members.map(m => m.name === currentUser.name ? { ...m, fcmToken: token } : m);
-                    await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
-                    setPushStatus('Aktiviert ✅');
-                    if(navigator.vibrate) navigator.vibrate(50);
-                    alert("Erfolgreich!");
-                  } else setPushStatus('Fehler');
-              } else setPushStatus('Abgelehnt ❌');
-            } catch (error) { setPushStatus('Fehler'); alert("Kritischer Fehler beim Token-Abruf."); }
+              if (permission !== 'granted') {
+                  setPushStatus('Abgelehnt ❌');
+                  return;
+              }
+
+              const token = await messaging.getToken({
+                  vapidKey: vapidKey.trim(),
+                  serviceWorkerRegistration: swReg
+              });
+
+              if (!token) {
+                  setPushStatus('Fehler');
+                  return showAlert("Fehler", "Es konnte kein Push-Token erzeugt werden.");
+              }
+
+              await getFamilyDocRef(currentFamily.id).update({
+                  members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: token } : m)
+              });
+              setPushStatus('Aktiviert ✅'); 
+              showAlert("Erfolg", "Push-Mitteilungen wurden erfolgreich aktiviert!");
+
+            } catch (error) { console.error(error); setPushStatus('Fehler'); showAlert("Fehler", "Kritischer Fehler beim Token-Abruf."); }
           };
 
           const handleSendNotification = async (customReasonObj = null, customTargets = null, isResend = false) => {
@@ -649,20 +851,15 @@
             const targetsList = customTargets || selectedMembers;
             if (!reasonObj || targetsList.length === 0) return;
             
-            const todayCalls = currentFamily.history.filter(h => h.sender === currentUser.name && new Date(h.timestamp).toDateString() === new Date().toDateString());
-            if (todayCalls.length >= 20) return showAlert("Limit erreicht", "Du hast heute bereits 20 Rufe gesendet. Bitte warte bis morgen.");
+            const todayCalls = safeHistory.filter(h => h?.sender === currentUser.name && h?.timestamp && new Date(h.timestamp).toDateString() === new Date().toDateString());
+            if (todayCalls.length >= 20) return showAlert("Limit erreicht", "Du hast heute bereits 20 Rufe gesendet.");
 
-            setIsSending(true);
-            if(navigator.vibrate) navigator.vibrate(10);
-
-            const now = new Date();
-            const currentHour = now.getHours();
-            const isNightMode = currentHour >= 22 || currentHour < 7;
-            
+            setIsSending(true); if(navigator.vibrate) navigator.vibrate(10);
+            const now = new Date(); const isNightMode = now.getHours() >= 22 || now.getHours() < 7;
             const actualTargets = [];
 
-            currentFamily.members.forEach(member => {
-                if (targetsList.includes(member.name) && member.status !== 'pending') {
+            safeMembers.forEach(member => {
+                if (member && targetsList.includes(member.name) && member.status !== 'pending') {
                     const isDND = member.dndUntil && new Date(member.dndUntil) > now;
                     if (!isDND) {
                         actualTargets.push(member.name);
@@ -674,135 +871,158 @@
                 }
             });
 
-            // Neu: isResend markiert unsichtbare Rufe für die UI
-            const newHistoryItem = {
-              id: Date.now().toString(),
-              timestamp: now.toISOString(),
-              sender: currentUser.name,
-              reason: reasonObj.sentence, 
-              targets: actualTargets,
-              acknowledgedBy: [],
-              isExpense: false,
-              isResend: isResend
-            };
+            if (actualTargets.length === 0) {
+                setIsSending(false);
+                return showAlert("Hinweis", "Alle ausgewählten Personen haben aktuell 'Nicht stören' aktiviert.");
+            }
+
+            const newHistoryItem = { id: Date.now().toString(), timestamp: now.toISOString(), sender: currentUser.name, reason: reasonObj.sentence, targets: actualTargets, acknowledgedBy: [], isExpense: false, isResend: isResend };
 
             try {
-              await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...(currentFamily.history || [])].slice(0, 50) });
+              await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) });
               if(navigator.vibrate) navigator.vibrate([30, 50, 30]);
-              
-              if (!customReasonObj && reasonObj.category !== 'push_only' && !isResend) {
-                  setTrackingEventId(newHistoryItem.id);
-              }
-              
+              if (!customReasonObj && reasonObj.category !== 'push_only' && !isResend) setTrackingEventId(newHistoryItem.id);
               setSelectedReason(null); setSelectedMembers([]); 
               if (activeTab === 'home' && reasonObj.category === 'push_only') setActiveTab('history');
-            } catch (err) { console.error("History err:", err); }
-
+            } catch (err) {}
             setTimeout(() => setIsSending(false), 800);
           };
 
-          const handleAcknowledge = async (historyItemId) => {
+          const handleAcknowledge = async (historyItemId, responseType = 'Bestätigt') => {
             if(navigator.vibrate) navigator.vibrate([20, 30]);
-            const updatedHistory = currentFamily.history.map(item => {
-              if (item.id === historyItemId && !item.acknowledgedBy.includes(currentUser.name)) {
-                   return { ...item, acknowledgedBy: [...(item.acknowledgedBy || []), currentUser.name] };
-              }
-              return item;
-            });
-            await getFamilyDocRef(currentFamily.id).update({ history: updatedHistory });
+            const responseString = `${currentUser.name}:${responseType}`;
+
+            try {
+                const docRef = getFamilyDocRef(currentFamily.id);
+                const docSnap = await docRef.get();
+                if (!docSnap.exists) return;
+                
+                const freshData = docSnap.data();
+                const freshHistory = freshData.history || [];
+                
+                let changed = false;
+                const updatedHistory = freshHistory.map(item => {
+                    if (item.id === historyItemId) {
+                        const alreadyAcked = (item.acknowledgedBy || []).some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
+                        if (!alreadyAcked) {
+                            changed = true;
+                            return { ...item, acknowledgedBy: [...(item.acknowledgedBy || []), responseString] };
+                        }
+                    }
+                    return item;
+                });
+
+                if (changed) {
+                    await docRef.update({ history: updatedHistory });
+                }
+            } catch (e) {
+                console.error("Fehler beim Bestätigen:", e);
+            }
           };
 
-          // --- Auslagen ---
-          const openSingleExpense = (targetName) => {
-              setExpenseForm({ amount: '', reason: '', date: todayString, splitCount: 1, splitTargets: [] });
-              setExpenseModal({ mode: 'single', target: targetName });
+          const resetExpenseForm = (overrides = {}) => {
+              setExpenseForm({
+                  amount: '',
+                  reason: '',
+                  date: getLocalTodayString(),
+                  splitCount: 1,
+                  splitTargets: [],
+                  ...overrides
+              });
+          };
+
+          const openSingleExpense = (target) => {
+              resetExpenseForm();
+              setExpenseModal({ mode: 'single', target });
           };
 
           const openSplitExpense = () => {
-              setExpenseForm({ amount: '', reason: '', date: todayString, splitCount: 2, splitTargets: [] });
+              resetExpenseForm({ splitCount: 2 });
               setExpenseModal({ mode: 'split' });
           };
 
           const openEditExpense = (expense) => {
-              setExpenseForm({ amount: expense.amount, reason: expense.reason, date: expense.date || expense.timestamp.split('T')[0], splitCount: 1, splitTargets: [] });
+              resetExpenseForm({
+                  amount: String(expense?.amount ?? ''),
+                  reason: expense?.reason ?? '',
+                  date: expense?.date || getLocalTodayString(),
+                  splitCount: 1,
+                  splitTargets: []
+              });
               setExpenseModal({ mode: 'edit', expense });
           };
 
           const toggleSplitTarget = (name) => {
               setExpenseForm(prev => {
-                  const targets = prev.splitTargets.includes(name) ? prev.splitTargets.filter(n => n !== name) : [...prev.splitTargets, name];
-                  return { ...prev, splitTargets: targets };
+                  const exists = prev.splitTargets.includes(name);
+                  const nextTargets = exists
+                      ? prev.splitTargets.filter(n => n !== name)
+                      : [...prev.splitTargets, name];
+
+                  return {
+                      ...prev,
+                      splitTargets: nextTargets
+                  };
               });
           };
 
           const handleSaveExpense = async () => {
               if (!expenseForm.amount || !expenseForm.reason) return showAlert("Fehler", "Bitte Betrag und Grund angeben.");
-              const amountNum = parseFloat(expenseForm.amount.replace(',', '.'));
+              const cleanAmount = String(expenseForm.amount).replace(',', '.').replace(/[^0-9.]/g, '');
+              const amountNum = parseFloat(cleanAmount);
               if (isNaN(amountNum) || amountNum <= 0) return showAlert("Fehler", "Ungültiger Betrag.");
 
-              let newExpenses = [...(currentFamily.expenses || [])];
+              let newExpenses = [...safeExpenses];
               let historyPushes = [];
 
               if (expenseModal.mode === 'edit') {
-                  newExpenses = newExpenses.map(e => e.id === expenseModal.expense.id ? {
-                      ...e, amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date
-                  } : e);
+                  newExpenses = newExpenses.map(e => e?.id === expenseModal.expense.id ? { ...e, amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date } : e);
               } else if (expenseModal.mode === 'single') {
-                  const newExp = {
-                      id: generateId(), creditor: currentUser.name, debtor: expenseModal.target,
-                      amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date, timestamp: new Date().toISOString(), isPaid: false
-                  };
-                  newExpenses.unshift(newExp);
-                  historyPushes.push({
-                      id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name,
-                      reason: `Neue Auslage: ${expenseForm.reason} (${amountNum.toFixed(2)}€)`, targets: [expenseModal.target], acknowledgedBy: [], isExpense: true
-                  });
+                  newExpenses.unshift({ id: generateId(), creditor: currentUser.name, debtor: expenseModal.target, amount: amountNum.toFixed(2), reason: expenseForm.reason, date: expenseForm.date, timestamp: new Date().toISOString(), isPaid: false });
+                  historyPushes.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Neue Auslage: ${expenseForm.reason} (${amountNum.toFixed(2)}€)`, targets: [expenseModal.target], acknowledgedBy: [], isExpense: true });
               } else if (expenseModal.mode === 'split') {
-                  const splitCount = parseInt(expenseForm.splitCount);
-                  if (splitCount < 1 || expenseForm.splitTargets.length === 0) return showAlert("Fehler", "Bitte wähle mindestens eine Person aus.");
-                  const perPerson = (amountNum / splitCount).toFixed(2);
+                  const splitCount = parseInt(expenseForm.splitCount, 10);
+                  
+                  if (isNaN(splitCount) || splitCount < 1) {
+                      return showAlert("Fehler", "Bitte gib an, durch wie viele Personen der Betrag geteilt wird.");
+                  }
+                  if (expenseForm.splitTargets.length === 0) {
+                      return showAlert("Fehler", "Bitte wähle mindestens eine Person aus.");
+                  }
 
+                  const perPerson = (amountNum / splitCount).toFixed(2);
                   expenseForm.splitTargets.forEach(target => {
-                      const newExp = {
-                          id: generateId(), creditor: currentUser.name, debtor: target,
-                          amount: perPerson, reason: `${expenseForm.reason} (Anteilig)`, date: expenseForm.date, timestamp: new Date().toISOString(), isPaid: false
-                      };
-                      newExpenses.unshift(newExp);
-                      historyPushes.push({
-                          id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name,
-                          reason: `Neue geteilte Auslage: ${expenseForm.reason} (${perPerson}€)`, targets: [target], acknowledgedBy: [], isExpense: true
-                      });
+                      newExpenses.unshift({ id: generateId(), creditor: currentUser.name, debtor: target, amount: perPerson, reason: `${expenseForm.reason} (Anteilig)`, date: expenseForm.date, timestamp: new Date().toISOString(), isPaid: false });
+                      historyPushes.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Neue geteilte Auslage: ${expenseForm.reason} (${perPerson}€)`, targets: [target], acknowledgedBy: [], isExpense: true });
                   });
               }
 
               try {
                   await getFamilyDocRef(currentFamily.id).update({ expenses: newExpenses });
-                  if (historyPushes.length > 0) {
-                      await getFamilyDocRef(currentFamily.id).update({ history: [...historyPushes, ...(currentFamily.history || [])].slice(0, 50) });
-                  }
+                  if (historyPushes.length > 0) await getFamilyDocRef(currentFamily.id).update({ history: [...historyPushes, ...safeHistory].slice(0, 50) });
                   setExpenseModal(null);
               } catch (e) { showAlert("Fehler", "Konnte nicht gespeichert werden."); }
           };
 
           const handleMarkExpensePaid = async (expId) => {
-              const updatedExpenses = currentFamily.expenses.map(e => e.id === expId ? { ...e, isPaid: true } : e);
+              const updatedExpenses = safeExpenses.map(e => e?.id === expId ? { ...e, isPaid: true } : e);
               await getFamilyDocRef(currentFamily.id).update({ expenses: updatedExpenses });
           };
 
           const handleDeleteExpense = async (expId) => {
-              const updatedExpenses = currentFamily.expenses.filter(e => e.id !== expId);
+              const updatedExpenses = safeExpenses.filter(e => e?.id !== expId);
               await getFamilyDocRef(currentFamily.id).update({ expenses: updatedExpenses });
           };
 
           const setDND = async (hours) => {
               let dndTime = null;
-              if (hours > 0) {
-                  const dndDate = new Date();
-                  dndDate.setHours(dndDate.getHours() + hours);
-                  dndTime = dndDate.toISOString();
+              if (hours > 0) { 
+                  const dndDate = new Date(); 
+                  const exactMinutes = Math.round(hours * 60);
+                  dndDate.setMinutes(dndDate.getMinutes() + exactMinutes); 
+                  dndTime = dndDate.toISOString(); 
               }
-              const updatedMembers = currentFamily.members.map(m => m.name === currentUser.name ? { ...m, dndUntil: dndTime } : m);
-              await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
+              await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, dndUntil: dndTime } : m) });
           };
 
           const handleClearHistory = () => {
@@ -814,110 +1034,108 @@
           const handleDeleteMember = (memberName) => {
             if (memberName === currentUser.name) return; 
             showConfirm("Mitglied entfernen", `Möchtest du ${memberName} dauerhaft aus der Familie entfernen?`, async () => {
-                const updatedMembers = currentFamily.members.filter(m => m.name !== memberName);
+                const updatedMembers = safeMembers.filter(m => m?.name !== memberName);
                 await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
             }, true);
           };
 
           const handleDeleteFamily = () => {
-            showConfirm("Familie auflösen", "Möchtest du die gesamte Familie und alle Daten endgültig löschen? Alle Mitglieder werden abgemeldet.", async () => {
+            showConfirm("Familie auflösen", "Möchtest du die gesamte Familie und alle Daten endgültig löschen?", async () => {
                 await getFamilyDocRef(currentFamily.id).delete();
             }, true);
           };
 
           const saveSettings = async (key, value) => {
-            const updatedMembers = currentFamily.members.map(m => m.name === currentUser.name ? { ...m, [key]: value.trim() } : m);
-            await getFamilyDocRef(currentFamily.id).update({ members: updatedMembers });
+            const val = value ? String(value).trim() : '';
+            await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, [key]: val } : m) });
           };
-          
-          const saveAdminSettings = async (key, value) => await getFamilyDocRef(currentFamily.id).update({ [key]: value.trim() });
 
-          // --- Views ---
+          // --- RENDER LOGIK ---
+          
           if (!appLoaded) {
               return (
-                  <div className="h-[100dvh] bg-[#000000] flex flex-col items-center justify-center relative w-full absolute inset-0 z-50">
+                  <div className="fixed inset-0 bg-[var(--app-bg)] flex flex-col items-center justify-center z-50">
                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                   </div>
               );
           }
 
-          // ADMIN DASHBOARD VIEW
           if (isAdminMode) {
               return (
-                  <div className="min-h-[100dvh] bg-[#F2F2F7] font-sans flex flex-col w-full absolute inset-0 z-50 overflow-y-auto scroll-smooth pb-20">
+                  <div className="flex flex-col w-full h-full absolute inset-0 bg-[var(--app-bg)] z-40 overflow-hidden">
                       <Modal data={modal} onClose={() => setModal(null)} />
-                      
-                      <header className="bg-white px-6 pt-14 pb-4 border-b border-[#E5E5EA] sticky top-0 z-40 flex justify-between items-end">
-                          <h1 className="text-[28px] font-extrabold text-black tracking-tight leading-none">Admin-Dashboard</h1>
-                          <button onClick={() => setIsAdminMode(false)} className="text-[#FF3B30] font-semibold active:opacity-70">Logout</button>
-                      </header>
-
-                      <div className="p-6 max-w-4xl mx-auto w-full space-y-8">
-                          <section className="bg-white rounded-[20px] p-6 shadow-sm border border-[#E5E5EA]">
-                              <h2 className="text-[18px] font-bold mb-4">Neue Familie anlegen</h2>
-                              <div className="flex flex-col sm:flex-row gap-3">
-                                  <input type="text" placeholder="Name der Familie" className="w-full sm:flex-1 bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:ring-2 ring-[#007AFF]/20" value={newFamilyName} onChange={e => setNewFamilyName(e.target.value)} />
-                                  <button onClick={adminCreateFamily} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Erstellen</button>
-                              </div>
-                          </section>
-
-                          <div className="space-y-6">
-                              {adminFamilies.map(fam => (
-                                  <div key={fam.id} className="bg-white rounded-[24px] shadow-sm border border-[#E5E5EA] overflow-hidden">
-                                      <div className="p-5 bg-[#F9F9F9] border-b border-[#E5E5EA] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
-                                          <div>
-                                              <h3 className="font-bold text-[20px]">{fam.name}</h3>
-                                              <p className="text-[#8E8E93] text-[13px] font-mono mt-1">ID: {fam.id}</p>
-                                          </div>
-                                          <div className="flex w-full sm:w-auto gap-2">
-                                              <button onClick={() => generatePDF(fam)} className="flex-1 sm:flex-none justify-center bg-[#007AFF]/10 text-[#007AFF] px-4 py-2.5 rounded-full text-[13px] font-semibold active:opacity-70 flex items-center gap-1.5 transition-opacity">
-                                                  <Icon name="FileText" size={14} /> PDF Info-Blatt
-                                              </button>
-                                              <button onClick={() => adminDeleteFamily(fam.id)} className="bg-[#FF3B30]/10 text-[#FF3B30] w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center active:opacity-70 shrink-0 transition-opacity">
-                                                  <Icon name="Trash2" size={16} />
-                                              </button>
-                                          </div>
+                      <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full">
+                          <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end sticky top-0">
+                              <h1 className="text-[28px] font-extrabold text-black dark:text-white tracking-tight leading-none mt-6">Admin-Dashboard</h1>
+                              <button onClick={() => setIsAdminMode(false)} className="text-[#FF3B30] font-semibold active:opacity-70">Logout</button>
+                          </header>
+                          
+                          <main className="scrollable-area px-6 py-6 w-full">
+                              <div className="max-w-4xl mx-auto space-y-8 pb-20">
+                                  <section className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-6 shadow-sm border border-[#E5E5EA] dark:border-[#38383A]">
+                                      <h2 className="text-[18px] font-bold mb-4 text-black dark:text-white">Neue Familie anlegen</h2>
+                                      <div className="flex flex-col sm:flex-row gap-3">
+                                          <input type="text" placeholder="Name der Familie" className="w-full sm:flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-gray-500" value={newFamilyName} onChange={e => setNewFamilyName(e.target.value)} />
+                                          <button onClick={adminCreateFamily} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Erstellen</button>
                                       </div>
-                                      
-                                      <div className="p-5">
-                                          <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Mitglieder</h4>
-                                          <div className="space-y-3 mb-5">
-                                              {fam.members.length === 0 && <p className="text-[#8E8E93] text-sm">Keine Mitglieder.</p>}
-                                              {fam.members.map(m => (
-                                                  <div key={m.name} className="flex justify-between items-center p-3.5 bg-[#F2F2F7] rounded-[14px]">
-                                                      <div className="flex items-center gap-3">
-                                                          <span className="font-semibold text-[16px]">{m.name}</span>
-                                                          {m.status === 'pending' ? 
-                                                              <span className="bg-[#FF9500]/20 text-[#FF9500] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Ausstehend</span> : 
-                                                              <span className="bg-[#34C759]/20 text-[#34C759] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Aktiv</span>
-                                                          }
+                                  </section>
+
+                                  <div className="space-y-6">
+                                      {adminFamilies.map(fam => {
+                                          const localSafeMembers = Array.isArray(fam.members) ? fam.members.filter(m => m && m.name) : [];
+                                          return (
+                                              <div key={fam.id} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
+                                                  <div className="p-5 bg-[#F9F9F9] dark:bg-[#2C2C2E] border-b border-[#E5E5EA] dark:border-[#38383A] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+                                                      <div>
+                                                          <h3 className="font-bold text-[20px] text-black dark:text-white">{fam.name}</h3>
+                                                          <p className="text-[#8E8E93] dark:text-[#EBEBF5]/60 text-[13px] font-mono mt-1">ID: {fam.id}</p>
                                                       </div>
-                                                      <button onClick={() => adminDeleteMember(fam.id, m.name)} className="text-[#FF3B30] active:opacity-70 p-1"><Icon name="Trash2" size={18} /></button>
+                                                      <div className="flex w-full sm:w-auto gap-2">
+                                                          <button onClick={() => generatePDF(fam)} className="flex-1 sm:flex-none justify-center bg-[#007AFF]/10 text-[#007AFF] px-4 py-2.5 rounded-full text-[13px] font-semibold active:opacity-70 flex items-center gap-1.5 transition-opacity">
+                                                              <Icon name="FileText" size={14} /> PDF Info-Blatt
+                                                          </button>
+                                                          <button onClick={() => adminDeleteFamily(fam.id)} className="bg-[#FF3B30]/10 text-[#FF3B30] w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center active:opacity-70 shrink-0 transition-opacity">
+                                                              <Icon name="Trash2" size={16} />
+                                                          </button>
+                                                      </div>
                                                   </div>
-                                              ))}
-                                          </div>
-                                          
-                                          <div className="flex flex-col sm:flex-row gap-3">
-                                              <input type="text" placeholder="Neuer Vorname" className="w-full sm:flex-1 bg-white border border-[#E5E5EA] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:border-[#007AFF]" value={newMemberNames[fam.id] || ''} onChange={e => setNewMemberNames({...newMemberNames, [fam.id]: e.target.value})} />
-                                              <button onClick={() => adminAddMember(fam)} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Registrieren</button>
-                                          </div>
-                                      </div>
+                                                  <div className="p-5">
+                                                      <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Mitglieder</h4>
+                                                      <div className="space-y-3 mb-5">
+                                                          {localSafeMembers.length === 0 && <p className="text-[#8E8E93] text-sm">Keine Mitglieder.</p>}
+                                                          {localSafeMembers.map(m => (
+                                                              <div key={m.name} className="flex justify-between items-center p-3.5 bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px]">
+                                                                  <div className="flex items-center gap-3">
+                                                                      <span className="font-semibold text-[16px] text-black dark:text-white">{m.name}</span>
+                                                                      {m.status === 'pending' ? <span className="bg-[#FF9500]/20 text-[#FF9500] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Ausstehend</span> : <span className="bg-[#34C759]/20 text-[#34C759] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Aktiv</span>}
+                                                                  </div>
+                                                                  <button onClick={() => adminDeleteMember(fam.id, m.name)} className="text-[#FF3B30] active:opacity-70 p-1"><Icon name="Trash2" size={18} /></button>
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                      <div className="flex flex-col sm:flex-row gap-3">
+                                                          <input type="text" placeholder="Neuer Vorname" className="w-full sm:flex-1 bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] px-4 py-3.5 rounded-[12px] outline-none font-medium focus:border-[#007AFF] box-border text-black dark:text-white placeholder-gray-500" value={newMemberNames[fam.id] || ''} onChange={e => setNewMemberNames({...newMemberNames, [fam.id]: e.target.value})} />
+                                                          <button onClick={() => adminAddMember(fam)} className="w-full sm:w-auto bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Registrieren</button>
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                          );
+                                      })}
                                   </div>
-                              ))}
-                          </div>
+                              </div>
+                          </main>
                       </div>
                   </div>
               );
           }
 
           if (!currentFamily || !currentUser) {
-            // Full-screen Login
             return (
-              <div className="min-h-[100dvh] bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative w-full overflow-hidden absolute inset-0 z-40">
-                <div className="absolute top-[-10%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#5856D6] blur-[100px] opacity-20 pointer-events-none"></div>
+              <div className="flex flex-col w-full h-full absolute inset-0 overflow-y-auto bg-[#000000] text-white z-40 items-center justify-center p-6 font-sans">
+                <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
+                <div className="absolute bottom-[0%] right-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#5856D6] blur-[100px] opacity-20 pointer-events-none"></div>
 
-                <div className="bg-white/10 backdrop-blur-3xl border border-white/20 p-8 rounded-[32px] shadow-2xl w-full max-w-sm relative z-10">
+                <div className="bg-white/10 backdrop-blur-3xl border border-white/20 p-8 rounded-[32px] shadow-2xl w-full max-w-sm relative z-10 my-auto">
                   <div className="flex justify-center mb-6">
                     <div className="w-20 h-20 bg-gradient-to-tr from-[#007AFF] to-[#5856D6] rounded-2xl flex items-center justify-center shadow-lg">
                       <Icon name="ShieldCheck" size={40} className="text-white" />
@@ -936,17 +1154,15 @@
                   <div className="space-y-3">
                     {authMode === 'admin' ? (
                         <>
-                            <input type="password" placeholder="Admin Master-Passwort" className="w-full bg-white/10 border border-white/10 px-4 py-3.5 rounded-xl outline-none focus:bg-white/20 text-white placeholder-gray-400 font-medium text-[17px] transition-colors" value={formInput.password} onChange={e => setFormInput({...formInput, password: e.target.value})} />
+                            <input type="password" placeholder="Admin Master-Passwort" className="w-full bg-white/10 border border-white/10 px-4 py-3.5 rounded-xl outline-none focus:bg-white/20 text-white placeholder-gray-400 font-medium text-[17px] transition-colors box-border" value={formInput.password} onChange={e => setFormInput({...formInput, password: e.target.value})} />
                             {authError && <p className="text-[#FF3B30] text-[13px] text-center font-semibold mt-2">{authError}</p>}
-                            <button onClick={() => { if(navigator.vibrate) navigator.vibrate(15); handleAdminAuth(); }} className="w-full bg-[#007AFF] text-white font-semibold text-[17px] py-3.5 rounded-xl mt-4 active:opacity-80 transition-opacity">
-                              Admin Login
-                            </button>
+                            <button onClick={() => { if(navigator.vibrate) navigator.vibrate(15); handleAdminAuth(); }} className="w-full bg-[#007AFF] text-white font-semibold text-[17px] py-3.5 rounded-xl mt-4 active:opacity-80 transition-opacity">Admin Login</button>
                         </>
                     ) : (
                         <>
-                            <input type="text" placeholder="Familien-ID (6 Ziffern)" className="w-full bg-white/10 border border-white/10 px-4 py-3.5 rounded-xl outline-none focus:bg-white/20 text-white placeholder-gray-400 font-medium text-[17px] transition-colors" value={formInput.familyId} onChange={e => setFormInput({...formInput, familyId: e.target.value})} />
-                            <input type="text" placeholder="Dein Vorname" className="w-full bg-white/10 border border-white/10 px-4 py-3.5 rounded-xl outline-none focus:bg-white/20 text-white placeholder-gray-400 font-medium text-[17px] transition-colors" value={formInput.name} onChange={e => setFormInput({...formInput, name: e.target.value})} />
-                            <input type="password" placeholder="Persönliches Passwort" className="w-full bg-white/10 border border-white/10 px-4 py-3.5 rounded-xl outline-none focus:bg-white/20 text-white placeholder-gray-400 font-medium text-[17px] transition-colors" value={formInput.password} onChange={e => setFormInput({...formInput, password: e.target.value})} />
+                            <input type="text" placeholder="Familien-ID (6 Ziffern)" className="w-full bg-white/10 border border-white/10 px-4 py-3.5 rounded-xl outline-none focus:bg-white/20 text-white placeholder-gray-400 font-medium text-[17px] transition-colors box-border" value={formInput.familyId} onChange={e => setFormInput({...formInput, familyId: e.target.value})} />
+                            <input type="text" placeholder="Dein Vorname" className="w-full bg-white/10 border border-white/10 px-4 py-3.5 rounded-xl outline-none focus:bg-white/20 text-white placeholder-gray-400 font-medium text-[17px] transition-colors box-border" value={formInput.name} onChange={e => setFormInput({...formInput, name: e.target.value})} />
+                            <input type="password" placeholder="Persönliches Passwort" className="w-full bg-white/10 border border-white/10 px-4 py-3.5 rounded-xl outline-none focus:bg-white/20 text-white placeholder-gray-400 font-medium text-[17px] transition-colors box-border" value={formInput.password} onChange={e => setFormInput({...formInput, password: e.target.value})} />
                             
                             {authError && <p className="text-[#FF3B30] text-[13px] text-center font-semibold mt-2">{authError}</p>}
                             <button onClick={() => { if(navigator.vibrate) navigator.vibrate(15); authMode === 'login' ? handleLogin() : handleJoinFamily(); }} className="w-full bg-[#007AFF] text-white font-semibold text-[17px] py-3.5 rounded-xl mt-4 active:opacity-80 transition-opacity">
@@ -960,17 +1176,15 @@
             );
           }
 
-          const trackingEvent = trackingEventId ? currentFamily.history.find(h => h.id === trackingEventId) : null;
-          const activeDND = currentUser.dndUntil && new Date(currentUser.dndUntil) > new Date();
-          const activeMembersList = currentFamily.members.filter(m => m.status !== 'pending');
+          const trackingEvent = trackingEventId ? safeHistory.find(h => h.id === trackingEventId) : null;
 
           return (
-            <div className="h-[100dvh] bg-[#F2F2F7] font-sans select-none flex flex-col relative w-full">
+            <div className="flex flex-col w-full h-full absolute inset-0 overflow-hidden bg-[var(--app-bg)] z-10">
               <Modal data={modal} onClose={() => setModal(null)} />
               
               {trackingEvent && (
                   <TrackingOverlay 
-                      event={trackingEvent} currentFamily={currentFamily} currentUser={currentUser} 
+                      event={trackingEvent} currentFamily={currentFamily} currentUser={currentUser} safeMembers={safeMembers}
                       onClose={() => setTrackingEventId(null)} 
                       onResend={(name, reason) => {
                           const rObj = REASONS.find(r => r.sentence === reason);
@@ -979,42 +1193,41 @@
                   />
               )}
 
-              {/* Zentrierter Content-Bereich für Desktop-Dashboard-Ansicht (Volle Breite) */}
-              <div className="flex-1 flex flex-col w-full h-full bg-[#F2F2F7] sm:shadow-2xl sm:border-x border-gray-300/50 max-w-5xl mx-auto">
-                  <header className="flex-none pb-4 px-6 bg-white/80 ios-blur border-b border-[#C6C6C8] z-40 relative flex items-end justify-center w-full" style={{ paddingTop: 'calc(env(safe-area-inset-top, 44px) + 20px)' }}>
-                    <div className="text-center w-full">
-                      <h1 className="text-[34px] font-bold text-black tracking-tight leading-tight">
-                        {activeTab === 'home' && `Familie ${currentFamily.name}`}
+              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
+                  
+                  <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full sticky top-0">
+                    <div className="text-center w-full min-w-0">
+                      <h1 className="text-[34px] font-bold text-black dark:text-white tracking-tight leading-tight truncate mt-6">
+                        {activeTab === 'home' && `Familie ${currentFamily?.name || ''}`}
                         {activeTab === 'history' && 'Verlauf'}
                         {activeTab === 'expenses' && 'Auslagen'}
                         {activeTab === 'settings' && 'Einstellungen'}
                       </h1>
                     </div>
-                    {activeTab === 'history' && currentFamily.history?.length > 0 && (
+                    {activeTab === 'history' && safeHistory.length > 0 && (
                       <button onClick={handleClearHistory} className="absolute right-4 bottom-4 text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full active:opacity-70 transition-opacity flex items-center gap-1.5">
                         <Icon name="Trash2" size={14} /> Leeren
                       </button>
                     )}
                   </header>
 
-                  <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36 relative w-full scroll-smooth">
-                    <div className="pb-10 w-full">
+                  <main className="scrollable-area px-4 pt-6 w-full relative">
                     
                     {/* --- HOME TAB --- */}
                     {activeTab === 'home' && (
-                      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         <section>
-                          <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-2 ml-2">Grund</h2>
-                          <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA]">
+                          <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2">Grund</h2>
+                          <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
                             <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-2 p-5">
                               {REASONS.map((reason) => {
                                 const isSelected = selectedReason === reason.id;
                                 return (
                                   <div key={reason.id} onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setSelectedReason(reason.id); }} className="flex flex-col items-center cursor-pointer group relative">
-                                    <div className={`w-[56px] h-[56px] rounded-[16px] flex items-center justify-center mb-2 transition-all duration-300 ease-out transform ${isSelected ? 'bg-[#007AFF] text-white scale-105 shadow-[0_4px_12px_rgba(0,122,255,0.3)]' : 'bg-[#F2F2F7] text-black active:scale-[0.97]'}`}>
+                                    <div className={`w-[56px] h-[56px] rounded-[16px] flex items-center justify-center mb-2 transition-all duration-300 ease-out transform ${isSelected ? 'bg-[#007AFF] text-white scale-105 shadow-[0_4px_12px_rgba(0,122,255,0.3)]' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-black dark:text-white active:scale-[0.97]'}`}>
                                       <Icon name={reason.icon} size={24} strokeWidth={isSelected ? 2.5 : 2} />
                                     </div>
-                                    <span className={`text-[12px] text-center font-medium transition-colors ${isSelected ? 'text-black' : 'text-[#8E8E93]'}`}>{reason.label}</span>
+                                    <span className={`text-[12px] text-center font-medium transition-colors ${isSelected ? 'text-black dark:text-white' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>{reason.label}</span>
                                   </div>
                                 );
                               })}
@@ -1024,43 +1237,44 @@
 
                         <section>
                           <div className="flex justify-between items-end mb-2 px-2">
-                            <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest">Empfänger</h2>
+                            <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest">Empfänger</h2>
                             <button className="text-[14px] text-[#007AFF] font-semibold active:opacity-70 transition-opacity" onClick={() => {
                                 if(navigator.vibrate) navigator.vibrate(10);
-                                const others = activeMembersList.filter(m => m.name !== currentUser.name).map(m => m.name);
+                                const others = activeMembersList.filter(m => m?.name !== currentUser?.name && !(m?.dndUntil && new Date(m.dndUntil) > new Date())).map(m => m.name);
                                 setSelectedMembers(selectedMembers.length === others.length ? [] : others);
                               }}>
-                              {selectedMembers.length === (activeMembersList.length - 1) ? 'Keine' : 'Alle'}
+                              {selectedMembers.length >= (activeMembersList.length - 1) ? 'Keine' : 'Alle'}
                             </button>
                           </div>
                           
-                          <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA]">
-                            {activeMembersList.filter(m => m.name !== currentUser.name).map((member, index, arr) => {
+                          <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
+                            {activeMembersList.filter(m => m?.name !== currentUser?.name).map((member, index, arr) => {
                               const isSelected = selectedMembers.includes(member.name);
                               const isMemberDND = member.dndUntil && new Date(member.dndUntil) > new Date();
 
                               return (
                                 <div key={member.name} onClick={() => {
+                                    if(isMemberDND) return; 
                                     if(navigator.vibrate) navigator.vibrate(10);
                                     if (isSelected) setSelectedMembers(prev => prev.filter(m => m !== member.name));
                                     else setSelectedMembers(prev => [...prev, member.name]);
-                                  }} className={`flex items-center justify-between p-4 cursor-pointer active:bg-gray-50 transition-colors ${index !== arr.length - 1 ? 'border-b border-[#E5E5EA]' : ''}`}>
-                                  <div className="flex items-center gap-2">
-                                      <span className="font-medium text-[17px]">{member.name}</span>
-                                      {isMemberDND && <Icon name="BellOff" size={16} className="text-[#FF9500]" />}
+                                  }} className={`flex items-center justify-between p-4 transition-colors ${index !== arr.length - 1 ? 'border-b border-[#E5E5EA] dark:border-[#38383A]' : ''} ${isMemberDND ? 'opacity-40 grayscale cursor-not-allowed' : 'cursor-pointer active:bg-gray-50 dark:active:bg-[#2C2C2E]'}`}>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                      <span className="font-medium text-[17px] text-black dark:text-white truncate">{member.name}</span>
+                                      {isMemberDND && <Icon name="BellOff" size={16} className="text-[#FF9500] flex-shrink-0" />}
                                   </div>
-                                  <div className={`w-[51px] h-[31px] rounded-full transition-colors duration-300 ease-in-out relative ${isSelected ? 'bg-[#34C759]' : 'bg-[#E9E9EB]'}`}>
+                                  <div className={`w-[51px] h-[31px] rounded-full transition-colors duration-300 ease-in-out relative flex-shrink-0 ${isSelected ? 'bg-[#34C759]' : isMemberDND ? 'bg-gray-200 dark:bg-gray-700' : 'bg-[#E9E9EB] dark:bg-[#38383A]'}`}>
                                     <div className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] bg-white rounded-full shadow-[0_3px_8px_rgba(0,0,0,0.15),0_3px_1px_rgba(0,0,0,0.06)] transform transition-transform duration-300 ease-in-out ${isSelected ? 'translate-x-[20px]' : 'translate-x-0'}`} />
                                   </div>
                                 </div>
                               );
                             })}
-                            {activeMembersList.length <= 1 && <div className="p-6 text-center text-[#8E8E93] text-[15px]">Du bist noch alleine.</div>}
+                            {activeMembersList.length <= 1 && <div className="p-6 text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 text-[15px]">Du bist noch alleine.</div>}
                           </div>
                         </section>
 
                         <div className="pt-4 md:flex md:justify-center">
-                          <button disabled={!selectedReason || selectedMembers.length === 0 || isSending} onClick={() => handleSendNotification()} className={`w-full md:w-80 py-4 rounded-[14px] font-semibold text-[17px] transition-all duration-300 ease-out ${!selectedReason || selectedMembers.length === 0 ? 'bg-[#E5E5EA] text-[#8E8E93]' : 'bg-[#007AFF] text-white shadow-[0_4px_14px_rgba(0,122,255,0.3)] active:opacity-80'}`}>
+                          <button disabled={!selectedReason || selectedMembers.length === 0 || isSending} onClick={() => handleSendNotification()} className={`w-full md:w-80 py-4 rounded-[14px] font-semibold text-[17px] transition-all duration-300 ease-out ${!selectedReason || selectedMembers.length === 0 ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#8E8E93] dark:text-gray-500' : 'bg-[#007AFF] text-white shadow-[0_4px_14px_rgba(0,122,255,0.3)] active:opacity-80'}`}>
                             {isSending ? 'Wird gesendet...' : 'Jetzt rufen'}
                           </button>
                         </div>
@@ -1069,11 +1283,11 @@
 
                     {/* --- EXPENSES TAB --- */}
                     {activeTab === 'expenses' && (
-                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                           
                           {!expenseModal && (
                               <div className="flex justify-between items-center px-2">
-                                <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest">Auslagen Übersicht</h2>
+                                <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest">Auslagen Übersicht</h2>
                                 <button onClick={openSplitExpense} className="text-[14px] text-[#007AFF] font-semibold bg-[#007AFF]/10 px-4 py-2 rounded-full active:opacity-70 transition-opacity flex items-center gap-1">
                                     <Icon name="Users" size={16} /> Geteilt
                                 </button>
@@ -1081,51 +1295,51 @@
                           )}
 
                           {expenseModal ? (
-                              <div className="bg-white rounded-[20px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] max-w-xl mx-auto">
+                              <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] max-w-xl mx-auto">
                                   <div className="flex justify-between items-center mb-6">
-                                      <h3 className="font-bold text-[20px]">
+                                      <h3 className="font-bold text-[20px] text-black dark:text-white">
                                           {expenseModal.mode === 'single' && `Auslage für ${expenseModal.target}`}
                                           {expenseModal.mode === 'split' && `Neue geteilte Auslage`}
                                           {expenseModal.mode === 'edit' && `Auslage bearbeiten`}
                                       </h3>
-                                      <button onClick={() => setExpenseModal(null)} className="w-8 h-8 bg-[#F2F2F7] rounded-full flex justify-center items-center active:opacity-70"><Icon name="X" size={18}/></button>
+                                      <button onClick={() => setExpenseModal(null)} className="w-8 h-8 bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-full flex justify-center items-center active:opacity-70 text-black dark:text-white"><Icon name="X" size={18}/></button>
                                   </div>
                                   
-                                  <div className="space-y-4">
+                                  <div className="space-y-4 w-full">
                                       {expenseModal.mode === 'split' && (
                                           <div className="bg-[#007AFF]/10 p-4 rounded-[14px] mb-4 text-[13px] text-[#007AFF] leading-relaxed">
-                                              Gib den <b>Gesamtbetrag</b> ein und durch wie viele Personen er geteilt wird.
+                                              Gib den <b>Gesamtbetrag</b> ein und die fixe Anzahl der Personen, durch die geteilt wird. Wähle unten dann die Personen aus.
                                           </div>
                                       )}
                                       
-                                      <div className="flex flex-col sm:flex-row gap-3">
-                                          <input type="number" inputMode="decimal" placeholder="Gesamt (€)" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] focus:ring-2 ring-[#007AFF]/20" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} />
-                                          <input type="date" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[17px] text-gray-700 focus:ring-2 ring-[#007AFF]/20" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} />
+                                      <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                          <input type="text" inputMode="decimal" placeholder="Gesamt (€)" className="w-full box-border sm:flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white placeholder-gray-400" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value.replace(/[^0-9.,]/g, '')})} />
+                                          <input type="date" className="appearance-none min-w-0 w-full box-border sm:flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[17px] text-gray-700 dark:text-gray-300 focus:ring-2 ring-[#007AFF]/20" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} />
                                       </div>
                                       
-                                      <input type="text" placeholder="Wofür? (z.B. Pizza, Geschenk)" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[17px] focus:ring-2 ring-[#007AFF]/20" value={expenseForm.reason} onChange={e => setExpenseForm({...expenseForm, reason: e.target.value})} />
+                                      <input type="text" placeholder="Wofür? (z.B. Pizza, Geschenk)" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[17px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white placeholder-gray-400" value={expenseForm.reason} onChange={e => setExpenseForm({...expenseForm, reason: e.target.value})} />
                                       
                                       {expenseModal.mode === 'split' && (
-                                          <div className="pt-4 border-t border-[#E5E5EA]">
-                                              <p className="text-[14px] font-semibold text-[#3C3C43] mb-2">Geteilt durch wie viele Personen? (inklusive dir)</p>
-                                              <input type="number" inputMode="decimal" min="1" className="w-full bg-[#F2F2F7] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] mb-5 focus:ring-2 ring-[#007AFF]/20" value={expenseForm.splitCount} onChange={e => setExpenseForm({...expenseForm, splitCount: e.target.value})} />
+                                          <div className="pt-4 border-t border-[#E5E5EA] dark:border-[#38383A]">
+                                              <p className="text-[14px] font-semibold text-[#3C3C43] dark:text-[#EBEBF5] mb-2">Geteilt durch wie viele Personen? (fixer Wert)</p>
+                                              <input type="number" inputMode="numeric" min="1" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-semibold text-[17px] mb-5 focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={expenseForm.splitCount} onChange={e => setExpenseForm({...expenseForm, splitCount: e.target.value})} />
                                               
-                                              <p className="text-[14px] font-semibold text-[#3C3C43] mb-2">Wer schuldet dir seinen Anteil?</p>
+                                              <p className="text-[14px] font-semibold text-[#3C3C43] dark:text-[#EBEBF5] mb-2">Für wen willst du das eintragen?</p>
                                               <div className="flex flex-wrap gap-2">
-                                                  {activeMembersList.filter(m => m.name !== currentUser.name).map(m => {
+                                                  {activeMembersList.filter(m => m?.name !== currentUser?.name).map(m => {
                                                       const isSel = expenseForm.splitTargets.includes(m.name);
                                                       return (
-                                                          <button key={m.name} onClick={() => toggleSplitTarget(m.name)} className={`px-4 py-2.5 rounded-full text-[15px] font-semibold transition-colors ${isSel ? 'bg-[#007AFF] text-white' : 'bg-[#F2F2F7] text-[#3C3C43]'}`}>
+                                                          <button key={m.name} onClick={() => toggleSplitTarget(m.name)} className={`px-4 py-2.5 rounded-full text-[15px] font-semibold transition-colors ${isSel ? 'bg-[#007AFF] text-white' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#3C3C43] dark:text-[#EBEBF5]'}`}>
                                                               {m.name}
                                                           </button>
                                                       );
                                                   })}
                                               </div>
                                               
-                                              {expenseForm.amount && expenseForm.splitCount > 0 && expenseForm.splitTargets.length > 0 && (
+                                              {expenseForm.amount && expenseForm.splitCount > 0 && (
                                                   <div className="mt-5 text-center bg-[#34C759]/10 text-[#34C759] font-semibold p-4 rounded-[14px]">
-                                                      Jede ausgewählte Person schuldet dir: <br />
-                                                      <span className="text-[22px]">{(parseFloat(expenseForm.amount.replace(',', '.')) / parseInt(expenseForm.splitCount)).toFixed(2)}€</span>
+                                                      Anteil pro Person: <br />
+                                                      <span className="text-[22px]">{(parseFloat(String(expenseForm.amount).replace(',', '.')) / parseInt(expenseForm.splitCount)).toFixed(2)}€</span>
                                                   </div>
                                               )}
                                           </div>
@@ -1138,39 +1352,39 @@
                               </div>
                           ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {activeMembersList.filter(m => m.name !== currentUser.name).map(member => {
-                                    const expensesWithThem = (currentFamily.expenses || []).filter(e => e && e.amount && !e.isPaid && ((e.creditor === currentUser.name && e.debtor === member.name) || (e.creditor === member.name && e.debtor === currentUser.name)));
+                                {activeMembersList.filter(m => m?.name !== currentUser?.name).map(member => {
+                                    const expensesWithThem = safeExpenses.filter(e => !e.isPaid && ((e.creditor === currentUser?.name && e.debtor === member.name) || (e.creditor === member.name && e.debtor === currentUser?.name)));
                                     
                                     let iOwe = 0; let theyOwe = 0;
                                     expensesWithThem.forEach(e => { 
                                         const amt = parseFloat(e.amount) || 0;
-                                        if (e.creditor === currentUser.name) theyOwe += amt; 
+                                        if (e.creditor === currentUser?.name) theyOwe += amt; 
                                         else iOwe += amt; 
                                     });
                                     const net = theyOwe - iOwe;
 
                                     return (
-                                        <div key={member.name} className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] flex flex-col h-full">
-                                            <div className="p-4 flex justify-between items-center bg-[#F9F9F9]">
-                                                <div>
-                                                    <p className="font-bold text-[18px]">{member.name}</p>
-                                                    <p className={`text-[14px] font-semibold mt-0.5 ${net > 0 ? 'text-[#34C759]' : net < 0 ? 'text-[#FF3B30]' : 'text-[#8E8E93]'}`}>
+                                        <div key={member.name} className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col h-full">
+                                            <div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]">
+                                                <div className="min-w-0 pr-2">
+                                                    <p className="font-bold text-[18px] text-black dark:text-white truncate">{member.name}</p>
+                                                    <p className={`text-[14px] font-semibold mt-0.5 truncate ${net > 0 ? 'text-[#34C759]' : net < 0 ? 'text-[#FF3B30]' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>
                                                         {net > 0 ? `Schuldet dir: ${net.toFixed(2)}€` : net < 0 ? `Noch fällig: ${Math.abs(net).toFixed(2)}€` : 'Alles beglichen'}
                                                     </p>
                                                 </div>
                                                 <button onClick={() => openSingleExpense(member.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Plus" size={20}/></button>
                                             </div>
                                             {expensesWithThem.length > 0 && (
-                                                <div className="border-t border-[#E5E5EA] p-4 space-y-3 flex-1 overflow-y-auto">
+                                                <div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">
                                                     {expensesWithThem.map(e => {
-                                                        const isMyCredit = e.creditor === currentUser.name;
-                                                        const displayDate = e.date ? new Date(e.date).toLocaleDateString('de-DE') : (e.timestamp ? new Date(e.timestamp).toLocaleDateString('de-DE') : 'Unbekannt');
+                                                        const isMyCredit = e.creditor === currentUser?.name;
+                                                        const displayDate = formatDate(e.date || e.timestamp);
                                                         
                                                         return (
-                                                            <div key={e.id} className={`flex justify-between items-center bg-white border p-3 rounded-[16px] ${isMyCredit ? 'border-[#007AFF]/20 shadow-sm' : 'border-[#E5E5EA]'}`}>
-                                                                <div className="pr-3">
-                                                                    <p className="text-[15px] font-semibold text-[#1C1C1E] break-words">{e.reason}</p>
-                                                                    <p className="text-[12px] text-[#8E8E93] font-medium">{displayDate}</p>
+                                                            <div key={e.id} className={`flex justify-between items-center bg-white dark:bg-[#1C1C1E] border p-3 rounded-[16px] ${isMyCredit ? 'border-[#007AFF]/30 dark:border-[#007AFF]/50 shadow-sm' : 'border-[#E5E5EA] dark:border-[#38383A]'}`}>
+                                                                <div className="pr-3 min-w-0 flex-1">
+                                                                    <p className="text-[15px] font-semibold text-[#1C1C1E] dark:text-white truncate">{e.reason}</p>
+                                                                    <p className="text-[12px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium">{displayDate}</p>
                                                                 </div>
                                                                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
                                                                     <span className={`font-semibold text-[16px] ${isMyCredit ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{isMyCredit ? '+' : '-'}{parseFloat(e.amount || 0).toFixed(2)}€</span>
@@ -1182,7 +1396,7 @@
                                                                             <button onClick={() => handleDeleteExpense(e.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center active:opacity-70"><Icon name="Trash2" size={14}/></button>
                                                                         </div>
                                                                     ) : (
-                                                                        <span className="text-[11px] uppercase font-bold text-[#8E8E93] bg-[#F2F2F7] px-2.5 py-1 rounded-full mt-1">Offen</span>
+                                                                        <span className="text-[11px] uppercase font-bold text-[#8E8E93] dark:text-[#EBEBF5]/60 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-2.5 py-1 rounded-full mt-1">Offen</span>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -1200,59 +1414,64 @@
 
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {(!currentFamily.history || currentFamily.history.filter(h => !h.isExpense && !h.isResend).length === 0) ? (
-                          <div className="text-center text-[#8E8E93] font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend).length) ? (
+                          <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
-                          currentFamily.history.filter(h => !h.isExpense && !h.isResend).map((item) => {
+                          safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
                             const targetList = item.targets || item.recipients || [];
-                            const isRecipient = targetList.includes(currentUser.name);
-                            const hasAcknowledged = item.acknowledgedBy?.includes(currentUser.name);
-                            const isRecent = (new Date() - new Date(item.timestamp)) < (2 * 60 * 60 * 1000);
                             
-                            // Klickbare Kachel: Absender kann in den ersten 5 Minuten nochmal drücken
-                            const isRecentSender = (item.sender === currentUser.name) && (Date.now() - new Date(item.timestamp).getTime() < 5 * 60 * 1000);
+                            const handleCardClick = () => {
+                                if (navigator.vibrate) navigator.vibrate(10);
+                                const isRecipient = targetList.includes(currentUser?.name);
+                                const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
+                                
+                                if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
+                                    setModal({ 
+                                        type: 'custom_ack', 
+                                        title: `Ruf von ${item.sender}`, 
+                                        message: `${item.reason}\n\nWie möchtest du antworten?`, 
+                                        onRespond: (responseType) => {
+                                            handleAcknowledge(item.id, responseType);
+                                            setModal(null);
+                                        },
+                                        onCancel: () => setModal(null) 
+                                    });
+                                } else {
+                                    setTrackingEventId(item.id);
+                                }
+                            };
                             
                             const renderRecipientStatus = (name) => {
-                              const ack = item.acknowledgedBy?.includes(name);
+                              const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
                               return (
-                                <span key={name} className={`inline-flex items-center space-x-1 ${ack ? 'text-[#34C759] font-semibold' : 'text-[#8E8E93]'}`}>
-                                  <span>{name}</span>
-                                  {ack && <Icon name="CheckCircle2" size={12} className="text-[#34C759] inline" />}
-                                  {targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] mr-1">,</span>}
+                                <span key={name} className={`font-semibold ${getStatusColor(ackEntry)}`}>
+                                  {name}{targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
                                 </span>
                               );
                             };
 
                             return (
-                              <div key={item.id} 
-                                   onClick={() => { if(isRecentSender) setTrackingEventId(item.id); }}
-                                   className={`bg-white p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] flex flex-col justify-between ${isRecentSender ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}>
+                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
                                 <div className="space-y-4">
-                                    <div className="flex items-center space-x-4">
+                                    <div className="flex items-center space-x-4 min-w-0">
                                       <div className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-[#007AFF]/10 text-[#007AFF]">
                                         <Icon name="Clock" size={24} />
                                       </div>
-                                      <div className="flex-1">
-                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E]">{item.reason}</p>
-                                        <p className="text-[14px] text-[#8E8E93] font-normal mt-0.5">Von <span className="font-medium text-[#3C3C43]">{item.sender}</span></p>
+                                      <div className="flex-1 min-w-0 pr-2">
+                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.reason}</p>
+                                        <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Von <span className="font-medium text-[#3C3C43] dark:text-gray-300">{item.sender}</span></p>
                                       </div>
-                                      <div className="text-[13px] font-medium text-[#8E8E93] self-start mt-1">
-                                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      <div className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 self-start mt-1 flex-shrink-0">
+                                        {formatTime(item.timestamp)}
                                       </div>
                                     </div>
 
-                                    <div className="bg-[#F2F2F7] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
-                                      <span className="text-[#8E8E93] font-medium mr-1">An:</span>
+                                    <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
+                                      <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
                                       {targetList.map(name => renderRecipientStatus(name))}
                                     </div>
                                 </div>
-
-                                {isRecipient && !hasAcknowledged && isRecent && item.sender !== currentUser.name && (
-                                  <button onClick={(e) => { e.stopPropagation(); handleAcknowledge(item.id); }} className="w-full mt-4 bg-[#007AFF]/10 text-[#007AFF] font-semibold text-[16px] py-3.5 rounded-[14px] active:opacity-70 transition-opacity flex items-center justify-center space-x-2">
-                                    <Icon name="Check" size={20} strokeWidth={2.5} /><span>Bestätigen</span>
-                                  </button>
-                                )}
                               </div>
                             );
                           })
@@ -1262,77 +1481,109 @@
 
                     {/* --- SETTINGS TAB --- */}
                     {activeTab === 'settings' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         
                         <section>
-                          <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="BellOff" size={14}/> Nicht stören</h2>
-                          <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] p-5 h-[calc(100%-2rem)]">
+                          <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="BellOff" size={14}/> Nicht stören</h2>
+                          <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5 h-[calc(100%-2rem)]">
                               {activeDND ? (
                                   <div className="flex flex-col justify-center h-full gap-4 bg-[#FF9500]/10 p-5 rounded-[16px] border border-[#FF9500]/20 text-center">
                                       <div>
                                           <p className="font-semibold text-[#FF9500] text-[17px]">Aktiviert bis</p>
-                                          <p className="text-[15px] text-[#FF9500]/80 font-medium">{new Date(currentUser.dndUntil).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} Uhr</p>
+                                          <p className="text-[15px] text-[#FF9500]/80 font-medium">{currentUser?.dndUntil ? new Date(currentUser.dndUntil).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''} Uhr</p>
                                       </div>
                                       <button onClick={() => setDND(0)} className="bg-[#FF9500] text-white font-semibold px-4 py-3 rounded-[12px] active:opacity-80 w-full">Beenden</button>
                                   </div>
                               ) : (
                                   <div className="flex flex-col h-full justify-between">
-                                      <p className="text-[14px] font-medium text-[#8E8E93] mb-4">Stumm schalten für:</p>
+                                      <p className="text-[14px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 mb-4">Stumm schalten für:</p>
                                       <div className="grid grid-cols-2 gap-3 mb-4">
-                                          <button onClick={() => setDND(0.25)} className="bg-[#F2F2F7] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] active:opacity-70">15 Min</button>
-                                          <button onClick={() => setDND(1)} className="bg-[#F2F2F7] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] active:opacity-70">1 Std</button>
-                                          <button onClick={() => setDND(8)} className="bg-[#F2F2F7] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] active:opacity-70">8 Std</button>
-                                          <button onClick={() => setDND(24)} className="bg-[#F2F2F7] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] active:opacity-70">24 Std</button>
+                                          <button onClick={() => setDND(0.25)} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] active:opacity-70">15 Min</button>
+                                          <button onClick={() => setDND(1)} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] active:opacity-70">1 Std</button>
+                                          <button onClick={() => setDND(8)} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] active:opacity-70">8 Std</button>
+                                          <button onClick={() => setDND(24)} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] active:opacity-70">24 Std</button>
                                       </div>
-                                      <p className="text-[12px] text-[#8E8E93] text-center">Hinweis: Die Alexa bleibt von 22 bis 7 Uhr automatisch immer stumm.</p>
+                                      <p className="text-[12px] text-[#8E8E93] dark:text-[#EBEBF5]/60 text-center">Hinweis: Die Alexa bleibt von 22 bis 7 Uhr automatisch immer stumm.</p>
                                   </div>
                               )}
                           </div>
                         </section>
 
                         <section>
-                          <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-2 ml-2">Geräte Setup</h2>
-                          <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA]">
-                            <div className="p-4 border-b border-[#E5E5EA] flex items-center justify-between">
+                          <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2">Geräte Setup</h2>
+                          <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
+                            <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A] flex items-center justify-between">
                               <div className="flex items-center space-x-3">
                                 <div className="bg-[#007AFF]/10 p-2.5 rounded-[12px]"><Icon name="Smartphone" size={20} className="text-[#007AFF]"/></div>
                                 <div>
-                                  <p className="font-semibold text-[16px]">Apple Push</p>
-                                  <p className="text-[13px] text-[#8E8E93] font-normal">Status: <span className={currentUser.fcmToken ? "text-[#34C759] font-medium" : "text-[#FF9500] font-medium"}>{pushStatus}</span></p>
+                                  <p className="font-semibold text-[16px] text-black dark:text-white">Apple Push</p>
+                                  <p className="text-[13px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal">Status: <span className={currentUser?.fcmToken ? "text-[#34C759] font-medium" : "text-[#FF9500] font-medium"}>{pushStatus}</span></p>
                                 </div>
                               </div>
                               <button onClick={requestPushPermission} className="bg-[#007AFF]/10 text-[#007AFF] text-[14px] font-semibold px-4 py-2 rounded-full active:opacity-70 transition-opacity">
-                                {currentUser.fcmToken ? 'Erneuern' : 'Aktivieren'}
+                                {currentUser?.fcmToken ? 'Erneuern' : 'Aktivieren'}
                               </button>
                             </div>
                             
                             <div className="p-4 space-y-4">
                               <div className="flex items-center space-x-3 mb-2">
                                 <div className="bg-[#AF52DE]/10 p-2.5 rounded-[12px]"><Icon name="Speaker" size={20} className="text-[#AF52DE]"/></div>
-                                <p className="font-semibold text-[16px]">Alexa Voice Monkey Links</p>
+                                <p className="font-semibold text-[16px] text-black dark:text-white">Alexa Voice Monkey Links</p>
                               </div>
                               
                               <div>
-                                 <p className="text-[13px] font-medium text-[#8E8E93] mb-1.5 ml-1">Für Mahlzeiten</p>
-                                 <input type="text" placeholder="https://api.voicemonkey.io/trigger..." 
-                                        className="w-full bg-[#F2F2F7] px-4 py-3 rounded-[12px] text-[15px] font-normal outline-none focus:ring-2 ring-[#007AFF]/20 transition-all" 
-                                        defaultValue={currentUser.voiceMonkeyMeal} 
+                                 <p className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 mb-1.5 ml-1">Für Mahlzeiten</p>
+                                 <input type="url" placeholder="https://api.voicemonkey.io/trigger..." 
+                                        className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] text-[15px] font-normal outline-none focus:ring-2 ring-[#007AFF]/20 transition-all text-black dark:text-white placeholder-gray-500" 
+                                        defaultValue={currentUser?.voiceMonkeyMeal} 
                                         onBlur={(e) => saveSettings('voiceMonkeyMeal', e.target.value)} />
                               </div>
 
                               <div>
-                                 <p className="text-[13px] font-medium text-[#8E8E93] mb-1.5 ml-1">Für Aktivitäten</p>
-                                 <input type="text" placeholder="https://api.voicemonkey.io/trigger..." 
-                                        className="w-full bg-[#F2F2F7] px-4 py-3 rounded-[12px] text-[15px] font-normal outline-none focus:ring-2 ring-[#007AFF]/20 transition-all" 
-                                        defaultValue={currentUser.voiceMonkeyOther} 
+                                 <p className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 mb-1.5 ml-1">Für Aktivitäten</p>
+                                 <input type="url" placeholder="https://api.voicemonkey.io/trigger..." 
+                                        className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] text-[15px] font-normal outline-none focus:ring-2 ring-[#007AFF]/20 transition-all text-black dark:text-white placeholder-gray-500" 
+                                        defaultValue={currentUser?.voiceMonkeyOther} 
                                         onBlur={(e) => saveSettings('voiceMonkeyOther', e.target.value)} />
                               </div>
                             </div>
                           </div>
                         </section>
+
+                        {isAdmin && (
+                           <section className="md:col-span-2">
+                             <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Key" size={14}/> Admin-Bereich</h2>
+                             <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
+                               <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A] flex items-center justify-between bg-[#F9F9F9] dark:bg-[#2C2C2E]">
+                                 <p className="font-semibold text-[15px] text-black dark:text-white">Familien ID:</p>
+                                 <p className="font-mono font-semibold tracking-wider text-[#007AFF]">{currentFamily.id}</p>
+                               </div>
+                               <div className="p-4">
+                                 <p className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-wider mb-3">Familienmitglieder verwalten</p>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                   {safeMembers.map((member) => (
+                                      <div key={member.name} className={`flex items-center justify-between p-3.5 rounded-[14px] ${member.name === currentUser.name ? 'bg-[var(--app-bg)] dark:bg-[#2C2C2E]' : 'bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-sm'}`}>
+                                        <span className="font-medium text-[16px] text-black dark:text-white">{member.name} {member.name === currentUser.name && "(Du)"}</span>
+                                        {member.name !== currentUser.name && (
+                                           <button onClick={() => handleDeleteMember(member.name)} className="w-9 h-9 flex items-center justify-center bg-[#FF3B30]/10 text-[#FF3B30] rounded-full active:opacity-70 transition-opacity">
+                                             <Icon name="Trash2" size={16} />
+                                           </button>
+                                        )}
+                                      </div>
+                                   ))}
+                                 </div>
+                               </div>
+                               <div className="p-4 bg-[#FF3B30]/5 border-t border-[#FF3B30]/10 md:flex md:justify-end">
+                                 <button onClick={handleDeleteFamily} className="w-full md:w-auto px-6 py-3.5 text-[#FF3B30] font-semibold text-[15px] bg-white dark:bg-[#1C1C1E] rounded-[12px] shadow-sm border border-[#FF3B30]/20 active:opacity-80 transition-opacity">
+                                   Komplette Familie auflösen
+                                 </button>
+                               </div>
+                             </div>
+                           </section>
+                        )}
                         
                         <div className="md:col-span-2 pt-2">
-                            <button onClick={handleLogout} className="w-full md:max-w-xs mx-auto py-3.5 bg-white text-[#FF3B30] font-semibold rounded-[14px] shadow-sm flex items-center justify-center space-x-2 active:opacity-70 transition-opacity border border-[#E5E5EA]">
+                            <button onClick={handleLogout} className="w-full md:max-w-xs mx-auto py-3.5 bg-white dark:bg-[#1C1C1E] text-[#FF3B30] font-semibold rounded-[14px] shadow-sm flex items-center justify-center space-x-2 active:opacity-70 transition-opacity border border-[#E5E5EA] dark:border-[#38383A]">
                               <Icon name="LogOut" size={20} />
                               <span className="text-[17px]">App & Gerät abmelden</span>
                             </button>
@@ -1340,10 +1591,10 @@
                       </div>
                     )}
 
-                    </div>
                   </main>
               </div>
 
+              {/* HIER WICHTIG: Die Tabbar klebt absolut unten am dynamisch gemessenen Displayrand */}
               <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
@@ -1351,22 +1602,34 @@
 
         function Root() {
             const [config, setConfig] = useState(() => {
-                if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
-                const saved = localStorage.getItem('firebaseConfig');
-                return saved ? JSON.parse(saved) : null;
+                try {
+                    // BEHÄLT DEINEN LOGIN! 
+                    const saved = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                    if (saved) return JSON.parse(saved);
+                    
+                    if (typeof __firebase_config !== 'undefined') return JSON.parse(__firebase_config);
+                } catch (e) {}
+                return null;
             });
             const [status, setStatus] = useState("booting"); 
             const [errorMsg, setErrorMsg] = useState("");
 
             useEffect(() => {
+                const fallback = document.getElementById('fallback');
+                if (fallback) fallback.style.display = 'none';
+
                 if (!config) return setStatus("config-needed");
+                
                 setStatus("booting");
                 try {
-                    if (!firebase.apps.length) app = firebase.initializeApp(config);
+                    const finalConfig = config.firebaseConfig ? config.firebaseConfig : config;
+                    if (!firebase.apps.length) app = firebase.initializeApp(finalConfig);
                     else app = firebase.app();
                     
                     if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "DEIN_SCHLUESSEL_HIER_EINFUEGEN") {
-                        try { firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true); } catch (e) {}
+                        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.includes('file')) {
+                            try { firebase.appCheck().activate(RECAPTCHA_SITE_KEY, true).catch(()=>{}); } catch (e) {}
+                        }
                     }
                     db = firebase.firestore();
                     auth = firebase.auth();
@@ -1381,11 +1644,11 @@
             
             if (status === "error") {
                 return (
-                    <div className="h-[100dvh] w-full bg-black text-white flex flex-col items-center justify-center p-8 text-center relative mx-auto absolute inset-0 z-50">
+                    <div className="fixed inset-0 bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center z-50">
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
-                        <h2 className="text-xl font-semibold mb-2">Systemfehler</h2>
-                        <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-xl border border-[#FF3B30]/20">{errorMsg}</p>
-                        <button onClick={() => { localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-white/10 px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-70 transition-opacity">
+                        <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
+                        <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
+                        <button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); localStorage.removeItem('firebaseConfig'); setConfig(null); setStatus("config-needed"); }} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">
                             Neue Config laden
                         </button>
                     </div>
@@ -1394,7 +1657,7 @@
 
             if (status === "booting") {
                 return (
-                   <div className="h-[100dvh] w-full bg-black flex flex-col items-center justify-center relative mx-auto absolute inset-0 z-50">
+                   <div className="fixed inset-0 bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center z-50">
                       <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                    </div>
                 );
