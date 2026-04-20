@@ -399,6 +399,7 @@
 
           const [formInput, setFormInput] = useState({ familyId: '', familyName: '', name: '', password: '' });
           const [authError, setAuthError] = useState('');
+          const [dbError, setDbError] = useState(null); // NEU: Fehler-Tracking für reCAPTCHA/Netzwerk
 
           const [expenseModal, setExpenseModal] = useState(null); 
           const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', date: getLocalTodayString(), splitCount: 1, splitTargets: [] });
@@ -475,6 +476,7 @@
 
             const unsubscribe = auth.onAuthStateChanged((u) => {
               setFirebaseUser(u);
+              // NUR zum Anmeldebildschirm, wenn WIRKLICH keine FamilyID da ist (neuer User / explizit abgemeldet)
               if (!u && !localFamilyId) {
                   setAppLoaded(true);
               }
@@ -489,7 +491,7 @@
                 return;
             }
 
-            // Fallback-Timer: Rettet uns vor dem ewigen Ladebildschirm!
+            // Fallback-Timer: Rettet uns vor dem ewigen Ladebildschirm, ABER meldet uns nicht ab!
             const fallbackTimer = setTimeout(() => {
                 setAppLoaded(true);
             }, 3000);
@@ -511,6 +513,7 @@
 
                 setCurrentFamily(data);
                 setCurrentUser(updatedUser);
+                setDbError(null); // Erfolg! Fehler zurücksetzen
                 if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
                 
                 clearTimeout(fallbackTimer);
@@ -518,7 +521,7 @@
               }
             }, (error) => {
                 console.warn("Datenbank blockiert (Warte auf AppCheck/Netzwerk...):", error);
-                // Er fällt auf den lokalen Cache zurück, sodass niemand abgemeldet wird!
+                setDbError(error.message); // Fehler speichern, um Dummy-Screen zu zeigen
                 clearTimeout(fallbackTimer);
                 setAppLoaded(true);
             });
@@ -1106,7 +1109,28 @@
               );
           }
 
+          // --- NEU: DER SICHERHEITS-BILDSCHIRM (Verhindert ungewolltes Abmelden!) ---
           if (!currentFamily || !currentUser) {
+            
+            // Wenn der Nutzer EIGENTLICH lokal angemeldet ist, Firebase/reCAPTCHA aber gerade blockiert:
+            if (localFamilyId && dbError) {
+              return (
+                <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
+                  <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
+                    <Icon name="ShieldCheck" size={56} className="text-[#FF9500] mx-auto mb-5 animate-pulse" />
+                    <h2 className="text-[22px] font-bold mb-3">Sicherheitsprüfung...</h2>
+                    <p className="text-[15px] text-gray-500 dark:text-[#EBEBF5]/60 mb-6 leading-relaxed">
+                      Deine Verbindung wird verifiziert. Falls du die App über GitHub hostest, stelle sicher, dass die Domain in den reCAPTCHA Enterprise Einstellungen der Google Cloud Console hinterlegt wurde.
+                    </p>
+                    <button onClick={handleLogout} className="text-[#FF3B30] font-semibold active:opacity-70 text-[15px]">
+                      Trotzdem abmelden
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            // Normaler Login Screen (für wirklich abgemeldete Nutzer)
             return (
               <div className="h-[100dvh] w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
