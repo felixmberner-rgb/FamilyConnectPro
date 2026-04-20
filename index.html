@@ -475,7 +475,6 @@
 
             const unsubscribe = auth.onAuthStateChanged((u) => {
               setFirebaseUser(u);
-              // NUR zum Anmeldebildschirm, wenn WIRKLICH keine FamilyID da ist (neuer User / abgemeldet)
               if (!u && !localFamilyId) {
                   setAppLoaded(true);
               }
@@ -485,13 +484,16 @@
 
           // --- 2. DATENBANK-SCHUTZ (Kein Rauswurf bei Netzwerk/ReCaptcha-Problemen!) ---
           useEffect(() => {
-            // Wenn der User keine Login-Daten im Handy gespeichert hat -> Ab zum Login-Screen
             if (!localFamilyId || !localUserName) {
                 setAppLoaded(true);
                 return;
             }
 
-            // Wenn er welche hat, warten wir geduldig auf Firebase...
+            // Fallback-Timer: Rettet uns vor dem ewigen Ladebildschirm!
+            const fallbackTimer = setTimeout(() => {
+                setAppLoaded(true);
+            }, 3000);
+
             if (!firebaseUser) return;
 
             const unsubscribe = getFamilyDocRef(localFamilyId).onSnapshot({ includeMetadataChanges: true }, (docSnap) => {
@@ -502,21 +504,28 @@
                 
                 if (!updatedUser || updatedUser.status === 'pending') {
                     console.warn("User-Daten temporär nicht bereit.");
-                    return; // NICHT abmelden, einfach warten.
+                    clearTimeout(fallbackTimer);
+                    setAppLoaded(true);
+                    return; 
                 }
 
                 setCurrentFamily(data);
                 setCurrentUser(updatedUser);
                 if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
-                setAppLoaded(true); // ERFOLG! App anzeigen.
+                
+                clearTimeout(fallbackTimer);
+                setAppLoaded(true); 
               }
             }, (error) => {
-                // WENN RECAPTCHA ODER INTERNET BLOCKIERT: 
-                // Niemals appLoaded(true) setzen! Firebase repariert das im Hintergrund.
-                // Dank "offline persistence" wird ohnehin fast sofort das lokale Backup geladen!
                 console.warn("Datenbank blockiert (Warte auf AppCheck/Netzwerk...):", error);
+                // Er fällt auf den lokalen Cache zurück, sodass niemand abgemeldet wird!
+                clearTimeout(fallbackTimer);
+                setAppLoaded(true);
             });
-            return () => unsubscribe();
+            return () => {
+                unsubscribe();
+                clearTimeout(fallbackTimer);
+            };
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
 
           useEffect(() => {
@@ -1600,7 +1609,7 @@
                         });
                     } catch (e) {}
 
-                    if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V") {
+                    if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "6LeMk8AsAAAAAKJZH5zx4AWaa_rRNa1jSnlABUyr") {
                         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.includes('file')) {
                             try {
                                 const appCheck = firebase.appCheck();
