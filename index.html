@@ -24,7 +24,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
-    <!-- App Check Skript entfernt -->
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -83,7 +82,7 @@
     <div id="root" class="w-full relative flex flex-col"></div>
 
     <script type="text/babel">
-        // --- 1. GLOBALE FEHLERBEHANDLUNG (Bereinigt) ---
+        // --- 1. GLOBALE FEHLERBEHANDLUNG ---
         const originalConsoleError = console.error;
         console.error = function(...args) {
             originalConsoleError.apply(console, args);
@@ -183,23 +182,32 @@
             
             if (data.type === 'custom_ack') {
                 return (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity">
-                        <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-white/50 dark:border-[#38383A]/50">
-                            <div className="text-center mb-6">
-                                <h3 className="font-semibold text-[19px] mb-2 text-black dark:text-white leading-snug">{data.title}</h3>
-                                <p className="text-[#3C3C4399] dark:text-[#EBEBF5]/60 text-[15px] leading-relaxed whitespace-pre-wrap">{data.message}</p>
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 bg-black/30 dark:bg-black/50 backdrop-blur-sm transition-opacity">
+                        <div className="bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.2)] border border-white/50 dark:border-[#38383A]/50 overflow-hidden transform transition-all">
+                            
+                            <div className="flex flex-col items-center mb-7 mt-2 text-center">
+                                <div className="w-16 h-16 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 text-[#007AFF] rounded-full flex items-center justify-center mb-4 shadow-sm">
+                                    <Icon name="Bell" size={32} strokeWidth={2}/>
+                                </div>
+                                <h3 className="font-bold text-[22px] tracking-tight text-black dark:text-white mb-2">{data.title}</h3>
+                                <p className="text-[#3C3C43] dark:text-[#EBEBF5]/70 text-[16px] leading-relaxed px-2 font-medium">{data.message}</p>
                             </div>
-                            <div className="flex flex-col gap-3">
-                                <button onClick={() => data.onRespond('Komme sofort')} className="w-full py-3.5 rounded-[14px] bg-[#34C759] text-white font-semibold text-[17px] active:opacity-70 transition-opacity flex items-center justify-center gap-2">
-                                    <Icon name="Check" size={20} strokeWidth={2.5}/> Komme sofort
+                            
+                            <div className="space-y-3">
+                                <button onClick={() => data.onRespond('Komme sofort')} className="w-full py-4 rounded-[18px] bg-[#34C759] text-white font-bold text-[17px] active:scale-[0.98] transition-all shadow-[0_4px_14px_rgba(52,199,89,0.3)] flex items-center justify-center gap-2">
+                                    <Icon name="CheckCircle2" size={20} strokeWidth={2.5}/> Komme sofort
                                 </button>
-                                <button onClick={() => data.onRespond('In 5 Minuten')} className="w-full py-3.5 rounded-[14px] bg-[#FF9500] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
-                                    In 5 Minuten
-                                </button>
-                                <button onClick={() => data.onRespond('Fangt schon mal an')} className="w-full py-3.5 rounded-[14px] bg-[#FF3B30] text-white font-semibold text-[17px] active:opacity-70 transition-opacity">
-                                    Fangt schon mal an
-                                </button>
-                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[14px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-semibold text-[17px] active:opacity-70 transition-opacity mt-2">
+                                
+                                <div className="flex gap-3">
+                                    <button onClick={() => data.onRespond('In 5 Minuten')} className="flex-1 py-3.5 rounded-[16px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#007AFF] font-bold text-[15px] active:scale-[0.98] transition-transform">
+                                        In 5 Min.
+                                    </button>
+                                    <button onClick={() => data.onRespond('Fangt schon mal an')} className="flex-1 py-3.5 rounded-[16px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#FF3B30] font-bold text-[15px] active:scale-[0.98] transition-transform">
+                                        Fangt an
+                                    </button>
+                                </div>
+
+                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[16px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-semibold text-[15px] active:opacity-70 transition-opacity mt-2">
                                     Später antworten
                                 </button>
                             </div>
@@ -351,7 +359,8 @@
           return (
             <div 
               className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+              /* PERFEKTE HÖHE: Noch einen Ticken weiter unten (6px Abzug von Safe Area) */
+              style={{ paddingBottom: 'max(6px, calc(env(safe-area-inset-bottom) - 6px))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: 'calc((100% - 12px) / 4)', transform: `translateX(${activeIndex * 100}%)` }}>
@@ -468,7 +477,6 @@
 
             const unsubscribe = auth.onAuthStateChanged((u) => {
               setFirebaseUser(u);
-              // NUR zum Anmeldebildschirm, wenn WIRKLICH keine FamilyID da ist
               if (!u && !localFamilyId) {
                   setAppLoaded(true);
               }
@@ -483,7 +491,6 @@
                 return;
             }
 
-            // Fallback-Timer für schlechtes Netzwerk
             const fallbackTimer = setTimeout(() => {
                 setAppLoaded(true);
             }, 3000);
@@ -535,6 +542,17 @@
               }
           }, [isAdminMode]);
 
+          // --- 3. AUTO-PUSH BEIM START (Heimlich im Hintergrund) ---
+          useEffect(() => {
+              if (appLoaded && currentFamily && currentUser) {
+                  // Leicht verzögert, um den App-Start nicht zu bremsen
+                  const timer = setTimeout(() => {
+                      requestPushPermission(true);
+                  }, 2500);
+                  return () => clearTimeout(timer);
+              }
+          }, [appLoaded, currentFamily?.id, currentUser?.name]);
+
           useEffect(() => {
               if (currentFamily && currentUser) {
                   const latestEvent = safeHistory.find(h => !h.isExpense && !h.isResend);
@@ -551,7 +569,7 @@
                                   setModal({ 
                                       type: 'custom_ack', 
                                       title: `Ruf von ${latestEvent.sender}`, 
-                                      message: `${latestEvent.reason}\n\nWie möchtest du antworten?`, 
+                                      message: `${latestEvent.reason}`, 
                                       onRespond: (responseType) => {
                                           handleAcknowledge(latestEvent.id, responseType);
                                           setModal(null);
@@ -744,22 +762,36 @@
               } catch (err) { showAlert("Fehler", err.message || "Fehler beim Generieren der PDF."); }
           };
 
-          const requestPushPermission = async () => {
-            if (!window.isSecureContext) return showAlert("Fehler", "Push funktioniert nur über HTTPS.");
+          // SILENT PUSH AKTIVIERUNG HINZUGEFÜGT
+          const requestPushPermission = async (silent = false) => {
+            if (!window.isSecureContext) {
+                if (!silent) showAlert("Fehler", "Push funktioniert nur über HTTPS.");
+                return;
+            }
             
             if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-                return showAlert("Push-Fehler", "Push wird in diesem Modus nicht unterstützt. Bitte als Web-App auf dem Home-Bildschirm speichern.");
+                if (!silent) showAlert("Push-Fehler", "Push wird in diesem Modus nicht unterstützt. Bitte als Web-App auf dem Home-Bildschirm speichern.");
+                return;
             }
 
-            if (!firebase?.messaging) return showAlert("Fehler", "Firebase Messaging ist nicht verfügbar.");
+            if (!firebase?.messaging) {
+                if (!silent) showAlert("Fehler", "Firebase Messaging ist nicht verfügbar.");
+                return;
+            }
 
             try {
                 const supported = firebase.messaging.isSupported ? await firebase.messaging.isSupported() : true;
-                if (!supported) return showAlert("Fehler", "Push ist auf diesem Gerät/Browser nicht verfügbar.");
+                if (!supported) {
+                    if (!silent) showAlert("Fehler", "Push ist auf diesem Gerät/Browser nicht verfügbar.");
+                    return;
+                }
             } catch (e) {}
 
             if (!messaging) {
-                try { messaging = firebase.messaging(); } catch (e) { return showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); }
+                try { messaging = firebase.messaging(); } catch (e) { 
+                    if (!silent) showAlert("Fehler", "Push-Dienst konnte nicht gestartet werden."); 
+                    return; 
+                }
             }
             
             let storedConfig = {};
@@ -776,7 +808,8 @@
             const vapidKey = currentFamily?.vapidKey || storedConfig.vapidKey;
             
             if (!vapidKey || !vapidKey.trim()) {
-                return showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte lade als Administrator die config.json noch einmal hoch.");
+                if (!silent) showAlert("Fehler", "Kein VAPID-Key gefunden! Bitte lade als Administrator die config.json noch einmal hoch.");
+                return;
             }
             
             let swReg = await navigator.serviceWorker.getRegistration();
@@ -786,13 +819,14 @@
                     swReg = await navigator.serviceWorker.register(swUrl);
                 } catch(e) {
                     console.error("SW Registration Error:", e);
-                    return showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
+                    if (!silent) showAlert("Push-Registrierung", "Fehler beim Starten des Hintergrunddienstes. Auf dem iPhone: Bitte über 'Teilen' -> 'Zum Home-Bildschirm' hinzufügen.");
+                    return;
                 }
             } else {
                 await swReg.update();
             }
 
-            setPushStatus('Wird angefragt...');
+            if (!silent) setPushStatus('Wird angefragt...');
             try {
               const permission = await Notification.requestPermission();
               if (permission !== 'granted') {
@@ -807,16 +841,25 @@
 
               if (!token) {
                   setPushStatus('Fehler');
-                  return showAlert("Fehler", "Es konnte kein Push-Token erzeugt werden.");
+                  if (!silent) showAlert("Fehler", "Es konnte kein Push-Token erzeugt werden.");
+                  return;
               }
 
-              await getFamilyDocRef(currentFamily.id).update({
-                  members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: token } : m)
-              });
+              // Speichert nur, wenn sich das Token geändert hat
+              if (currentUser?.fcmToken !== token) {
+                  await getFamilyDocRef(currentFamily.id).update({
+                      members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: token } : m)
+                  });
+              }
+              
               setPushStatus('Aktiviert ✅'); 
-              showAlert("Erfolg", "Push-Mitteilungen wurden erfolgreich aktiviert!");
+              if (!silent) showAlert("Erfolg", "Push-Mitteilungen wurden erfolgreich aktiviert!");
 
-            } catch (error) { console.error(error); setPushStatus('Fehler'); showAlert("Fehler", "Kritischer Fehler beim Token-Abruf."); }
+            } catch (error) { 
+                console.error(error); 
+                setPushStatus('Fehler'); 
+                if (!silent) showAlert("Fehler", "Kritischer Fehler beim Token-Abruf."); 
+            }
           };
 
           const handleSendNotification = async (customReasonObj = null, customTargets = null, isResend = false) => {
@@ -1427,7 +1470,7 @@
                                     setModal({ 
                                         type: 'custom_ack', 
                                         title: `Ruf von ${item.sender}`, 
-                                        message: `${item.reason}\n\nWie möchtest du antworten?`, 
+                                        message: `${item.reason}`, 
                                         onRespond: (responseType) => {
                                             handleAcknowledge(item.id, responseType);
                                             setModal(null);
@@ -1517,7 +1560,7 @@
                                   <p className="text-[13px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal">Status: <span className={currentUser?.fcmToken ? "text-[#34C759] font-medium" : "text-[#FF9500] font-medium"}>{pushStatus}</span></p>
                                 </div>
                               </div>
-                              <button onClick={requestPushPermission} className="bg-[#007AFF]/10 text-[#007AFF] text-[14px] font-semibold px-4 py-2 rounded-full active:opacity-70 transition-opacity">
+                              <button onClick={() => requestPushPermission(false)} className="bg-[#007AFF]/10 text-[#007AFF] text-[14px] font-semibold px-4 py-2 rounded-full active:opacity-70 transition-opacity">
                                 {currentUser?.fcmToken ? 'Erneuern' : 'Aktivieren'}
                               </button>
                             </div>
