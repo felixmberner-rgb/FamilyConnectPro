@@ -24,7 +24,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
+    <!-- App Check Skript entfernt -->
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -83,12 +83,9 @@
     <div id="root" class="w-full relative flex flex-col"></div>
 
     <script type="text/babel">
-        // --- 1. GLOBALE FEHLERBEHANDLUNG ---
+        // --- 1. GLOBALE FEHLERBEHANDLUNG (Bereinigt) ---
         const originalConsoleError = console.error;
         console.error = function(...args) {
-            const msg = String(args[0]);
-            if (msg.includes('appCheck') || msg.includes('recaptcha') || msg.includes('ReCAPTCHA')) return;
-            if (args[0] && args[0].message && (String(args[0].message).includes('appCheck') || String(args[0].message).includes('ReCAPTCHA'))) return;
             originalConsoleError.apply(console, args);
         };
 
@@ -105,10 +102,6 @@
         });
 
         window.addEventListener('unhandledrejection', (event) => {
-            const reason = String(event.reason);
-            if (reason.includes("URL protocol") || reason.includes("appCheck") || reason.includes("ReCAPTCHA")) {
-                event.preventDefault(); return;
-            }
             console.error('Unhandled rejection:', event.reason);
         });
 
@@ -116,7 +109,6 @@
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
-        const RECAPTCHA_SITE_KEY = "6LdParwsAAAAAF-uow3DHSMtCchnjl785njIYF_V";
         const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
         
         let app, db, auth, messaging;
@@ -399,6 +391,7 @@
 
           const [formInput, setFormInput] = useState({ familyId: '', familyName: '', name: '', password: '' });
           const [authError, setAuthError] = useState('');
+          const [dbError, setDbError] = useState(null);
 
           const [expenseModal, setExpenseModal] = useState(null); 
           const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', date: getLocalTodayString(), splitCount: 1, splitTargets: [] });
@@ -458,7 +451,7 @@
             };
           }, []);
 
-          // --- 1. LOGIN & AUTH SCHUTZ ---
+          // --- 1. LOGIN & AUTH ---
           useEffect(() => {
             const initAuth = async () => {
               try {
@@ -475,7 +468,7 @@
 
             const unsubscribe = auth.onAuthStateChanged((u) => {
               setFirebaseUser(u);
-              // NUR zum Anmeldebildschirm, wenn WIRKLICH keine FamilyID da ist (neuer User / explizit abgemeldet)
+              // NUR zum Anmeldebildschirm, wenn WIRKLICH keine FamilyID da ist
               if (!u && !localFamilyId) {
                   setAppLoaded(true);
               }
@@ -483,14 +476,14 @@
             return () => unsubscribe();
           }, [localFamilyId]);
 
-          // --- 2. DATENBANK-SCHUTZ (Kein Rauswurf bei Netzwerk/ReCaptcha-Problemen!) ---
+          // --- 2. DATENBANK-VERBINDUNG ---
           useEffect(() => {
             if (!localFamilyId || !localUserName) {
                 setAppLoaded(true);
                 return;
             }
 
-            // Fallback-Timer: Rettet uns vor dem ewigen Ladebildschirm, ABER meldet uns nicht ab!
+            // Fallback-Timer für schlechtes Netzwerk
             const fallbackTimer = setTimeout(() => {
                 setAppLoaded(true);
             }, 3000);
@@ -512,14 +505,15 @@
 
                 setCurrentFamily(data);
                 setCurrentUser(updatedUser);
+                setDbError(null); 
                 if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
                 
                 clearTimeout(fallbackTimer);
                 setAppLoaded(true); 
               }
             }, (error) => {
-                // Wenn Firebase wegen AppCheck die Verbindung kappt:
-                console.warn("Datenbank blockiert (Warte auf AppCheck/Netzwerk...):", error);
+                console.warn("Datenbank Fehler / Offline:", error);
+                setDbError(error.message);
                 clearTimeout(fallbackTimer);
                 setAppLoaded(true);
             });
@@ -1108,24 +1102,24 @@
               );
           }
 
-          // --- NEU: DER SICHERHEITS-BILDSCHIRM (Verhindert ungewolltes Abmelden!) ---
+          // --- SICHERHEITS-BILDSCHIRM (Für langsame Netzwerkverbindungen) ---
           if (!currentFamily || !currentUser) {
             
-            // Wenn der Nutzer EIGENTLICH lokal angemeldet ist (EGAL ob Firebase gerade Fehler wirft oder noch lädt):
+            // Wenn der Nutzer EIGENTLICH lokal angemeldet ist:
             if (localFamilyId) {
               return (
                 <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                   <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
                     <Icon name="ShieldCheck" size={56} className="text-[#FF9500] mx-auto mb-5 animate-pulse" />
-                    <h2 className="text-[22px] font-bold mb-3">Sicherheitsprüfung...</h2>
+                    <h2 className="text-[22px] font-bold mb-3">Verbinde...</h2>
                     <p className="text-[15px] text-gray-500 dark:text-[#EBEBF5]/60 mb-6 leading-relaxed">
                       Warte auf Datenbank-Freigabe... <br/><br/>
                       <span className="text-[13px] opacity-80">
-                      Falls dieser Bildschirm bleibt, blockiert Firebase App Check die Verbindung. Hast du den reCAPTCHA-Schlüssel in der <b>Firebase Console</b> hinterlegt?
+                      Bitte überprüfe deine Internetverbindung, falls es länger dauert.
                       </span>
                     </p>
                     <button onClick={handleLogout} className="text-[#FF3B30] font-semibold active:opacity-70 text-[15px] mt-2">
-                      Manuell abmelden
+                      Abmelden
                     </button>
                   </div>
                 </div>
@@ -1635,24 +1629,6 @@
                         });
                     } catch (e) {}
 
-                    if (RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== "6LeMk8AsAAAAAKJZH5zx4AWaa_rRNa1jSnlABUyr") {
-                        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.includes('file')) {
-                            try {
-                                const appCheck = firebase.appCheck();
-                                if (typeof firebase.appCheck.ReCaptchaEnterpriseProvider === 'function') {
-                                    appCheck.activate(
-                                        new firebase.appCheck.ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY),
-                                        true
-                                    );
-                                } else {
-                                    appCheck.activate(RECAPTCHA_SITE_KEY, true);
-                                }
-                            } catch (e) {
-                                console.warn("AppCheck Setup Fehler:", e);
-                            }
-                        }
-                    }
-                    
                     auth = firebase.auth();
                     setStatus("ready");
                 } catch (e) {
