@@ -421,7 +421,7 @@
           return (
             <div 
               className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+              style={{ paddingBottom: 'max(4px, calc(env(safe-area-inset-bottom) - 8px))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
                 {/* RUNDER KREIS FIX: Exakt runder Kreis, millimetergenau hinter jedem Icon zentriert */}
