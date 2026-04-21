@@ -420,7 +420,7 @@
           return (
             <div 
               className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+              style={{ paddingBottom: 'max(4px, calc(env(safe-area-inset-bottom) - 8px))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center items-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: `calc((100% - 12px) / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }}>
@@ -479,7 +479,6 @@
           const [newFamilyName, setNewFamilyName] = useState('');
           const [newMemberNames, setNewMemberNames] = useState({});
 
-          // WICHTIG: Die wieder hinzugefügten Login-States
           const [formInput, setFormInput] = useState({ familyId: '', familyName: '', name: '', password: '' });
           const [authError, setAuthError] = useState('');
 
@@ -539,16 +538,22 @@
           };
 
           // --- GENTLE KEYBOARD FIX ---
-          // Simpel, sicher und blockiert keine nativen iOS Reparaturen (Drehen) mehr!
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                setTimeout(() => { 
-                    window.scrollTo(0, 0); 
-                }, 50);
+                let count = 0;
+                const interval = setInterval(() => {
+                    window.scrollTo(0, 0);
+                    document.body.style.paddingBottom = count % 2 === 0 ? '1px' : '0px';
+                    count++;
+                    if (count > 10) {
+                        document.body.style.paddingBottom = '0px';
+                        clearInterval(interval);
+                    }
+                }, 100);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -1438,7 +1443,7 @@
               return (
                   <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
                       <Modal data={modal} onClose={() => setModal(null)} />
-                      <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full">
+                      <div className="flex-1 flex flex-col min-h-0 w-full max-w-5xl mx-auto relative h-full">
                           <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end sticky top-0">
                               <h1 className="text-[28px] font-extrabold text-black dark:text-white tracking-tight leading-none mt-6">Admin-Dashboard</h1>
                               <button onClick={() => setIsAdminMode(false)} className="text-[#FF3B30] font-semibold active:opacity-70">Logout</button>
@@ -1646,6 +1651,8 @@
 
           const trackingEvent = trackingEventId ? safeHistory.find(h => h.id === trackingEventId) : null;
           const upcomingSatDate = getNextSaturday();
+          const nowGlobal = new Date();
+          const isExecutionWindow = (nowGlobal.getDay() === 5 && nowGlobal.getHours() >= 16) || (nowGlobal.getDay() === 6 && nowGlobal.getHours() <= 23);
 
           return (
             <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
@@ -2031,7 +2038,7 @@
                                                                 {task.assignedTo ? task.assignedTo : <span className="text-[#FF9500]">Jeder (Freiwillig)</span>}
                                                             </span>
                                                         </div>
-                                                        {task.status === 'completed' && task.completedBy && (
+                                                        {task.status === 'completed' && task.completedAt && (
                                                             <p className="text-[12px] text-[#34C759] mt-2 font-medium">Erledigt von {task.completedBy}</p>
                                                         )}
                                                     </div>
@@ -2039,7 +2046,9 @@
                                                     {/* Interaktions-Bereich für die aktuelle Aufgabe */}
                                                     {task.status !== 'completed' && (
                                                         <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-4 border-t border-[#E5E5EA] dark:border-[#38383A] flex flex-col gap-2">
-                                                            {isMyTask && (
+                                                            
+                                                            {/* Erledigt-Button NUR im Fenster Freitag 16:00 bis Samstag 23:59 */}
+                                                            {isExecutionWindow && isMyTask && (
                                                                 <button onClick={() => handleHouseholdAction(task.id, 'complete')} className="w-full py-3.5 bg-[#34C759] text-white font-bold text-[16px] rounded-[14px] shadow-sm active:scale-[0.98] transition-transform">
                                                                     Als erledigt markieren
                                                                 </button>
@@ -2092,10 +2101,10 @@
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap).length) ? (
+                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && !h.isCustomPush).length) ? (
                           <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
-                          safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap).map((item) => {
+                          safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && !h.isCustomPush).map((item) => {
                             
                             // Sonder-Kachel: Erfolgreicher Dienst-Tausch (Nicht anklickbar)
                             if (item.isSuccessfulSwap) {
@@ -2122,8 +2131,6 @@
                             const targetList = Array.isArray(item.targets) ? item.targets : (Array.isArray(item.recipients) ? item.recipients : []);
                             
                             const handleCardClick = () => {
-                                if (item.isCustomPush) return;
-
                                 if (navigator.vibrate) navigator.vibrate(10);
                                 const isRecipient = targetList.includes(currentUser?.name);
                                 const hasAcknowledged = safeAckList.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
@@ -2158,33 +2165,25 @@
                             };
 
                             return (
-                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between ${item.isCustomPush ? 'cursor-default' : 'cursor-pointer active:scale-[0.98] transition-transform'}`}>
+                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4 min-w-0">
-                                      <div className={`w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 ${item.isCustomPush ? 'bg-[#FF9500]/10 text-[#FF9500]' : item.isHousehold ? 'bg-[#AF52DE]/10 text-[#AF52DE]' : 'bg-[#007AFF]/10 text-[#007AFF]'}`}>
-                                        <Icon name={item.isCustomPush ? "Send" : item.isHousehold ? "Home" : "Clock"} size={24} />
+                                      <div className={`w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 ${item.isHousehold ? 'bg-[#AF52DE]/10 text-[#AF52DE]' : 'bg-[#007AFF]/10 text-[#007AFF]'}`}>
+                                        <Icon name={item.isHousehold ? "Home" : "Clock"} size={24} />
                                       </div>
                                       <div className="flex-1 min-w-0 pr-2">
-                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.isCustomPush ? item.sender : item.reason}</p>
-                                        <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Von <span className="font-medium text-[#3C3C43] dark:text-gray-300">{item.isCustomPush ? item.realSender : item.sender}</span></p>
+                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.reason}</p>
+                                        <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Von <span className="font-medium text-[#3C3C43] dark:text-gray-300">{item.sender}</span></p>
                                       </div>
                                       <div className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 self-start mt-1 flex-shrink-0">
                                         {formatTime(item.timestamp)}
                                       </div>
                                     </div>
-                                    
-                                    {item.isCustomPush && (
-                                        <div className="text-[15px] text-[#1C1C1E] dark:text-gray-200 mt-2 leading-snug break-words">
-                                            {item.reason}
-                                        </div>
-                                    )}
 
-                                    {!item.isCustomPush && (
-                                        <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
-                                        <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
-                                        {targetList.map(name => renderRecipientStatus(name))}
-                                        </div>
-                                    )}
+                                    <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
+                                      <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
+                                      {targetList.map(name => renderRecipientStatus(name))}
+                                    </div>
                                 </div>
                               </div>
                             );
