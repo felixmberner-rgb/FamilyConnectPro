@@ -85,9 +85,7 @@
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <div id="fallback" style="position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
-        FamilyConnect startet...
-    </div>
+    <!-- Fallback Text entfernt für einen sauberen Start -->
 
     <div id="root" class="w-full relative flex flex-col"></div>
 
@@ -99,8 +97,13 @@
         };
 
         const setFallbackMessage = (message) => {
-            const fallback = document.getElementById('fallback');
-            if (!fallback) return;
+            let fallback = document.getElementById('fallback');
+            if (!fallback) {
+                fallback = document.createElement('div');
+                fallback.id = 'fallback';
+                fallback.style.cssText = 'position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#FF3B30;font-weight:bold;z-index:9999;padding:20px;text-align:center;';
+                document.body.appendChild(fallback);
+            }
             fallback.style.display = 'flex';
             fallback.textContent = message;
         };
@@ -459,7 +462,6 @@
                   }, 50);
               };
               
-              // Repaint nach dem Laden und beim Schließen von Modals (z.B. der Push-Antwort)
               if (appLoaded || !modal || !trackingEventId) {
                   forceSafariRepaint();
               }
@@ -1668,9 +1670,6 @@
             const [errorMsg, setErrorMsg] = useState("");
 
             useEffect(() => {
-                const fallback = document.getElementById('fallback');
-                if (fallback) fallback.style.display = 'none';
-
                 if (!config) return setStatus("config-needed");
                 
                 setStatus("booting");
