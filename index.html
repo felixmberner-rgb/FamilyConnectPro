@@ -715,6 +715,7 @@
                   const latestEventForMe = safeHistory.find(h => {
                       if (h.isExpense || h.isResend) return false;
                       if (h.reason === 'Erinnerung: Haushaltsdienst! 🧹') return false;
+                      if (h.isSuccessfulSwap || h.isRejectedSwap) return false; // FIX: Kein Pop-Up bei Vertretungs-Antworten!
                       if (!Array.isArray(h.targets) || !h.targets.includes(currentUser.name)) return false;
                       return true;
                   });
