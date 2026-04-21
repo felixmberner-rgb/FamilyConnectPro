@@ -79,7 +79,6 @@
             animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
     </style>
-
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
@@ -102,7 +101,7 @@
         };
 
         window.addEventListener('error', (event) => {
-            console.warn('Ignoriere Global Error:', event.error || event.message);
+            console.warn('Ignoriere Global Error um Absturz zu verhindern:', event.error || event.message);
         });
 
         window.addEventListener('unhandledrejection', (event) => {
@@ -172,7 +171,8 @@
           Pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
           Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
           Home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
-          Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>'
+          Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
+          Send: '<line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'
         };
 
         const REASONS = [
@@ -198,7 +198,6 @@
         function Modal({ data, onClose }) {
             if (!data) return null;
             
-            // Pop-Up für Vertretungsanfragen
             if (data.type === 'swap_request_ack') {
                 return (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
@@ -421,10 +420,9 @@
           return (
             <div 
               className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
-              style={{ paddingBottom: 'max(4px, calc(env(safe-area-inset-bottom) - 8px))' }}
+              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
-                {/* RUNDER KREIS FIX: Exakt runder Kreis, millimetergenau hinter jedem Icon zentriert */}
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center items-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: `calc((100% - 12px) / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }}>
                   <div className="w-[46px] h-[46px] bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full flex-shrink-0"></div>
                 </div>
@@ -441,7 +439,6 @@
           );
         };
 
-        // --- HAUSHALT HELPER ---
         const getNextSaturday = () => {
             const d = new Date();
             const diff = (6 - d.getDay() + 7) % 7;
@@ -482,17 +479,19 @@
           const [newFamilyName, setNewFamilyName] = useState('');
           const [newMemberNames, setNewMemberNames] = useState({});
 
+          // WICHTIG: Die wieder hinzugefügten Login-States
           const [formInput, setFormInput] = useState({ familyId: '', familyName: '', name: '', password: '' });
           const [authError, setAuthError] = useState('');
 
           const [expenseModal, setExpenseModal] = useState(null); 
           const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', date: getLocalTodayString(), splitCount: 1, splitTargets: [] });
 
-          // --- HAUSHALT STATES ---
           const [householdAdminMode, setHouseholdAdminMode] = useState(false);
           const [householdHistoryModal, setHouseholdHistoryModal] = useState(null);
           const [householdSwapModal, setHouseholdSwapModal] = useState(null);
           const [newChoreName, setNewChoreName] = useState("");
+
+          const [adminPushData, setAdminPushData] = useState({});
 
           const [activeTab, setActiveTab] = useState(() => {
               const params = new URLSearchParams(window.location.search);
@@ -517,9 +516,11 @@
           const householdConfig = currentFamily?.householdConfig || {};
           const safeHouseholdMembers = Array.isArray(householdConfig.members) ? householdConfig.members : [];
           const safeHouseholdChores = Array.isArray(householdConfig.chores) ? householdConfig.chores : defaultChores;
+          const safeHouseholdAdmins = Array.isArray(householdConfig.admins) ? householdConfig.admins : [];
           const householdTasks = Array.isArray(currentFamily?.householdTasks) ? currentFamily.householdTasks : [];
 
           const isAdmin = safeMembers.length > 0 && safeMembers[0].name === currentUser?.name;
+          const canEditHousehold = isAdmin || safeHouseholdAdmins.includes(currentUser?.name);
 
           const activeDND = Boolean(
               currentUser?.dndUntil &&
@@ -537,21 +538,17 @@
               return (Date.now() - time) > 5 * 60 * 1000;
           };
 
-          // --- TASTATUR FIX (Kontinuierliches Scrollen beim Schließen) ---
+          // --- GENTLE KEYBOARD FIX ---
+          // Simpel, sicher und blockiert keine nativen iOS Reparaturen (Drehen) mehr!
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                // Der ultimative stille Fix: Zwingt Safari, die weiße Lücke zu füllen, 
-                // ohne ein Flimmern durch "Resize"-Events auszulösen.
-                let count = 0;
-                const interval = setInterval(() => {
+                setTimeout(() => { 
                     window.scrollTo(0, 0); 
-                    count++;
-                    if (count > 10) clearInterval(interval); // 1000ms lang leise absichern
-                }, 100);
+                }, 50);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -621,7 +618,7 @@
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
 
-          // --- 2.5 HAUSHALT AUTO-GENERATOR & 9-UHR PUSH ---
+          // --- 2.5 HAUSHALT AUTO-GENERATOR ---
           useEffect(() => {
               if (appLoaded && currentFamily && safeHouseholdMembers.length > 0 && safeHouseholdChores.length > 0) {
                   const checkAndGenerate = async () => {
@@ -746,7 +743,7 @@
                                   } else {
                                       setModal({ 
                                           type: 'custom_ack', 
-                                          title: `Ruf von ${latestEventForMe.sender}`, 
+                                          title: latestEventForMe.isCustomPush ? latestEventForMe.sender : `Ruf von ${latestEventForMe.sender}`, 
                                           message: `${latestEventForMe.reason}`, 
                                           onRespond: (responseType) => {
                                               handleAcknowledge(latestEventForMe.id, responseType);
@@ -792,18 +789,51 @@
 
           const handleAdminAuth = async () => {
               setAuthError('');
-              if (!formInput.password) return setAuthError('Bitte Passwort eingeben.');
+              const pwd = (formInput.password || '').trim();
+              if (!pwd) return setAuthError('Bitte Passwort eingeben.');
               try {
                   const adminDocRef = getFamilyDocRef('admin_setup');
                   const docSnap = await adminDocRef.get();
                   if (!docSnap.exists) {
-                      await adminDocRef.set({ isAdminDoc: true, password: formInput.password.trim() });
+                      await adminDocRef.set({ isAdminDoc: true, password: pwd });
                       setIsAdminMode(true);
                   } else {
-                      if (docSnap.data().password === formInput.password.trim()) setIsAdminMode(true);
+                      if (docSnap.data().password === pwd) setIsAdminMode(true);
                       else setAuthError('Falsches Master-Passwort.');
                   }
               } catch (e) { setAuthError('Fehler beim Admin-Login. Bitte kurz warten.'); }
+          };
+
+          const handleSendAdminPush = async (fam) => {
+              const data = adminPushData[fam.id] || {};
+              if (!data.title?.trim() || !data.message?.trim()) return showAlert("Fehler", "Bitte Überschrift und Nachricht eingeben.");
+              
+              const actualTargets = Array.isArray(fam.members) ? fam.members.filter(m => m.status !== 'pending').map(m => m.name) : [];
+              if (actualTargets.length === 0) return showAlert("Hinweis", "Keine aktiven Mitglieder in dieser Familie.");
+
+              setIsSending(true);
+              if(navigator.vibrate) navigator.vibrate(10);
+
+              const newHistoryItem = { 
+                  id: Date.now().toString(), 
+                  timestamp: new Date().toISOString(), 
+                  sender: data.title.trim(), 
+                  realSender: 'Haupt-Admin', 
+                  reason: data.message.trim(), 
+                  targets: actualTargets, 
+                  acknowledgedBy: [], 
+                  isExpense: false, 
+                  isResend: false,
+                  isCustomPush: true,
+                  category: 'other' 
+              };
+
+              try {
+                  await getFamilyDocRef(fam.id).update({ history: [newHistoryItem, ...(fam.history || [])].slice(0, 50) });
+                  setAdminPushData({...adminPushData, [fam.id]: {title: '', message: ''}});
+                  showAlert("Erfolgreich", "Rundruf an Familie gesendet!");
+              } catch (err) {}
+              setIsSending(false);
           };
 
           const handleJoinFamily = async () => {
@@ -954,7 +984,6 @@
                   const dateObj = new Date(upcomingSat);
                   const weekNum = getWeekNumber(dateObj);
                   
-                  // Behalte alle Aufgaben außer den noch offenen/zu erledigenden von diesem Samstag
                   let keptTasks = currentTasks.filter(t => t.date !== upcomingSat || t.status === 'completed');
                   
                   if (newMembers.length > 0 && newChores.length > 0) {
@@ -1072,6 +1101,13 @@
           const handleDeleteChore = async (choreId) => {
               const updatedChores = safeHouseholdChores.filter(c => c.id !== choreId);
               await updateHouseholdConfig(safeHouseholdMembers, updatedChores);
+          };
+
+          const toggleCoAdmin = async (name) => {
+              const newAdmins = safeHouseholdAdmins.includes(name)
+                  ? safeHouseholdAdmins.filter(n => n !== name)
+                  : [...safeHouseholdAdmins, name];
+              await getFamilyDocRef(currentFamily.id).update({ 'householdConfig.admins': newAdmins });
           };
 
           // --- SILENT PUSH ---
@@ -1421,6 +1457,38 @@
                                   <div className="space-y-6">
                                       {adminFamilies.map(fam => {
                                           const localSafeMembers = Array.isArray(fam.members) ? fam.members.filter(m => m && m.name) : [];
+                                          const pushData = adminPushData[fam.id] || {title: '', message: ''};
+                                          
+                                          const handleSendAdminPush = async () => {
+                                              if (!pushData.title?.trim() || !pushData.message?.trim()) return showAlert("Fehler", "Bitte Überschrift und Nachricht eingeben.");
+                                              const actualTargets = localSafeMembers.filter(m => m.status !== 'pending').map(m => m.name);
+                                              if (actualTargets.length === 0) return showAlert("Hinweis", "Keine aktiven Mitglieder in dieser Familie.");
+
+                                              setIsSending(true);
+                                              const newHistoryItem = { 
+                                                  id: Date.now().toString(), 
+                                                  timestamp: new Date().toISOString(), 
+                                                  sender: pushData.title.trim(), 
+                                                  realSender: 'Haupt-Admin', 
+                                                  reason: pushData.message.trim(), 
+                                                  targets: actualTargets, 
+                                                  acknowledgedBy: [], 
+                                                  isExpense: false, 
+                                                  isResend: false,
+                                                  isCustomPush: true,
+                                                  category: 'other' 
+                                              };
+
+                                              try {
+                                                  await getFamilyDocRef(fam.id).update({ history: [newHistoryItem, ...(fam.history || [])].slice(0, 50) });
+                                                  setAdminPushData({...adminPushData, [fam.id]: {title: '', message: ''}});
+                                                  showAlert("Erfolgreich", "Rundruf gesendet!");
+                                              } catch (err) {
+                                                  showAlert("Fehler", "Senden fehlgeschlagen.");
+                                              }
+                                              setIsSending(false);
+                                          };
+
                                           return (
                                               <div key={fam.id} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
                                                   <div className="p-5 bg-[#F9F9F9] dark:bg-[#2C2C2E] border-b border-[#E5E5EA] dark:border-[#38383A] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
@@ -1437,8 +1505,49 @@
                                                           </button>
                                                       </div>
                                                   </div>
+
+                                                  {/* Haupt-Admin Feature: Rundruf pro Familie */}
+                                                  <div className="p-5 border-b border-[#E5E5EA] dark:border-[#38383A]">
+                                                      <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Rundruf an Familie senden</h4>
+                                                      <div className="space-y-3">
+                                                          <input type="text" placeholder="Überschrift (z.B. Wichtige Info)" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white placeholder-gray-500" value={pushData.title} onChange={e => setAdminPushData({...adminPushData, [fam.id]: {...pushData, title: e.target.value}})} />
+                                                          <textarea placeholder="Deine Nachricht an alle..." rows="2" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white placeholder-gray-500 resize-none" value={pushData.message} onChange={e => setAdminPushData({...adminPushData, [fam.id]: {...pushData, message: e.target.value}})}></textarea>
+                                                          <button disabled={isSending} onClick={handleSendAdminPush} className="w-full bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Als Push senden</button>
+                                                      </div>
+                                                  </div>
+
+                                                  {/* Haupt-Admin Feature: Links für Kurzbefehle generieren */}
+                                                  <div className="p-5 border-b border-[#E5E5EA] dark:border-[#38383A]">
+                                                      <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Kurzbefehl Links generieren</h4>
+                                                      <div className="space-y-3">
+                                                          {[
+                                                              { id: 'general_meal', label: 'Essen rufen', icon: 'Utensils' },
+                                                              { id: 'message', label: 'Ins Wohnzimmer rufen', icon: 'MessageCircle' }
+                                                          ].map(reason => {
+                                                              let rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
+                                                              const cfgBase64 = rawConfig ? encodeURIComponent(btoa(unescape(encodeURIComponent(rawConfig)))) : '';
+                                                              const url = `${window.location.origin}${window.location.pathname}?action=shortcut&reason=${reason.id}&fid=${fam.id}&cfg=${cfgBase64}`;
+                                                              return (
+                                                                  <div key={reason.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]">
+                                                                      <div className="flex justify-between items-center mb-2">
+                                                                          <span className="font-semibold text-[15px] text-black dark:text-white flex items-center gap-2">
+                                                                              <Icon name={reason.icon} size={16} /> {reason.label}
+                                                                          </span>
+                                                                          <button onClick={() => { 
+                                                                              try {
+                                                                                  const el = document.createElement('textarea'); el.value = url; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showAlert('Kopiert!', 'Link in die Zwischenablage kopiert.');
+                                                                              } catch(e) {}
+                                                                          }} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold active:opacity-70 transition-opacity">Kopieren</button>
+                                                                      </div>
+                                                                      <div className="text-[11px] text-[#8E8E93] dark:text-[#EBEBF5]/50 font-mono break-all line-clamp-2 overflow-hidden select-all">{url}</div>
+                                                                  </div>
+                                                              );
+                                                          })}
+                                                      </div>
+                                                  </div>
+
                                                   <div className="p-5">
-                                                      <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Mitglieder</h4>
+                                                      <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Mitglieder verwalten</h4>
                                                       <div className="space-y-3 mb-5">
                                                           {localSafeMembers.length === 0 && <p className="text-[#8E8E93] text-sm">Keine Mitglieder.</p>}
                                                           {localSafeMembers.map(m => (
@@ -1537,8 +1646,6 @@
 
           const trackingEvent = trackingEventId ? safeHistory.find(h => h.id === trackingEventId) : null;
           const upcomingSatDate = getNextSaturday();
-          const nowGlobal = new Date();
-          const isExecutionWindow = (nowGlobal.getDay() === 5 && nowGlobal.getHours() >= 16) || (nowGlobal.getDay() === 6 && nowGlobal.getHours() <= 23);
 
           return (
             <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
@@ -1646,7 +1753,7 @@
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
                             <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-2 p-5">
                               {REASONS.map((reason) => {
-                                if (reason.id === 'general_meal') return null; // Nur für Shortcut
+                                if (reason.id === 'general_meal') return null;
                                 const isSelected = selectedReason === reason.id;
                                 return (
                                   <div key={reason.id} onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setSelectedReason(reason.id); }} className="flex flex-col items-center cursor-pointer group relative">
@@ -1843,7 +1950,7 @@
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                             <div className="flex justify-between items-center pl-2 pr-1 mb-1">
                                 <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest whitespace-nowrap">Hausarbeiten (Samstag)</h2>
-                                {isAdmin && (
+                                {canEditHousehold && (
                                     <button onClick={() => setHouseholdAdminMode(!householdAdminMode)} className="text-[#007AFF] active:opacity-70 transition-opacity p-1 flex items-center justify-center">
                                         {householdAdminMode ? <span className="text-[14px] font-semibold">Fertig</span> : <Icon name="Pencil" size={18} />}
                                     </button>
@@ -1908,9 +2015,6 @@
                                         householdTasks.filter(t => t.date === upcomingSatDate).map(task => {
                                             const isMyTask = task.assignedTo === currentUser.name;
                                             const isSwapRequested = task.swapRequestedWith === currentUser.name;
-                                            
-                                            const nowObj = new Date();
-                                            const isExecutionWindow = (nowObj.getDay() === 5 && nowObj.getHours() >= 16) || (nowObj.getDay() === 6 && nowObj.getHours() <= 23);
 
                                             return (
                                                 <div key={task.id} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
@@ -1935,7 +2039,7 @@
                                                     {/* Interaktions-Bereich für die aktuelle Aufgabe */}
                                                     {task.status !== 'completed' && (
                                                         <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-4 border-t border-[#E5E5EA] dark:border-[#38383A] flex flex-col gap-2">
-                                                            {isExecutionWindow && isMyTask && (
+                                                            {isMyTask && (
                                                                 <button onClick={() => handleHouseholdAction(task.id, 'complete')} className="w-full py-3.5 bg-[#34C759] text-white font-bold text-[16px] rounded-[14px] shadow-sm active:scale-[0.98] transition-transform">
                                                                     Als erledigt markieren
                                                                 </button>
@@ -1948,7 +2052,7 @@
                                                                 </button>
                                                             )}
 
-                                                            {!isExecutionWindow && isMyTask && task.status !== 'open' && (
+                                                            {isMyTask && task.status !== 'open' && (
                                                                 <div className="flex gap-2">
                                                                     {task.swapRequestedWith ? (
                                                                         <div className="flex-1 py-3 text-center bg-[#FF9500]/10 text-[#FF9500] font-semibold text-[14px] rounded-[12px]">
@@ -2018,11 +2122,13 @@
                             const targetList = Array.isArray(item.targets) ? item.targets : (Array.isArray(item.recipients) ? item.recipients : []);
                             
                             const handleCardClick = () => {
+                                if (item.isCustomPush) return;
+
                                 if (navigator.vibrate) navigator.vibrate(10);
                                 const isRecipient = targetList.includes(currentUser?.name);
                                 const hasAcknowledged = safeAckList.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
                                 
-                                if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
+                                if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name && item.sender !== 'System') {
                                     if (isExpired(item.timestamp)) {
                                         setTrackingEventId(item.id); 
                                     } else {
@@ -2052,25 +2158,33 @@
                             };
 
                             return (
-                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
+                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between ${item.isCustomPush ? 'cursor-default' : 'cursor-pointer active:scale-[0.98] transition-transform'}`}>
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4 min-w-0">
-                                      <div className={`w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 ${item.isHousehold ? 'bg-[#AF52DE]/10 text-[#AF52DE]' : 'bg-[#007AFF]/10 text-[#007AFF]'}`}>
-                                        <Icon name={item.isHousehold ? "Home" : "Clock"} size={24} />
+                                      <div className={`w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 ${item.isCustomPush ? 'bg-[#FF9500]/10 text-[#FF9500]' : item.isHousehold ? 'bg-[#AF52DE]/10 text-[#AF52DE]' : 'bg-[#007AFF]/10 text-[#007AFF]'}`}>
+                                        <Icon name={item.isCustomPush ? "Send" : item.isHousehold ? "Home" : "Clock"} size={24} />
                                       </div>
                                       <div className="flex-1 min-w-0 pr-2">
-                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.reason}</p>
-                                        <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Von <span className="font-medium text-[#3C3C43] dark:text-gray-300">{item.sender}</span></p>
+                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.isCustomPush ? item.sender : item.reason}</p>
+                                        <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Von <span className="font-medium text-[#3C3C43] dark:text-gray-300">{item.isCustomPush ? item.realSender : item.sender}</span></p>
                                       </div>
                                       <div className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 self-start mt-1 flex-shrink-0">
                                         {formatTime(item.timestamp)}
                                       </div>
                                     </div>
+                                    
+                                    {item.isCustomPush && (
+                                        <div className="text-[15px] text-[#1C1C1E] dark:text-gray-200 mt-2 leading-snug break-words">
+                                            {item.reason}
+                                        </div>
+                                    )}
 
-                                    <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
-                                      <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
-                                      {targetList.map(name => renderRecipientStatus(name))}
-                                    </div>
+                                    {!item.isCustomPush && (
+                                        <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
+                                        <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
+                                        {targetList.map(name => renderRecipientStatus(name))}
+                                        </div>
+                                    )}
                                 </div>
                               </div>
                             );
@@ -2150,6 +2264,7 @@
                           </div>
                         </section>
 
+                        {/* Familien-Admin Bereich */}
                         {isAdmin && (
                            <section className="md:col-span-2">
                              <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Key" size={14}/> Admin-Bereich</h2>
@@ -2158,6 +2273,23 @@
                                  <p className="font-semibold text-[15px] text-black dark:text-white">Familien ID:</p>
                                  <p className="font-mono font-semibold tracking-wider text-[#007AFF]">{currentFamily.id}</p>
                                </div>
+
+                               <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A]">
+                                 <p className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-wider mb-3">Haushalts-Admins (Zusätzlich)</p>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                   {activeMembersList.map((member) => {
+                                      if (member.name === currentUser.name) return null;
+                                      const isCoAdmin = safeHouseholdAdmins.includes(member.name);
+                                      return (
+                                          <div key={`coadmin-${member.name}`} onClick={() => toggleCoAdmin(member.name)} className={`flex items-center justify-between p-3.5 rounded-[14px] cursor-pointer transition-colors ${isCoAdmin ? 'bg-[#007AFF]/10 border border-[#007AFF]/30' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}>
+                                              <span className={`font-semibold text-[15px] ${isCoAdmin ? 'text-[#007AFF]' : 'text-black dark:text-white'}`}>{member.name}</span>
+                                              {isCoAdmin && <Icon name="CheckCircle2" size={18} className="text-[#007AFF]" />}
+                                          </div>
+                                      )
+                                   })}
+                                 </div>
+                               </div>
+
                                <div className="p-4">
                                  <p className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-wider mb-3">Familienmitglieder verwalten</p>
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2185,47 +2317,12 @@
                         <section className="md:col-span-2">
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Apple Kurzbefehle & Watch</h2>
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5">
-                              <p className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5]/70 mb-4 leading-relaxed">
-                                  Erstelle auf deinem iPhone in der Kurzbefehle-App die Aktion <b>"URL öffnen"</b> und füge einen dieser Links ein. Die Konfiguration wird automatisch übertragen, sodass es auch sofort auf deiner Apple Watch funktioniert!
+                              <p className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5]/70 mb-5 leading-relaxed">
+                                  Lade dir hier den fertigen Apple Kurzbefehl herunter, um FamilyConnect auf dem iPhone und der Apple Watch ganz einfach nutzen zu können!
                               </p>
-                              <div className="space-y-3">
-                                  {[
-                                      { id: 'general_meal', label: 'Essen rufen', icon: 'Utensils' },
-                                      { id: 'message', label: 'Ins Wohnzimmer rufen', icon: 'MessageCircle' }
-                                  ].map(reason => {
-                                      let rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
-                                      if(!rawConfig && typeof __firebase_config !== 'undefined') rawConfig = typeof __firebase_config === 'string' ? __firebase_config : JSON.stringify(__firebase_config);
-                                      const cfgBase64 = rawConfig ? encodeURIComponent(btoa(unescape(encodeURIComponent(rawConfig)))) : '';
-                                      
-                                      const url = `${window.location.origin}${window.location.pathname}?action=shortcut&reason=${reason.id}&fid=${currentFamily.id}&cfg=${cfgBase64}`;
-                                      
-                                      return (
-                                          <div key={reason.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]">
-                                              <div className="flex justify-between items-center mb-2">
-                                                  <span className="font-semibold text-[15px] text-black dark:text-white flex items-center gap-2">
-                                                      <Icon name={reason.icon} size={16} /> {reason.label}
-                                                  </span>
-                                                  <button onClick={() => { 
-                                                      try {
-                                                          const el = document.createElement('textarea');
-                                                          el.value = url;
-                                                          document.body.appendChild(el);
-                                                          el.select();
-                                                          document.execCommand('copy');
-                                                          document.body.removeChild(el);
-                                                          showAlert('Kopiert!', 'Der Link wurde in die Zwischenablage kopiert.');
-                                                      } catch(e) {}
-                                                  }} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold active:opacity-70 transition-opacity">
-                                                      Kopieren
-                                                  </button>
-                                              </div>
-                                              <div className="text-[11px] text-[#8E8E93] dark:text-[#EBEBF5]/50 font-mono break-all line-clamp-2 overflow-hidden select-all">
-                                                  {url}
-                                              </div>
-                                          </div>
-                                      );
-                                  })}
-                              </div>
+                              <button onClick={() => window.open('https://www.icloud.com/shortcuts/60209311a38e4195a6165797010f9a6a', '_blank')} className="w-full bg-[#007AFF]/10 text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[16px] active:opacity-70 transition-opacity flex justify-center items-center gap-2">
+                                  <Icon name="Smartphone" size={20} /> Kurzbefehl installieren
+                              </button>
                           </div>
                         </section>
 
@@ -2246,6 +2343,7 @@
           );
         }
 
+        // --- SHORTCUT BACKEND-SIMULATOR FÜR APPLE WATCH ---
         function ShortcutTrigger({ reason, fid }) {
             const [statusText, setStatusText] = useState('Sende Ruf...');
 
@@ -2329,7 +2427,6 @@
 
             const [config, setConfig] = useState(() => {
                 try {
-                    // Watch-Fix: Config direkt aus dem Shortcut-Link laden
                     const urlCfg = params.get('cfg');
                     if (urlCfg) {
                         const decodedStr = decodeURIComponent(escape(atob(urlCfg)));
