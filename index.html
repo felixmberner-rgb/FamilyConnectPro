@@ -36,7 +36,6 @@
             :root { --app-bg: #000000; }
         }
 
-        /* STABILES FUNDAMENT */
         body { 
             margin: 0; 
             padding: 0;
@@ -87,7 +86,6 @@
     <div id="root" class="w-full relative flex flex-col h-[100dvh]"></div>
 
     <script type="text/babel">
-        // --- 0. APPLE WATCH CONFIG-RETTUNG ---
         try {
             const params = new URLSearchParams(window.location.search);
             const urlCfg = params.get('cfg');
@@ -98,21 +96,19 @@
             }
         } catch(e) { console.warn("Fehler beim Laden der URL Config:", e); }
 
-        // --- 1. GLOBALE FEHLERBEHANDLUNG BEREINIGT ---
         const originalConsoleError = console.error;
         console.error = function(...args) {
             originalConsoleError.apply(console, args);
         };
 
         window.addEventListener('error', (event) => {
-            console.warn('Ignoriere Global Error um Absturz zu verhindern:', event.error || event.message);
+            console.warn('Ignoriere Global Error:', event.error || event.message);
         });
 
         window.addEventListener('unhandledrejection', (event) => {
             console.warn('Ignoriere Unhandled rejection:', event.reason);
         });
 
-        // --- 2. REACT SETUP & GLOBALE DATEN ---
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
@@ -427,10 +423,10 @@
               className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
               style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
             >
-              <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
-                {/* RUNDER KREIS FIX: Perfekt runder Indikator (wie in home1), genau mittig ausgerichtet */}
+              <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
+                {/* RUNDER KREIS FIX: Exakt runder Kreis, millimetergenau hinter jedem Icon zentriert */}
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center items-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: `calc((100% - 12px) / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }}>
-                  <div className="w-12 h-12 bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full flex-shrink-0"></div>
+                  <div className="w-[46px] h-[46px] bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full flex-shrink-0"></div>
                 </div>
                 {tabs.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -541,23 +537,21 @@
               return (Date.now() - time) > 5 * 60 * 1000;
           };
 
-          // --- GENIALER TASTATUR FIX (Simulierte Drehung beim Schließen) ---
+          // --- TASTATUR FIX (Kontinuierliches Scrollen beim Schließen) ---
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                // Dieser Trick gaukelt dem iPhone beim Schließen der Tastatur eine extrem kurze Layout-Neuberechnung vor,
-                // was den weißen Rahmen am unteren Rand sofort und lautlos killt!
+                // Der ultimative stille Fix: Zwingt Safari, die weiße Lücke zu füllen, 
+                // ohne ein Flimmern durch "Resize"-Events auszulösen.
                 let count = 0;
                 const interval = setInterval(() => {
                     window.scrollTo(0, 0); 
-                    document.body.scrollTop = 0;
-                    window.dispatchEvent(new Event('resize'));
                     count++;
-                    if (count > 5) clearInterval(interval);
-                }, 50);
+                    if (count > 10) clearInterval(interval); // 1000ms lang leise absichern
+                }, 100);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -690,7 +684,7 @@
                   };
                   checkAndGenerate();
               }
-          }, [appLoaded, currentFamily?.id, JSON.stringify(safeHouseholdChores), JSON.stringify(safeHouseholdMembers)]);
+          }, [appLoaded, currentFamily?.id]);
 
           useEffect(() => {
               if (isAdminMode) {
@@ -947,7 +941,50 @@
               } catch (err) { showAlert("Fehler", err.message || "Fehler beim Generieren der PDF."); }
           };
 
-          // --- HAUSHALTS HANDLER SICHER (Gekoppelt mit Update!) ---
+          // --- HAUSHALTS HANDLER SICHER & ECHTZEIT-SYNC ---
+          const updateHouseholdConfig = async (newMembers, newChores) => {
+              try {
+                  const docRef = getFamilyDocRef(currentFamily.id);
+                  const docSnap = await docRef.get();
+                  if (!docSnap.exists) return;
+                  const currentData = docSnap.data();
+                  const currentTasks = currentData.householdTasks || [];
+                  
+                  const upcomingSat = getNextSaturday();
+                  const dateObj = new Date(upcomingSat);
+                  const weekNum = getWeekNumber(dateObj);
+                  
+                  // Behalte alle Aufgaben außer den noch offenen/zu erledigenden von diesem Samstag
+                  let keptTasks = currentTasks.filter(t => t.date !== upcomingSat || t.status === 'completed');
+                  
+                  if (newMembers.length > 0 && newChores.length > 0) {
+                      newChores.forEach((chore, i) => {
+                          const alreadyCompleted = currentTasks.find(t => t.date === upcomingSat && t.choreId === chore.id && t.status === 'completed');
+                          if (!alreadyCompleted) {
+                              const memberIndex = (weekNum + i) % newMembers.length;
+                              keptTasks.push({
+                                  id: generateId(),
+                                  choreId: chore.id,
+                                  choreName: chore.name,
+                                  date: upcomingSat,
+                                  assignedTo: newMembers[memberIndex],
+                                  status: 'pending',
+                                  swapRequestedWith: null
+                              });
+                          }
+                      });
+                  }
+                  
+                  await docRef.update({
+                      'householdConfig.members': newMembers,
+                      'householdConfig.chores': newChores,
+                      householdTasks: keptTasks.slice(-150)
+                  });
+              } catch (error) {
+                  console.error("Sync Fehler:", error);
+              }
+          };
+
           const handleHouseholdAction = async (taskId, action, data = null) => {
               try {
                   const docRef = getFamilyDocRef(currentFamily.id);
@@ -986,10 +1023,9 @@
                       freshTasks[taskIndex].assignedTo = currentUser.name;
                       freshTasks[taskIndex].swapRequestedWith = null;
 
-                      // Erfolgreichen Tausch in den Verlauf eintragen
                       const newHistoryItem = { 
                           id: Date.now().toString(), timestamp: new Date().toISOString(), sender: 'System', 
-                          reason: `${accepter} vertritt ${requester} bei:`, 
+                          reason: `${accepter} hat deine Vertretungsanfrage für ${freshTasks[taskIndex].choreName} übernommen!`, 
                           historyText: `${accepter} vertritt ${requester}`,
                           choreName: freshTasks[taskIndex].choreName,
                           targets: [requester], acknowledgedBy: [], isExpense: false, isResend: false, isHousehold: true,
@@ -1001,10 +1037,9 @@
                       const requester = freshTasks[taskIndex].assignedTo;
                       freshTasks[taskIndex].swapRequestedWith = null;
                       
-                      // Push für Ablehnung auslösen, aber im Verlauf nicht sichtbar
                       const newHistoryItem = { 
                           id: Date.now().toString(), timestamp: new Date().toISOString(), sender: 'System', 
-                          reason: `${currentUser.name} hat die Vertretung abgelehnt.`, 
+                          reason: `${currentUser.name} hat deine Vertretungsanfrage abgelehnt.`, 
                           targets: [requester], acknowledgedBy: [], isExpense: false, isResend: false, isHousehold: true,
                           isRejectedSwap: true
                       };
@@ -1024,48 +1059,19 @@
               const newMembers = safeHouseholdMembers.includes(name) 
                   ? safeHouseholdMembers.filter(m => m !== name) 
                   : [...safeHouseholdMembers, name];
-              await getFamilyDocRef(currentFamily.id).update({ 'householdConfig.members': newMembers });
+              await updateHouseholdConfig(newMembers, safeHouseholdChores);
           };
 
-          // HINZUFÜGEN KORRIGIERT: Fügt Aufgabe direkt zu Tasks hinzu
           const handleAddChore = async () => {
               if (!newChoreName.trim()) return;
               const newChore = { id: generateId(), name: newChoreName.trim() };
-              const newChoresList = [...safeHouseholdChores, newChore];
-
-              const upcomingSat = getNextSaturday();
-              const dateObj = new Date(upcomingSat);
-              const weekNum = getWeekNumber(dateObj);
-              
-              const memberIndex = (weekNum + safeHouseholdChores.length) % (safeHouseholdMembers.length || 1);
-              const assignedMember = safeHouseholdMembers.length > 0 ? safeHouseholdMembers[memberIndex] : null;
-
-              const newTask = {
-                  id: generateId(),
-                  choreId: newChore.id,
-                  choreName: newChore.name,
-                  date: upcomingSat,
-                  assignedTo: assignedMember,
-                  status: 'pending',
-                  swapRequestedWith: null
-              };
-
-              await getFamilyDocRef(currentFamily.id).update({ 
-                  'householdConfig.chores': newChoresList,
-                  householdTasks: [...householdTasks, newTask].slice(-150)
-              });
+              await updateHouseholdConfig(safeHouseholdMembers, [...safeHouseholdChores, newChore]);
               setNewChoreName("");
           };
 
-          // LÖSCHEN KORRIGIERT: Löscht die Aufgabe auch sofort aus der aktiven Liste
           const handleDeleteChore = async (choreId) => {
               const updatedChores = safeHouseholdChores.filter(c => c.id !== choreId);
-              const updatedTasks = householdTasks.filter(t => t.choreId !== choreId); 
-              
-              await getFamilyDocRef(currentFamily.id).update({ 
-                  'householdConfig.chores': updatedChores,
-                  householdTasks: updatedTasks
-              });
+              await updateHouseholdConfig(safeHouseholdMembers, updatedChores);
           };
 
           // --- SILENT PUSH ---
@@ -1935,7 +1941,7 @@
                                                                 </button>
                                                             )}
                                                             
-                                                            {/* FREIWILLIG ÜBERNEHMEN (IMMER SICHTBAR WENN OFFEN) */}
+                                                            {/* FREIWILLIG ÜBERNEHMEN IMMER SICHTBAR WENN OFFEN */}
                                                             {task.status === 'open' && (
                                                                 <button onClick={() => handleHouseholdAction(task.id, 'takeover')} className="w-full py-3.5 bg-[#007AFF] text-white font-bold text-[16px] rounded-[14px] shadow-sm active:scale-[0.98] transition-transform">
                                                                     Ich übernehme das!
@@ -1982,10 +1988,10 @@
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && (h.category === 'meal' || h.isSuccessfulSwap || !h.category)).length) ? (
+                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap).length) ? (
                           <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
-                          safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && (h.category === 'meal' || h.isSuccessfulSwap || !h.category)).map((item) => {
+                          safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap).map((item) => {
                             
                             // Sonder-Kachel: Erfolgreicher Dienst-Tausch (Nicht anklickbar)
                             if (item.isSuccessfulSwap) {
@@ -2240,7 +2246,6 @@
           );
         }
 
-        // --- SHORTCUT BACKEND-SIMULATOR FÜR APPLE WATCH ---
         function ShortcutTrigger({ reason, fid }) {
             const [statusText, setStatusText] = useState('Sende Ruf...');
 
