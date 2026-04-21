@@ -1841,11 +1841,11 @@
                     {/* --- HAUSHALT TAB --- */}
                     {activeTab === 'household' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                            <div className="flex justify-between items-center px-2">
-                                <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest">Hausarbeiten (Samstag)</h2>
+                            <div className="flex justify-between items-center pl-2 pr-1 mb-1">
+                                <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest whitespace-nowrap">Hausarbeiten (Samstag)</h2>
                                 {isAdmin && (
-                                    <button onClick={() => setHouseholdAdminMode(!householdAdminMode)} className="text-[14px] text-[#007AFF] font-semibold active:opacity-70 transition-opacity">
-                                        {householdAdminMode ? 'Fertig' : 'Einteilung bearbeiten'}
+                                    <button onClick={() => setHouseholdAdminMode(!householdAdminMode)} className="text-[#007AFF] active:opacity-70 transition-opacity p-1 flex items-center justify-center">
+                                        {householdAdminMode ? <span className="text-[14px] font-semibold">Fertig</span> : <Icon name="Pencil" size={18} />}
                                     </button>
                                 )}
                             </div>
