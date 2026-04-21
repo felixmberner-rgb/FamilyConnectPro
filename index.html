@@ -36,7 +36,7 @@
             :root { --app-bg: #000000; }
         }
 
-        /* ZURÜCK ZUR STABILEN BASIS */
+        /* STABILES FUNDAMENT OHNE FEHLERANFÄLLIGE JS-HACKS */
         body { 
             margin: 0; 
             padding: 0;
@@ -80,6 +80,7 @@
             animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
     </style>
+
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
@@ -97,19 +98,18 @@
             }
         } catch(e) { console.warn("Fehler beim Laden der URL Config:", e); }
 
-        // --- 1. GLOBALE FEHLERBEHANDLUNG ---
+        // --- 1. GLOBALE FEHLERBEHANDLUNG BEREINIGT ---
         const originalConsoleError = console.error;
         console.error = function(...args) {
             originalConsoleError.apply(console, args);
         };
 
         window.addEventListener('error', (event) => {
-            // Ignoriere harmlose Netzwerk-Fehler beim Aufwecken der Web App aus dem Hintergrund!
-            console.warn('Ignored Global error:', event.error || event.message);
+            console.warn('Ignoriere Global Error um Absturz zu verhindern:', event.error || event.message);
         });
 
         window.addEventListener('unhandledrejection', (event) => {
-            console.warn('Unhandled rejection:', event.reason);
+            console.warn('Ignoriere Unhandled rejection:', event.reason);
         });
 
         // --- 2. REACT SETUP & GLOBALE DATEN ---
@@ -154,7 +154,7 @@
           Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
           BellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
           Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-          Settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+          Settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
           Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
           Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
           UtensilsCrossed: '<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',
@@ -288,7 +288,8 @@
                         
                         <div className="space-y-3">
                             {(event.targets || []).map(targetName => {
-                                const ackEntry = (event.acknowledgedBy || []).find(ack => ack === targetName || ack.startsWith(targetName + ':'));
+                                const safeAck = Array.isArray(event.acknowledgedBy) ? event.acknowledgedBy : [];
+                                const ackEntry = safeAck.find(ack => ack === targetName || ack.startsWith(targetName + ':'));
                                 const hasAck = !!ackEntry;
                                 
                                 let ackText = 'Hat bestätigt!';
@@ -300,9 +301,9 @@
                                 const isDND = targetMember?.dndUntil && new Date(targetMember.dndUntil) > new Date();
                                 const currentCooldown = cooldowns[targetName] || 0;
                                 
-                                const isExpired = (Date.now() - new Date(event.timestamp).getTime()) > 5 * 60 * 1000;
+                                const isExpiredTime = event.timestamp ? (Date.now() - new Date(event.timestamp).getTime()) > 5 * 60 * 1000 : false;
                                 const isSender = event.sender === currentUser?.name || event.sender === 'Extern';
-                                const canResend = isSender && !isExpired;
+                                const canResend = isSender && !isExpiredTime;
 
                                 return (
                                     <div key={targetName} className="flex items-center justify-between bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-4 rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
@@ -311,7 +312,7 @@
                                             <div>
                                                 <p className="font-semibold text-[17px] text-black dark:text-white">{targetName}</p>
                                                 <p className={`text-[13px] font-normal ${hasAck ? getStatusColor(ackEntry) : 'text-[#3C3C4399] dark:text-[#EBEBF5]/60'}`}>
-                                                    {hasAck ? ackText : isDND ? 'Bitte nicht stören aktiv' : isExpired ? 'Nicht geantwortet' : 'Wartet auf Antwort...'}
+                                                    {hasAck ? ackText : isDND ? 'Bitte nicht stören aktiv' : isExpiredTime ? 'Nicht geantwortet' : 'Wartet auf Antwort...'}
                                                 </p>
                                             </div>
                                         </div>
@@ -424,6 +425,13 @@
             return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
         };
 
+        const safeFormatDateTime = (ts) => {
+            if (!ts) return '';
+            const d = new Date(ts);
+            if (isNaN(d.getTime())) return '';
+            return `am ${d.toLocaleDateString('de-DE')} um ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} Uhr`;
+        };
+
         function App() {
           const [appLoaded, setAppLoaded] = useState(false);
           const [firebaseUser, setFirebaseUser] = useState(null);
@@ -452,6 +460,7 @@
           // --- HAUSHALT STATES ---
           const [householdAdminMode, setHouseholdAdminMode] = useState(false);
           const [householdHistoryModal, setHouseholdHistoryModal] = useState(null);
+          const [householdSwapModal, setHouseholdSwapModal] = useState(null);
           const [newChoreName, setNewChoreName] = useState("");
 
           const [activeTab, setActiveTab] = useState(() => {
@@ -478,7 +487,7 @@
           const householdConfig = currentFamily?.householdConfig || {};
           const safeHouseholdMembers = Array.isArray(householdConfig.members) ? householdConfig.members : [];
           const safeHouseholdChores = Array.isArray(householdConfig.chores) ? householdConfig.chores : defaultChores;
-          const householdTasks = currentFamily?.householdTasks || [];
+          const householdTasks = Array.isArray(currentFamily?.householdTasks) ? currentFamily.householdTasks : [];
 
           const isAdmin = safeMembers.length > 0 && safeMembers[0].name === currentUser?.name;
 
@@ -491,8 +500,13 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Helper für 5 Min Timeout
-          const isExpired = (timestamp) => (Date.now() - new Date(timestamp).getTime()) > 5 * 60 * 1000;
+          // Helper für 5 Min Timeout (Crash sicher)
+          const isExpired = (timestamp) => {
+              if (!timestamp) return true;
+              const time = new Date(timestamp).getTime();
+              if (isNaN(time)) return true;
+              return (Date.now() - time) > 5 * 60 * 1000;
+          };
 
           useEffect(() => {
             const handleFocusIn = (e) => { 
@@ -609,7 +623,7 @@
                       const now = new Date();
                       if (now.getDay() === 6 && now.getHours() >= 9) {
                           const todayStr = now.toISOString().split('T')[0];
-                          const historyHasToday = safeHistory.some(h => h.isHousehold && h.timestamp && h.timestamp.startsWith(todayStr));
+                          const historyHasToday = safeHistory.some(h => h.isHousehold && typeof h.timestamp === 'string' && h.timestamp.startsWith(todayStr));
                           
                           if (!historyHasToday && currentUser) {
                               const todaysTasks = householdTasks.filter(t => t.date === todayStr && t.assignedTo);
@@ -659,9 +673,10 @@
           useEffect(() => {
               if (currentFamily && currentUser) {
                   const latestEvent = safeHistory.find(h => !h.isExpense && !h.isResend && !h.isHousehold);
-                  if (latestEvent && (latestEvent.targets || []).includes(currentUser.name)) {
+                  if (latestEvent && Array.isArray(latestEvent.targets) && latestEvent.targets.includes(currentUser.name)) {
                       
-                      const alreadyAcked = (latestEvent.acknowledgedBy || []).some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
+                      const safeAck = Array.isArray(latestEvent.acknowledgedBy) ? latestEvent.acknowledgedBy : [];
+                      const alreadyAcked = safeAck.some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
                       
                       if (!alreadyAcked && latestEvent.sender !== currentUser.name) {
                           if (!isExpired(latestEvent.timestamp)) {
@@ -1085,10 +1100,11 @@
                 let changed = false;
                 const updatedHistory = freshHistory.map(item => {
                     if (item.id === historyItemId) {
-                        const alreadyAcked = (item.acknowledgedBy || []).some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
+                        const safeAck = Array.isArray(item.acknowledgedBy) ? item.acknowledgedBy : [];
+                        const alreadyAcked = safeAck.some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
                         if (!alreadyAcked) {
                             changed = true;
-                            return { ...item, acknowledgedBy: [...(item.acknowledgedBy || []), responseString] };
+                            return { ...item, acknowledgedBy: [...safeAck, responseString] };
                         }
                     }
                     return item;
@@ -1409,7 +1425,7 @@
                           </div>
                           
                           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-                              {householdTasks.filter(t => t.choreId === householdHistoryModal).sort((a,b) => new Date(b.date) - new Date(a.date)).map(task => {
+                              {householdTasks.filter(t => t.choreId === householdHistoryModal).sort((a,b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).map(task => {
                                   const isPast = new Date(task.date) < new Date(upcomingSatDate);
                                   const isMe = task.assignedTo === currentUser.name;
                                   return (
@@ -1423,9 +1439,9 @@
                                           <div className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5]/80">
                                               Eingeteilt: <span className="font-semibold">{task.assignedTo || 'Niemand'}</span>
                                           </div>
-                                          {task.status === 'completed' && (
+                                          {task.status === 'completed' && task.completedAt && (
                                               <div className="text-[12px] text-[#8E8E93] mt-1">
-                                                  Erledigt am {new Date(task.completedAt).toLocaleDateString('de-DE')} um {new Date(task.completedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} Uhr durch {task.completedBy}
+                                                  Erledigt {safeFormatDateTime(task.completedAt)} durch {task.completedBy}
                                               </div>
                                           )}
                                           {isPast && task.status !== 'completed' && isMe && (
@@ -1832,16 +1848,17 @@
                           <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
                           safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
-                            const targetList = item.targets || item.recipients || [];
+                            const safeAckList = Array.isArray(item.acknowledgedBy) ? item.acknowledgedBy : [];
+                            const targetList = Array.isArray(item.targets) ? item.targets : (Array.isArray(item.recipients) ? item.recipients : []);
                             
                             const handleCardClick = () => {
                                 if (navigator.vibrate) navigator.vibrate(10);
                                 const isRecipient = targetList.includes(currentUser?.name);
-                                const hasAcknowledged = item.acknowledgedBy?.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
+                                const hasAcknowledged = safeAckList.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
                                 
                                 if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
                                     if (isExpired(item.timestamp)) {
-                                        showAlert("Abgelaufen", "Nicht geantwortet.");
+                                        setTrackingEventId(item.id);
                                     } else {
                                         setModal({ 
                                             type: 'custom_ack', 
@@ -1860,7 +1877,7 @@
                             };
                             
                             const renderRecipientStatus = (name) => {
-                              const ackEntry = (item.acknowledgedBy || []).find(ack => ack === name || ack.startsWith(name + ':'));
+                              const ackEntry = safeAckList.find(ack => ack === name || ack.startsWith(name + ':'));
                               return (
                                 <span key={name} className={`font-semibold ${getStatusColor(ackEntry)}`}>
                                   {name}{targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
@@ -1907,7 +1924,7 @@
                                   <div className="flex flex-col justify-center h-full gap-4 bg-[#FF9500]/10 p-5 rounded-[16px] border border-[#FF9500]/20 text-center">
                                       <div>
                                           <p className="font-semibold text-[#FF9500] text-[17px]">Aktiviert bis</p>
-                                          <p className="text-[15px] text-[#FF9500]/80 font-medium">{currentUser?.dndUntil ? new Date(currentUser.dndUntil).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''} Uhr</p>
+                                          <p className="text-[15px] text-[#FF9500]/80 font-medium">{currentUser?.dndUntil && !isNaN(new Date(currentUser.dndUntil).getTime()) ? new Date(currentUser.dndUntil).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''} Uhr</p>
                                       </div>
                                       <button onClick={() => setDND(0)} className="bg-[#FF9500] text-white font-semibold px-4 py-3 rounded-[12px] active:opacity-80 w-full">Beenden</button>
                                   </div>
