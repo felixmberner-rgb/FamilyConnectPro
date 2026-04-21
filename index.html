@@ -36,15 +36,25 @@
             :root { --app-bg: #000000; }
         }
 
-        /* FLEXIBLES, STABILES FUNDAMENT (ohne JS-Hacks) */
-        body { 
+        /* PERFEKTES FUNDAMENT: Keine dvh Bugs mehr bei Push-Launch! */
+        html, body { 
             margin: 0; 
             padding: 0;
+            width: 100%;
+            height: 100%;
             background-color: var(--app-bg); 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
             overflow: hidden; 
             overscroll-behavior-y: none;
+        }
+        
+        #root {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
         .scrollable-area {
@@ -72,6 +82,7 @@
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
 
+        /* Animationen für das schicke Action Sheet */
         @keyframes slideUpFade {
             from { opacity: 0; transform: translateY(20px) scale(0.95); }
             to { opacity: 1; transform: translateY(0) scale(1); }
@@ -84,7 +95,11 @@
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <div id="root" class="w-full relative flex flex-col"></div>
+    <div id="fallback" style="position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#007AFF;font-weight:bold;z-index:9999;">
+        FamilyConnect startet...
+    </div>
+
+    <div id="root"></div>
 
     <script type="text/babel">
         // --- 1. GLOBALE FEHLERBEHANDLUNG ---
@@ -94,13 +109,8 @@
         };
 
         const setFallbackMessage = (message) => {
-            let fallback = document.getElementById('fallback');
-            if (!fallback) {
-                fallback = document.createElement('div');
-                fallback.id = 'fallback';
-                fallback.style.cssText = 'position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#FF3B30;font-weight:bold;z-index:9999;padding:20px;text-align:center;';
-                document.body.appendChild(fallback);
-            }
+            const fallback = document.getElementById('fallback');
+            if (!fallback) return;
             fallback.style.display = 'flex';
             fallback.textContent = message;
         };
@@ -114,7 +124,7 @@
             console.error('Unhandled rejection:', event.reason);
         });
 
-        // --- 2. REACT SETUP & GLOBALE DATEN ---
+        // --- 2. REACT SETUP ---
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
@@ -156,7 +166,7 @@
           Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
           BellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
           Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-          Settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+          Settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
           Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
           Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
           UtensilsCrossed: '<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',
@@ -179,17 +189,6 @@
           Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
         };
 
-        const REASONS = [
-            { id: 'breakfast', label: 'Frühstück', sentence: 'Das Frühstück ist fertig!', icon: 'Coffee', category: 'meal' },
-            { id: 'lunch', label: 'Mittagessen', sentence: 'Das Mittagessen ist fertig!', icon: 'Utensils', category: 'meal' },
-            { id: 'coffee', label: 'Kaffee', sentence: 'Es gibt Kaffee und Kuchen!', icon: 'UtensilsCrossed', category: 'meal' },
-            { id: 'dinner', label: 'Abendessen', sentence: 'Das Abendessen ist fertig!', icon: 'Moon', category: 'meal' },
-            { id: 'table', label: 'Tischdecken', sentence: 'Hilfe beim Tischdecken wird benötigt!', icon: 'Utensils', category: 'push_only' },
-            { id: 'message', label: 'Wohnzimmer', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
-            { id: 'movie', label: 'Film', sentence: 'Der Film fängt gleich an!', icon: 'Film', category: 'other' },
-            { id: 'game', label: 'Spielen', sentence: 'Wir wollen spielen, komm dazu!', icon: 'Gamepad2', category: 'other' },
-        ];
-
         const Icon = ({ name, size = 24, strokeWidth = 2, className = "", onClick }) => {
             return React.createElement('svg', {
                 xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24",
@@ -206,25 +205,29 @@
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
                         <div className="bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-white/40 dark:border-[#38383A]/50 overflow-hidden animate-action-sheet">
                             
-                            <div className="flex flex-col items-center mb-6 mt-1 text-center">
-                                <div className="w-14 h-14 bg-gradient-to-tr from-[#007AFF] to-[#5856D6] text-white rounded-full flex items-center justify-center mb-4 shadow-md">
-                                    <Icon name="Bell" size={28} strokeWidth={2.5}/>
+                            <div className="flex flex-col items-center mb-7 mt-2 text-center">
+                                <div className="w-16 h-16 bg-[#007AFF]/10 dark:bg-[#007AFF]/20 text-[#007AFF] rounded-[22px] flex items-center justify-center mb-5 shadow-sm transform rotate-3">
+                                    <Icon name="Bell" size={32} strokeWidth={2}/>
                                 </div>
-                                <h3 className="font-bold text-[20px] tracking-tight text-black dark:text-white mb-1.5">{data.title}</h3>
-                                <p className="text-[#3C3C43] dark:text-[#EBEBF5]/70 text-[15px] leading-relaxed px-2 font-medium">{data.message}</p>
+                                <h3 className="font-bold text-[22px] tracking-tight text-black dark:text-white mb-2">{data.title}</h3>
+                                <p className="text-[#3C3C43] dark:text-[#EBEBF5]/70 text-[16px] leading-relaxed px-2 font-medium">{data.message}</p>
                             </div>
                             
-                            <div className="space-y-2.5">
-                                <button onClick={() => data.onRespond('Komme sofort')} className="w-full py-3.5 rounded-[16px] bg-[#34C759] hover:bg-[#32B353] text-white font-bold text-[17px] active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-sm">
-                                    Komme sofort
+                            <div className="space-y-3">
+                                <button onClick={() => data.onRespond('Komme sofort')} className="w-full py-4 rounded-[20px] bg-[#34C759] text-white font-bold text-[17px] active:scale-[0.98] transition-all shadow-[0_4px_14px_rgba(52,199,89,0.3)] flex items-center justify-center gap-2">
+                                    <Icon name="CheckCircle2" size={20} strokeWidth={2.5}/> Komme sofort
                                 </button>
-                                <button onClick={() => data.onRespond('In 5 Minuten')} className="w-full py-3.5 rounded-[16px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-black dark:text-white font-bold text-[17px] active:scale-[0.98] transition-transform">
-                                    In 5 Minuten
-                                </button>
-                                <button onClick={() => data.onRespond('Fangt schon mal an')} className="w-full py-3.5 rounded-[16px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-black dark:text-white font-bold text-[17px] active:scale-[0.98] transition-transform">
-                                    Fangt schon mal an
-                                </button>
-                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[16px] text-[#FF3B30] font-bold text-[17px] active:opacity-70 transition-opacity mt-1">
+                                
+                                <div className="flex gap-3">
+                                    <button onClick={() => data.onRespond('In 5 Minuten')} className="flex-1 py-3.5 rounded-[18px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#007AFF] font-bold text-[15px] active:scale-[0.98] transition-transform">
+                                        In 5 Min.
+                                    </button>
+                                    <button onClick={() => data.onRespond('Fangt schon mal an')} className="flex-1 py-3.5 rounded-[18px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#FF3B30] font-bold text-[15px] active:scale-[0.98] transition-transform">
+                                        Fangt an
+                                    </button>
+                                </div>
+
+                                <button onClick={data.onCancel} className="w-full py-3.5 rounded-[18px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-semibold text-[15px] active:opacity-70 transition-opacity mt-1">
                                     Später antworten
                                 </button>
                             </div>
@@ -257,31 +260,21 @@
 
         function TrackingOverlay({ event, currentFamily, currentUser, safeMembers, onClose, onResend }) {
             if (!event) return null;
-            const [cooldowns, setCooldowns] = useState({});
+            const [cooldown, setCooldown] = useState(60);
 
             const isSender = event.sender === currentUser?.name;
             const isRecent = event.timestamp && (Date.now() - new Date(event.timestamp).getTime() < 5 * 60 * 1000);
             const canResend = isSender && isRecent;
 
             useEffect(() => {
-                const calculateCooldowns = () => {
-                    const newCooldowns = {};
-                    (event.targets || []).forEach(targetName => {
-                        const lastSentStr = sessionStorage.getItem(`resend_${event.id}_${targetName}`);
-                        const lastSentTime = lastSentStr ? parseInt(lastSentStr, 10) : new Date(event.timestamp).getTime();
-                        const passed = Math.floor((Date.now() - lastSentTime) / 1000);
-                        newCooldowns[targetName] = passed >= 60 ? 0 : 60 - passed;
-                    });
-                    return newCooldowns;
-                };
-
-                setCooldowns(calculateCooldowns());
+                const start = Date.now();
                 const timer = setInterval(() => {
-                    setCooldowns(calculateCooldowns());
+                    const passed = Math.floor((Date.now() - start) / 1000);
+                    if (passed >= 60) setCooldown(0);
+                    else setCooldown(60 - passed);
                 }, 1000);
-                
                 return () => clearInterval(timer);
-            }, [event.id, event.timestamp, event.targets]);
+            }, [event.id]);
 
             return (
                 <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-md animate-fade-in md:items-center">
@@ -304,7 +297,6 @@
 
                                 const targetMember = safeMembers.find(m => m.name === targetName);
                                 const isDND = targetMember?.dndUntil && new Date(targetMember.dndUntil) > new Date();
-                                const currentCooldown = cooldowns[targetName] || 0;
 
                                 return (
                                     <div key={targetName} className="flex items-center justify-between bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-4 rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
@@ -319,15 +311,11 @@
                                         </div>
                                         {!hasAck && !isDND && canResend && (
                                             <button 
-                                                disabled={currentCooldown > 0}
-                                                onClick={() => { 
-                                                    sessionStorage.setItem(`resend_${event.id}_${targetName}`, Date.now().toString());
-                                                    setCooldowns(prev => ({...prev, [targetName]: 60}));
-                                                    onResend(targetName, event.reason); 
-                                                }}
-                                                className={`text-[13px] font-semibold px-4 py-2 rounded-full transition-all ${currentCooldown > 0 ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-gray-400' : 'bg-[#007AFF]/10 text-[#007AFF] active:opacity-70'}`}
+                                                disabled={cooldown > 0}
+                                                onClick={() => { setCooldown(60); onResend(targetName, event.reason); }}
+                                                className={`text-[13px] font-semibold px-4 py-2 rounded-full transition-all ${cooldown > 0 ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-gray-400' : 'bg-[#007AFF]/10 text-[#007AFF] active:opacity-70'}`}
                                             >
-                                                {currentCooldown > 0 ? `${currentCooldown}s` : 'Nochmal'}
+                                                {cooldown > 0 ? `${cooldown}s` : 'Nochmal'}
                                             </button>
                                         )}
                                     </div>
@@ -361,7 +349,7 @@
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-[100dvh] overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" />
                         <div>
@@ -391,6 +379,7 @@
           return (
             <div 
               className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              /* Noch einen kleinen Ticken tiefer! */
               style={{ paddingBottom: 'max(6px, calc(env(safe-area-inset-bottom) - 8px))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[280px] md:max-w-[360px] relative h-[60px]">
@@ -431,7 +420,6 @@
 
           const [formInput, setFormInput] = useState({ familyId: '', familyName: '', name: '', password: '' });
           const [authError, setAuthError] = useState('');
-          const [dbError, setDbError] = useState(null);
 
           const [expenseModal, setExpenseModal] = useState(null); 
           const [expenseForm, setExpenseForm] = useState({ amount: '', reason: '', date: getLocalTodayString(), splitCount: 1, splitTargets: [] });
@@ -458,6 +446,17 @@
               !isNaN(new Date(currentUser.dndUntil).getTime()) &&
               new Date(currentUser.dndUntil) > new Date()
           );
+
+          const REASONS = [
+            { id: 'breakfast', label: 'Frühstück', sentence: 'Das Frühstück ist fertig!', icon: 'Coffee', category: 'meal' },
+            { id: 'lunch', label: 'Mittagessen', sentence: 'Das Mittagessen ist fertig!', icon: 'Utensils', category: 'meal' },
+            { id: 'coffee', label: 'Kaffee', sentence: 'Es gibt Kaffee und Kuchen!', icon: 'UtensilsCrossed', category: 'meal' },
+            { id: 'dinner', label: 'Abendessen', sentence: 'Das Abendessen ist fertig!', icon: 'Moon', category: 'meal' },
+            { id: 'table', label: 'Tischdecken', sentence: 'Hilfe beim Tischdecken wird benötigt!', icon: 'Utensils', category: 'push_only' },
+            { id: 'message', label: 'Wohnzimmer', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
+            { id: 'movie', label: 'Film', sentence: 'Der Film fängt gleich an!', icon: 'Film', category: 'other' },
+            { id: 'game', label: 'Spielen', sentence: 'Wir wollen spielen, komm dazu!', icon: 'Gamepad2', category: 'other' },
+          ];
 
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
@@ -531,7 +530,6 @@
 
                 setCurrentFamily(data);
                 setCurrentUser(updatedUser);
-                setDbError(null); 
                 if (updatedUser.fcmToken) setPushStatus('Aktiviert ✅');
                 
                 clearTimeout(fallbackTimer);
@@ -559,7 +557,7 @@
               }
           }, [isAdminMode]);
 
-          // --- 3. AUTO-PUSH BEIM START ---
+          // --- 3. AUTO-PUSH BEIM START (Heimlich im Hintergrund) ---
           useEffect(() => {
               if (appLoaded && currentFamily && currentUser) {
                   const timer = setTimeout(() => {
@@ -1085,7 +1083,7 @@
           
           if (!appLoaded) {
               return (
-                  <div className="h-[100dvh] w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50">
+                  <div className="h-full w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50">
                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                   </div>
               );
@@ -1093,7 +1091,7 @@
 
           if (isAdminMode) {
               return (
-                  <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
+                  <div className="h-full w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
                       <Modal data={modal} onClose={() => setModal(null)} />
                       <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full">
                           <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end sticky top-0">
@@ -1164,7 +1162,7 @@
             
             if (localFamilyId) {
               return (
-                <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
+                <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                   <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
                     <Icon name="ShieldCheck" size={56} className="text-[#FF9500] mx-auto mb-5 animate-pulse" />
                     <h2 className="text-[22px] font-bold mb-3">Verbinde...</h2>
@@ -1183,7 +1181,7 @@
             }
 
             return (
-              <div className="h-[100dvh] w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
+              <div className="h-full w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
                 <div className="absolute bottom-[0%] right-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#5856D6] blur-[100px] opacity-20 pointer-events-none"></div>
 
@@ -1231,7 +1229,7 @@
           const trackingEvent = trackingEventId ? safeHistory.find(h => h.id === trackingEventId) : null;
 
           return (
-            <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
+            <div className="h-full w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
               <Modal data={modal} onClose={() => setModal(null)} />
               
               {trackingEvent && (
@@ -1535,48 +1533,6 @@
                     {activeTab === 'settings' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         
-                        <section className="md:col-span-2">
-                          <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Apple Kurzbefehle & Watch</h2>
-                          <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5">
-                              <p className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5]/70 mb-4 leading-relaxed">
-                                  Erstelle einen Kurzbefehl mit der Aktion <b>"URL öffnen"</b> und füge einen dieser Links ein. So kannst du die App z.B. direkt von deiner Apple Watch aus steuern!
-                              </p>
-                              <div className="space-y-3">
-                                  {[
-                                      { id: 'lunch', label: 'Essen rufen', icon: 'Utensils' },
-                                      { id: 'message', label: 'Ins Wohnzimmer rufen', icon: 'MessageCircle' }
-                                  ].map(reason => {
-                                      const url = `${window.location.origin}${window.location.pathname}?action=shortcut&reason=${reason.id}&fid=${currentFamily.id}`;
-                                      return (
-                                          <div key={reason.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]">
-                                              <div className="flex justify-between items-center mb-2">
-                                                  <span className="font-semibold text-[15px] text-black dark:text-white flex items-center gap-2">
-                                                      <Icon name={reason.icon} size={16} /> {reason.label}
-                                                  </span>
-                                                  <button onClick={() => { 
-                                                      try {
-                                                          const el = document.createElement('textarea');
-                                                          el.value = url;
-                                                          document.body.appendChild(el);
-                                                          el.select();
-                                                          document.execCommand('copy');
-                                                          document.body.removeChild(el);
-                                                          showAlert('Kopiert!', 'Der Link wurde in die Zwischenablage kopiert.');
-                                                      } catch(e) {}
-                                                  }} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold active:opacity-70 transition-opacity">
-                                                      Kopieren
-                                                  </button>
-                                              </div>
-                                              <div className="text-[11px] text-[#8E8E93] dark:text-[#EBEBF5]/50 font-mono break-all line-clamp-2 overflow-hidden select-all">
-                                                  {url}
-                                              </div>
-                                          </div>
-                                      );
-                                  })}
-                              </div>
-                          </div>
-                        </section>
-
                         <section>
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="BellOff" size={14}/> Nicht stören</h2>
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5 h-[calc(100%-2rem)]">
@@ -1693,81 +1649,6 @@
           );
         }
 
-        // --- SHORTCUT BACKEND-SIMULATOR FÜR APPLE WATCH ---
-        function ShortcutTrigger({ reason, fid }) {
-            const [statusText, setStatusText] = useState('Sende Ruf...');
-
-            useEffect(() => {
-                const executeShortcut = async () => {
-                    try {
-                        const auth = firebase.auth();
-                        await auth.signInAnonymously(); 
-
-                        const docRef = db.doc(`artifacts/${appId}/public/data/families/${fid}`);
-                        const docSnap = await docRef.get();
-
-                        if (docSnap.exists) {
-                            const data = docSnap.data();
-                            const activeMembers = Array.isArray(data.members) ? data.members.filter(m => m && typeof m === 'object' && m.status !== 'pending') : [];
-                            
-                            const reasonObj = REASONS.find(r => r.id === reason) || { id: 'shortcut', category: 'other', sentence: 'Ruf über Kurzbefehl!' };
-                            const now = new Date();
-                            const isNightMode = now.getHours() >= 22 || now.getHours() < 7;
-                            
-                            const actualTargets = [];
-                            activeMembers.forEach(member => {
-                                const isDND = member.dndUntil && new Date(member.dndUntil) > now;
-                                if (!isDND) {
-                                    actualTargets.push(member.name);
-                                    if (!isNightMode && reasonObj.category !== 'push_only') {
-                                        const url = reasonObj.category === 'meal' ? member.voiceMonkeyMeal : member.voiceMonkeyOther;
-                                        if (url && url.trim() !== '') fetch(url).catch(e => {});
-                                    }
-                                }
-                            });
-
-                            if (actualTargets.length > 0) {
-                                const newHistoryItem = { 
-                                    id: Date.now().toString(), 
-                                    timestamp: now.toISOString(), 
-                                    sender: 'Extern', 
-                                    reason: reasonObj.sentence, 
-                                    targets: actualTargets, 
-                                    acknowledgedBy: [], 
-                                    isExpense: false, 
-                                    isResend: false 
-                                };
-                                await docRef.update({ history: [newHistoryItem, ...(data.history || [])].slice(0, 50) });
-                                setStatusText('Erfolgreich gesendet! ✅');
-                                if(navigator.vibrate) navigator.vibrate([30, 50, 30]);
-                            } else {
-                                setStatusText('Alle im Nicht-Stören Modus 🔕');
-                            }
-                        } else {
-                            setStatusText('Familie nicht gefunden ❌');
-                        }
-                    } catch(e) {
-                        setStatusText('Verbindungsfehler ❌');
-                    }
-                };
-                executeShortcut();
-            }, [reason, fid]);
-
-            return (
-                <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
-                    <div className="bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
-                        <div className="w-20 h-20 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex items-center justify-center mx-auto mb-5">
-                            <Icon name="Bell" size={36} />
-                        </div>
-                        <h2 className="text-[22px] font-bold mb-3">{statusText}</h2>
-                        <p className="text-[15px] text-gray-500 dark:text-[#EBEBF5]/60 mb-6 leading-relaxed">
-                            Dieses Fenster kann nun geschlossen werden.
-                        </p>
-                    </div>
-                </div>
-            );
-        }
-
         function Root() {
             const [config, setConfig] = useState(() => {
                 try {
@@ -1781,12 +1662,10 @@
             const [status, setStatus] = useState("booting"); 
             const [errorMsg, setErrorMsg] = useState("");
 
-            const params = new URLSearchParams(window.location.search);
-            const isShortcut = params.get('action') === 'shortcut';
-            const shortcutReason = params.get('reason');
-            const shortcutFid = params.get('fid');
-
             useEffect(() => {
+                const fallback = document.getElementById('fallback');
+                if (fallback) fallback.style.display = 'none';
+
                 if (!config) return setStatus("config-needed");
                 
                 setStatus("booting");
@@ -1795,9 +1674,12 @@
                     if (!firebase.apps.length) app = firebase.initializeApp(finalConfig);
                     else app = firebase.app();
                     
+                    // OFFLINE PERSISTENZ
                     db = firebase.firestore();
                     try {
-                        db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+                        db.enablePersistence({ synchronizeTabs: true }).catch(() => {
+                            console.warn("Offline-Modus konnte nicht aktiviert werden.");
+                        });
                     } catch (e) {}
 
                     auth = firebase.auth();
@@ -1812,7 +1694,7 @@
             
             if (status === "error") {
                 return (
-                    <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
+                    <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
@@ -1825,17 +1707,11 @@
 
             if (status === "booting") {
                 return (
-                   <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50">
+                   <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50">
                       <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                    </div>
                 );
             }
-
-            // Wenn die App durch einen Apple Kurzbefehl geöffnet wurde
-            if (isShortcut && shortcutReason && shortcutFid) {
-                return <ShortcutTrigger reason={shortcutReason} fid={shortcutFid} />;
-            }
-
             return <App />;
         }
 
