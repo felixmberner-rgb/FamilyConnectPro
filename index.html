@@ -36,7 +36,7 @@
             :root { --app-bg: #000000; }
         }
 
-        /* STABILES FUNDAMENT OHNE FEHLERANFÄLLIGE JS-HACKS */
+        /* STABILES FUNDAMENT */
         body { 
             margin: 0; 
             padding: 0;
@@ -45,6 +45,16 @@
             -webkit-text-size-adjust: 100%;
             overflow: hidden; 
             overscroll-behavior-y: none;
+            height: 100vh; /* Fallback */
+            height: 100dvh;
+        }
+        
+        #root {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
         .scrollable-area {
@@ -84,7 +94,7 @@
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <div id="root" class="w-full relative flex flex-col h-[100dvh]"></div>
+    <div id="root"></div>
 
     <script type="text/babel">
         // --- 0. APPLE WATCH CONFIG-RETTUNG ---
@@ -146,7 +156,7 @@
             if (!ackString) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60'; 
             if (ackString.includes('Komme sofort')) return 'text-[#34C759]'; 
             if (ackString.includes('In 5 Minuten')) return 'text-[#FF9500]'; 
-            if (ackString.includes('Fangt schon mal an') || ackString.includes('Fangt an')) return 'text-[#FF3B30]'; 
+            if (ackString.includes('Fangt schon mal an') || ackString.includes('Fangt an') || ackString.includes('Abgelehnt')) return 'text-[#FF3B30]'; 
             return 'text-[#34C759]'; 
         };
 
@@ -180,13 +190,13 @@
         };
 
         const REASONS = [
-            { id: 'general_meal', label: 'Essen rufen', sentence: 'Das Essen ist fertig!', icon: 'Utensils', category: 'meal' },
+            { id: 'general_meal', label: 'Essen', shortcutLabel: 'Essen rufen', sentence: 'Das Essen ist fertig!', icon: 'Utensils', category: 'meal' },
             { id: 'breakfast', label: 'Frühstück', sentence: 'Das Frühstück ist fertig!', icon: 'Coffee', category: 'meal' },
             { id: 'lunch', label: 'Mittagessen', sentence: 'Das Mittagessen ist fertig!', icon: 'Utensils', category: 'meal' },
             { id: 'coffee', label: 'Kaffee', sentence: 'Es gibt Kaffee und Kuchen!', icon: 'UtensilsCrossed', category: 'meal' },
             { id: 'dinner', label: 'Abendessen', sentence: 'Das Abendessen ist fertig!', icon: 'Moon', category: 'meal' },
             { id: 'table', label: 'Tischdecken', sentence: 'Hilfe beim Tischdecken wird benötigt!', icon: 'Utensils', category: 'push_only' },
-            { id: 'message', label: 'Wohnzimmer', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
+            { id: 'message', label: 'Wohnzimmer', shortcutLabel: 'Ins Wohnzimmer rufen', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
             { id: 'movie', label: 'Film', sentence: 'Der Film fängt gleich an!', icon: 'Film', category: 'other' },
             { id: 'game', label: 'Spielen', sentence: 'Wir wollen spielen, komm dazu!', icon: 'Gamepad2', category: 'other' },
         ];
@@ -202,6 +212,36 @@
         function Modal({ data, onClose }) {
             if (!data) return null;
             
+            // Pop-Up für Vertretungsanfragen
+            if (data.type === 'swap_request_ack') {
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
+                        <div className="bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-white/40 dark:border-[#38383A]/50 overflow-hidden animate-action-sheet">
+                            
+                            <div className="flex flex-col items-center mb-6 mt-1 text-center">
+                                <div className="w-14 h-14 bg-gradient-to-tr from-[#FF9500] to-[#FFCC00] text-white rounded-full flex items-center justify-center mb-4 shadow-md">
+                                    <Icon name="Users" size={28} strokeWidth={2.5}/>
+                                </div>
+                                <h3 className="font-bold text-[20px] tracking-tight text-black dark:text-white mb-1.5">{data.title}</h3>
+                                <p className="text-[#3C3C43] dark:text-[#EBEBF5]/70 text-[15px] leading-relaxed px-2 font-medium whitespace-pre-wrap">{data.message}</p>
+                            </div>
+                            
+                            <div className="flex gap-3 mb-2.5">
+                                <button onClick={data.onAccept} className="flex-1 py-3.5 rounded-[16px] bg-[#007AFF] hover:bg-[#0066CC] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm">
+                                    Übernehmen
+                                </button>
+                                <button onClick={data.onReject} className="flex-1 py-3.5 rounded-[16px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#FF3B30] font-bold text-[17px] active:scale-[0.98] transition-transform">
+                                    Ablehnen
+                                </button>
+                            </div>
+                            <button onClick={data.onCancel} className="w-full py-3.5 rounded-[16px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-semibold text-[15px] active:opacity-70 transition-opacity">
+                                Später entscheiden
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
             if (data.type === 'custom_ack') {
                 return (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
@@ -261,8 +301,6 @@
             const [cooldowns, setCooldowns] = useState({});
 
             const isSender = event.sender === currentUser?.name || event.sender === 'Extern';
-            const isRecent = event.timestamp && (Date.now() - new Date(event.timestamp).getTime() < 5 * 60 * 1000);
-            const canResend = isSender && isRecent;
 
             useEffect(() => {
                 const calculateCooldowns = () => {
@@ -295,7 +333,8 @@
                         
                         <div className="space-y-3">
                             {(event.targets || []).map(targetName => {
-                                const ackEntry = (event.acknowledgedBy || []).find(ack => ack === targetName || ack.startsWith(targetName + ':'));
+                                const safeAck = Array.isArray(event.acknowledgedBy) ? event.acknowledgedBy : [];
+                                const ackEntry = safeAck.find(ack => ack === targetName || ack.startsWith(targetName + ':'));
                                 const hasAck = !!ackEntry;
                                 
                                 let ackText = 'Hat bestätigt!';
@@ -399,8 +438,9 @@
               style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
-                <div className="absolute inset-y-1.5 left-1.5 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: `calc((100% - 12px) / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }}>
-                  <div className="w-10 md:w-12 h-full bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full"></div>
+                {/* RUNDER KREIS FIX: Feste 44x44 Dimensionen und zentriert platziert, damit er nie eiförmig wird */}
+                <div className="absolute inset-y-1.5 left-0 flex justify-center items-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: `calc(100% / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }}>
+                  <div className="w-[44px] h-[44px] bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full"></div>
                 </div>
                 {tabs.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -511,37 +551,23 @@
               return (Date.now() - time) > 5 * 60 * 1000;
           };
 
-          // --- FIX FÜR DEN WEISSEN TASTATUR BEREICH ---
-          useEffect(() => {
-              const fixLayout = () => {
-                  window.scrollTo(0, 0); 
-                  window.dispatchEvent(new Event('resize'));
-                  window.dispatchEvent(new Event('orientationchange'));
-              };
-
-              if (appLoaded || !modal || !trackingEventId) {
-                  fixLayout();
-                  setTimeout(fixLayout, 50);
-                  setTimeout(fixLayout, 300);
-              }
-          }, [appLoaded, modal, trackingEventId]);
-
+          // --- TASTATUR FIX (Simulierte Drehung) ---
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
-                // Simuliert sofortiges Drehen, wenn Tastatur geschlossen wird
                 setTimeout(() => { 
                     window.scrollTo(0, 0); 
+                    document.documentElement.style.height = '99.5dvh';
                     window.dispatchEvent(new Event('resize'));
                     window.dispatchEvent(new Event('orientationchange'));
+                    setTimeout(() => { 
+                        document.documentElement.style.height = '100dvh';
+                        window.dispatchEvent(new Event('resize'));
+                    }, 50);
                 }, 50);
-                setTimeout(() => { 
-                    window.dispatchEvent(new Event('resize'));
-                    window.dispatchEvent(new Event('orientationchange'));
-                }, 300);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -604,6 +630,7 @@
                 setAppLoaded(true); 
               }
             }, (error) => {
+                console.warn("DB:", error);
                 setAppLoaded(true);
             });
             
@@ -617,7 +644,6 @@
                       const upcomingSat = getNextSaturday();
                       const satTasks = householdTasks.filter(t => t.date === upcomingSat);
                       
-                      // Tasks generieren
                       if (satTasks.length < safeHouseholdChores.length) {
                           const dateObj = new Date(upcomingSat);
                           const weekNum = getWeekNumber(dateObj);
@@ -674,7 +700,7 @@
                   };
                   checkAndGenerate();
               }
-          }, [appLoaded, currentFamily?.id]);
+          }, [appLoaded, currentFamily?.id, JSON.stringify(safeHouseholdChores), JSON.stringify(safeHouseholdMembers)]);
 
           useEffect(() => {
               if (isAdminMode) {
@@ -697,29 +723,54 @@
               }
           }, [appLoaded, currentFamily?.id, currentUser?.name]);
 
+          // MODAL LISTENER FÜR RUFE UND TAUSCHANFRAGEN
           useEffect(() => {
               if (currentFamily && currentUser) {
-                  const latestEvent = safeHistory.find(h => !h.isExpense && !h.isResend && !h.isHousehold);
-                  if (latestEvent && Array.isArray(latestEvent.targets) && latestEvent.targets.includes(currentUser.name)) {
-                      
-                      const safeAck = Array.isArray(latestEvent.acknowledgedBy) ? latestEvent.acknowledgedBy : [];
+                  const latestEventForMe = safeHistory.find(h => {
+                      if (h.isExpense || h.isResend) return false;
+                      if (h.reason === 'Erinnerung: Haushaltsdienst! 🧹') return false;
+                      if (!Array.isArray(h.targets) || !h.targets.includes(currentUser.name)) return false;
+                      return true;
+                  });
+
+                  if (latestEventForMe) {
+                      const safeAck = Array.isArray(latestEventForMe.acknowledgedBy) ? latestEventForMe.acknowledgedBy : [];
                       const alreadyAcked = safeAck.some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
                       
-                      if (!alreadyAcked && latestEvent.sender !== currentUser.name) {
-                          if (!isExpired(latestEvent.timestamp)) {
-                              if (!sessionStorage.getItem(`prompted_${latestEvent.id}`)) {
-                                  sessionStorage.setItem(`prompted_${latestEvent.id}`, 'true');
+                      if (!alreadyAcked && latestEventForMe.sender !== currentUser.name) {
+                          if (!isExpired(latestEventForMe.timestamp)) {
+                              if (!sessionStorage.getItem(`prompted_${latestEventForMe.id}`)) {
+                                  sessionStorage.setItem(`prompted_${latestEventForMe.id}`, 'true');
                                   
-                                  setModal({ 
-                                      type: 'custom_ack', 
-                                      title: `Ruf von ${latestEvent.sender}`, 
-                                      message: `${latestEvent.reason}`, 
-                                      onRespond: (responseType) => {
-                                          handleAcknowledge(latestEvent.id, responseType);
-                                          setModal(null);
-                                      },
-                                      onCancel: () => setModal(null) 
-                                  });
+                                  if (latestEventForMe.isSwapRequest) {
+                                      setModal({ 
+                                          type: 'swap_request_ack', 
+                                          title: `Vertretungsanfrage`, 
+                                          message: `${latestEventForMe.sender} bittet dich um Vertretung für:\n${latestEventForMe.choreName}`, 
+                                          onAccept: () => {
+                                              handleHouseholdAction(latestEventForMe.taskId, 'accept_swap');
+                                              handleAcknowledge(latestEventForMe.id, 'Übernommen');
+                                              setModal(null);
+                                          },
+                                          onReject: () => {
+                                              handleHouseholdAction(latestEventForMe.taskId, 'reject_swap');
+                                              handleAcknowledge(latestEventForMe.id, 'Abgelehnt');
+                                              setModal(null);
+                                          },
+                                          onCancel: () => setModal(null) 
+                                      });
+                                  } else {
+                                      setModal({ 
+                                          type: 'custom_ack', 
+                                          title: `Ruf von ${latestEventForMe.sender}`, 
+                                          message: `${latestEventForMe.reason}`, 
+                                          onRespond: (responseType) => {
+                                              handleAcknowledge(latestEventForMe.id, responseType);
+                                              setModal(null);
+                                          },
+                                          onCancel: () => setModal(null) 
+                                      });
+                                  }
                               }
                           }
                       }
@@ -906,44 +957,63 @@
               } catch (err) { showAlert("Fehler", err.message || "Fehler beim Generieren der PDF."); }
           };
 
-          // --- HAUSHALTS HANDLER ---
+          // --- HAUSHALTS HANDLER SICHER ---
           const handleHouseholdAction = async (taskId, action, data = null) => {
-              const updatedTasks = [...householdTasks];
-              const taskIndex = updatedTasks.findIndex(t => t.id === taskId);
-              if (taskIndex === -1) return;
-
-              if (action === 'complete') {
-                  updatedTasks[taskIndex].status = 'completed';
-                  updatedTasks[taskIndex].completedAt = new Date().toISOString();
-                  updatedTasks[taskIndex].completedBy = currentUser.name;
-              } else if (action === 'absent') {
-                  updatedTasks[taskIndex].status = 'open';
-                  updatedTasks[taskIndex].assignedTo = null;
-              } else if (action === 'takeover') {
-                  updatedTasks[taskIndex].status = 'pending';
-                  updatedTasks[taskIndex].assignedTo = currentUser.name;
-                  updatedTasks[taskIndex].swapRequestedWith = null;
-              } else if (action === 'request_swap') {
-                  updatedTasks[taskIndex].swapRequestedWith = data;
-                  const newHistoryItem = { 
-                      id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, 
-                      reason: `Vertretung gesucht für: ${updatedTasks[taskIndex].choreName}`, 
-                      targets: [data], acknowledgedBy: [], isExpense: false, isResend: false, isHousehold: true 
-                  };
-                  await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) });
-              } else if (action === 'accept_swap') {
-                  updatedTasks[taskIndex].assignedTo = currentUser.name;
-                  updatedTasks[taskIndex].swapRequestedWith = null;
-              } else if (action === 'reject_swap') {
-                  updatedTasks[taskIndex].swapRequestedWith = null;
-              } else if (action === 'admin_reassign') {
-                  updatedTasks[taskIndex].assignedTo = data;
-                  updatedTasks[taskIndex].status = 'pending';
-                  updatedTasks[taskIndex].swapRequestedWith = null;
-              }
-
               try {
-                  await getFamilyDocRef(currentFamily.id).update({ householdTasks: updatedTasks });
+                  const docRef = getFamilyDocRef(currentFamily.id);
+                  const docSnap = await docRef.get();
+                  if (!docSnap.exists) return;
+                  
+                  const freshData = docSnap.data();
+                  const freshTasks = freshData.householdTasks || [];
+                  const taskIndex = freshTasks.findIndex(t => t.id === taskId);
+                  if (taskIndex === -1) return;
+
+                  if (action === 'complete') {
+                      freshTasks[taskIndex].status = 'completed';
+                      freshTasks[taskIndex].completedAt = new Date().toISOString();
+                      freshTasks[taskIndex].completedBy = currentUser.name;
+                  } else if (action === 'absent') {
+                      freshTasks[taskIndex].status = 'open';
+                      freshTasks[taskIndex].assignedTo = null;
+                  } else if (action === 'takeover') {
+                      freshTasks[taskIndex].status = 'pending';
+                      freshTasks[taskIndex].assignedTo = currentUser.name;
+                      freshTasks[taskIndex].swapRequestedWith = null;
+                  } else if (action === 'request_swap') {
+                      freshTasks[taskIndex].swapRequestedWith = data;
+                      const newHistoryItem = { 
+                          id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, 
+                          reason: `Vertretung gesucht für: ${freshTasks[taskIndex].choreName}`, 
+                          targets: [data], acknowledgedBy: [], isExpense: false, isResend: false, isHousehold: true,
+                          isSwapRequest: true, taskId: taskId, choreName: freshTasks[taskIndex].choreName
+                      };
+                      await docRef.update({ history: [newHistoryItem, ...(freshData.history || [])].slice(0, 50) });
+                  } else if (action === 'accept_swap') {
+                      const requester = freshTasks[taskIndex].assignedTo;
+                      const accepter = currentUser.name;
+                      
+                      freshTasks[taskIndex].assignedTo = currentUser.name;
+                      freshTasks[taskIndex].swapRequestedWith = null;
+
+                      // Neuen Eintrag für erfolgreichen Tausch im Verlauf anlegen
+                      const newHistoryItem = { 
+                          id: Date.now().toString(), timestamp: new Date().toISOString(), sender: 'System', 
+                          reason: `${accepter} vertritt ${requester} bei: ${freshTasks[taskIndex].choreName}`, 
+                          targets: [], acknowledgedBy: [], isExpense: false, isResend: false, isHousehold: true,
+                          isSuccessfulSwap: true
+                      };
+                      await docRef.update({ history: [newHistoryItem, ...(freshData.history || [])].slice(0, 50) });
+
+                  } else if (action === 'reject_swap') {
+                      freshTasks[taskIndex].swapRequestedWith = null;
+                  } else if (action === 'admin_reassign') {
+                      freshTasks[taskIndex].assignedTo = data;
+                      freshTasks[taskIndex].status = 'pending';
+                      freshTasks[taskIndex].swapRequestedWith = null;
+                  }
+
+                  await docRef.update({ householdTasks: freshTasks });
                   if(navigator.vibrate) navigator.vibrate(10);
               } catch (e) { showAlert("Fehler", "Aktion fehlgeschlagen."); }
           };
@@ -966,8 +1036,11 @@
 
           const handleDeleteChore = async (choreId) => {
               const updatedChores = safeHouseholdChores.filter(c => c.id !== choreId);
+              const updatedTasks = householdTasks.filter(t => t.choreId !== choreId || t.status === 'completed');
+              
               await getFamilyDocRef(currentFamily.id).update({ 
-                  householdConfig: { ...householdConfig, chores: updatedChores, members: safeHouseholdMembers } 
+                  householdConfig: { ...householdConfig, chores: updatedChores, members: safeHouseholdMembers },
+                  householdTasks: updatedTasks
               });
           };
 
@@ -1100,7 +1173,17 @@
                 return showAlert("Hinweis", "Alle ausgewählten Personen haben aktuell 'Nicht stören' aktiviert.");
             }
 
-            const newHistoryItem = { id: Date.now().toString(), timestamp: now.toISOString(), sender: currentUser.name, reason: reasonObj.sentence, targets: actualTargets, acknowledgedBy: [], isExpense: false, isResend: isResend };
+            const newHistoryItem = { 
+                id: Date.now().toString(), 
+                timestamp: now.toISOString(), 
+                sender: currentUser.name, 
+                reason: reasonObj.sentence, 
+                targets: actualTargets, 
+                acknowledgedBy: [], 
+                isExpense: false, 
+                isResend: isResend,
+                category: reasonObj.category 
+            };
 
             try {
               await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) });
@@ -1825,7 +1908,7 @@
                                                                 </button>
                                                             )}
                                                             
-                                                            {isExecutionWindow && task.status === 'open' && (
+                                                            {task.status === 'open' && (
                                                                 <button onClick={() => handleHouseholdAction(task.id, 'takeover')} className="w-full py-3.5 bg-[#007AFF] text-white font-bold text-[16px] rounded-[14px] shadow-sm active:scale-[0.98] transition-transform">
                                                                     Ich übernehme das!
                                                                 </button>
@@ -1871,10 +1954,31 @@
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend).length) ? (
+                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest).length) ? (
                           <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
-                          safeHistory.filter(h => !h.isExpense && !h.isResend).map((item) => {
+                          safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest).map((item) => {
+                            
+                            // Sonder-Kachel: Erfolgreicher Dienst-Tausch (Nicht anklickbar)
+                            if (item.isSuccessfulSwap) {
+                                return (
+                                    <div key={item.id} className="bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-default">
+                                        <div className="flex items-center space-x-4 min-w-0">
+                                            <div className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-[#34C759]/10 text-[#34C759]">
+                                                <Icon name="Users" size={24} />
+                                            </div>
+                                            <div className="flex-1 min-w-0 pr-2">
+                                                <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.reason}</p>
+                                                <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Vertretung übernommen</p>
+                                            </div>
+                                            <div className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 self-start mt-1 flex-shrink-0">
+                                                {formatTime(item.timestamp)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
                             const safeAckList = Array.isArray(item.acknowledgedBy) ? item.acknowledgedBy : [];
                             const targetList = Array.isArray(item.targets) ? item.targets : (Array.isArray(item.recipients) ? item.recipients : []);
                             
@@ -1885,7 +1989,7 @@
                                 
                                 if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name) {
                                     if (isExpired(item.timestamp)) {
-                                        setTrackingEventId(item.id);
+                                        setTrackingEventId(item.id); 
                                     } else {
                                         setModal({ 
                                             type: 'custom_ack', 
@@ -2043,7 +2147,6 @@
                            </section>
                         )}
                         
-                        {/* --- APPLE WATCH KURZBEFEHLE --- */}
                         <section className="md:col-span-2">
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Apple Kurzbefehle & Watch</h2>
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5">
@@ -2108,6 +2211,7 @@
           );
         }
 
+        // --- SHORTCUT BACKEND-SIMULATOR FÜR APPLE WATCH ---
         function ShortcutTrigger({ reason, fid }) {
             const [statusText, setStatusText] = useState('Sende Ruf...');
 
@@ -2149,7 +2253,8 @@
                                     targets: actualTargets, 
                                     acknowledgedBy: [], 
                                     isExpense: false, 
-                                    isResend: false 
+                                    isResend: false,
+                                    category: reasonObj.category
                                 };
                                 await docRef.update({ history: [newHistoryItem, ...(data.history || [])].slice(0, 50) });
                                 setStatusText('Erfolgreich gesendet! ✅');
@@ -2190,7 +2295,6 @@
 
             const [config, setConfig] = useState(() => {
                 try {
-                    // Watch-Fix: Config direkt aus dem Shortcut-Link laden
                     const urlCfg = params.get('cfg');
                     if (urlCfg) {
                         const decodedStr = decodeURIComponent(escape(atob(urlCfg)));
