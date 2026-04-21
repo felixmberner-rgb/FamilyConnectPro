@@ -186,7 +186,7 @@
             { id: 'coffee', label: 'Kaffee', sentence: 'Es gibt Kaffee und Kuchen!', icon: 'UtensilsCrossed', category: 'meal' },
             { id: 'dinner', label: 'Abendessen', sentence: 'Das Abendessen ist fertig!', icon: 'Moon', category: 'meal' },
             { id: 'table', label: 'Tischdecken', sentence: 'Hilfe beim Tischdecken wird benötigt!', icon: 'Utensils', category: 'push_only' },
-            { id: 'message', label: 'Ins Wohnzimmer rufen', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
+            { id: 'message', label: 'Wohnzimmer', sentence: 'Bitte komme ins Wohnzimmer!', icon: 'MessageCircle', category: 'other' },
             { id: 'movie', label: 'Film', sentence: 'Der Film fängt gleich an!', icon: 'Film', category: 'other' },
             { id: 'game', label: 'Spielen', sentence: 'Wir wollen spielen, komm dazu!', icon: 'Gamepad2', category: 'other' },
         ];
@@ -260,6 +260,10 @@
             if (!event) return null;
             const [cooldowns, setCooldowns] = useState({});
 
+            const isSender = event.sender === currentUser?.name || event.sender === 'Extern';
+            const isRecent = event.timestamp && (Date.now() - new Date(event.timestamp).getTime() < 5 * 60 * 1000);
+            const canResend = isSender && isRecent;
+
             useEffect(() => {
                 const calculateCooldowns = () => {
                     const newCooldowns = {};
@@ -273,7 +277,10 @@
                 };
 
                 setCooldowns(calculateCooldowns());
-                const timer = setInterval(() => setCooldowns(calculateCooldowns()), 1000);
+                const timer = setInterval(() => {
+                    setCooldowns(calculateCooldowns());
+                }, 1000);
+                
                 return () => clearInterval(timer);
             }, [event.id, event.timestamp, event.targets]);
 
@@ -288,8 +295,7 @@
                         
                         <div className="space-y-3">
                             {(event.targets || []).map(targetName => {
-                                const safeAck = Array.isArray(event.acknowledgedBy) ? event.acknowledgedBy : [];
-                                const ackEntry = safeAck.find(ack => ack === targetName || ack.startsWith(targetName + ':'));
+                                const ackEntry = (event.acknowledgedBy || []).find(ack => ack === targetName || ack.startsWith(targetName + ':'));
                                 const hasAck = !!ackEntry;
                                 
                                 let ackText = 'Hat bestätigt!';
@@ -302,8 +308,7 @@
                                 const currentCooldown = cooldowns[targetName] || 0;
                                 
                                 const isExpiredTime = event.timestamp ? (Date.now() - new Date(event.timestamp).getTime()) > 5 * 60 * 1000 : false;
-                                const isSender = event.sender === currentUser?.name || event.sender === 'Extern';
-                                const canResend = isSender && !isExpiredTime;
+                                const canResendIndividual = isSender && !isExpiredTime;
 
                                 return (
                                     <div key={targetName} className="flex items-center justify-between bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-4 rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
@@ -316,7 +321,7 @@
                                                 </p>
                                             </div>
                                         </div>
-                                        {!hasAck && !isDND && canResend && (
+                                        {!hasAck && !isDND && canResendIndividual && (
                                             <button 
                                                 disabled={currentCooldown > 0}
                                                 onClick={() => { 
@@ -382,7 +387,7 @@
           const tabs = [
             { id: 'home', icon: 'Bell' },
             { id: 'history', icon: 'Clock' },
-            { id: 'household', icon: 'Sparkles' },
+            { id: 'household', icon: 'Home' }, // Das korrekte Haushalts-Symbol
             { id: 'expenses', icon: 'Euro' }, 
             { id: 'settings', icon: 'Settings' }
           ];
@@ -478,7 +483,6 @@
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
           const safeHistory = Array.isArray(currentFamily?.history) ? currentFamily.history.filter(h => h && typeof h === 'object' && h.id) : [];
 
-          // Haushalts-Daten aus DB SAFELY laden (Verhindert den Lade-Crash!)
           const defaultChores = [
               { id: 'c1', name: 'großes Bad putzen' },
               { id: 'c2', name: 'kleines Bad putzen' },
@@ -500,7 +504,6 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          // Helper für 5 Min Timeout (Crash sicher)
           const isExpired = (timestamp) => {
               if (!timestamp) return true;
               const time = new Date(timestamp).getTime();
@@ -508,12 +511,37 @@
               return (Date.now() - time) > 5 * 60 * 1000;
           };
 
+          // --- FIX FÜR DEN WEISSEN TASTATUR BEREICH ---
+          useEffect(() => {
+              const fixLayout = () => {
+                  window.scrollTo(0, 0); 
+                  window.dispatchEvent(new Event('resize'));
+                  window.dispatchEvent(new Event('orientationchange'));
+              };
+
+              if (appLoaded || !modal || !trackingEventId) {
+                  fixLayout();
+                  setTimeout(fixLayout, 50);
+                  setTimeout(fixLayout, 300);
+              }
+          }, [appLoaded, modal, trackingEventId]);
+
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
             };
             const handleFocusOut = () => { 
                 setIsKeyboardOpen(false);
+                // Simuliert sofortiges Drehen, wenn Tastatur geschlossen wird
+                setTimeout(() => { 
+                    window.scrollTo(0, 0); 
+                    window.dispatchEvent(new Event('resize'));
+                    window.dispatchEvent(new Event('orientationchange'));
+                }, 50);
+                setTimeout(() => { 
+                    window.dispatchEvent(new Event('resize'));
+                    window.dispatchEvent(new Event('orientationchange'));
+                }, 300);
             };
             
             window.addEventListener('focusin', handleFocusIn); 
@@ -576,7 +604,6 @@
                 setAppLoaded(true); 
               }
             }, (error) => {
-                console.warn("DB:", error);
                 setAppLoaded(true);
             });
             
@@ -2016,7 +2043,7 @@
                            </section>
                         )}
                         
-                        {/* --- APPLE WATCH KURZBEFEHLE (NUR 2 LINKS) --- */}
+                        {/* --- APPLE WATCH KURZBEFEHLE --- */}
                         <section className="md:col-span-2">
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Apple Kurzbefehle & Watch</h2>
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5">
@@ -2163,6 +2190,7 @@
 
             const [config, setConfig] = useState(() => {
                 try {
+                    // Watch-Fix: Config direkt aus dem Shortcut-Link laden
                     const urlCfg = params.get('cfg');
                     if (urlCfg) {
                         const decodedStr = decodeURIComponent(escape(atob(urlCfg)));
