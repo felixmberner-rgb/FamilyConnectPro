@@ -45,6 +45,14 @@
             overflow: hidden; 
             overscroll-behavior-y: none;
         }
+        
+        #root {
+            width: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+        }
 
         .scrollable-area {
             flex: 1 1 auto;
@@ -82,7 +90,7 @@
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <div id="root" class="w-full relative flex flex-col h-[100dvh]"></div>
+    <div id="root"></div>
 
     <script type="text/babel">
         try {
@@ -101,7 +109,7 @@
         };
 
         window.addEventListener('error', (event) => {
-            console.warn('Ignoriere Global Error um Absturz zu verhindern:', event.error || event.message);
+            console.warn('Ignoriere Global Error:', event.error || event.message);
         });
 
         window.addEventListener('unhandledrejection', (event) => {
@@ -139,7 +147,7 @@
 
         const getStatusColor = (ackString) => {
             if (!ackString) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60'; 
-            if (ackString.includes('Komme sofort') || ackString.includes('Übernommen')) return 'text-[#34C759]'; 
+            if (ackString.includes('Komme sofort') || ackString.includes('Übernommen') || ackString.includes('Gelesen')) return 'text-[#34C759]'; 
             if (ackString.includes('In 5 Minuten')) return 'text-[#FF9500]'; 
             if (ackString.includes('Fangt schon mal an') || ackString.includes('Fangt an') || ackString.includes('Abgelehnt')) return 'text-[#FF3B30]'; 
             return 'text-[#34C759]'; 
@@ -198,6 +206,27 @@
         function Modal({ data, onClose }) {
             if (!data) return null;
             
+            // NEU: Info Pop-Up nur mit Schließen-Button (z.B. für Admin-Rundrufe oder Vertretung bestätigt/abgelehnt)
+            if (data.type === 'info_only') {
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
+                        <div className="bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-white/40 dark:border-[#38383A]/50 overflow-hidden animate-action-sheet">
+                            <div className="flex flex-col items-center mb-6 mt-1 text-center">
+                                <div className={`w-14 h-14 ${data.icon === 'Users' ? 'bg-[#FF9500]/10 text-[#FF9500]' : 'bg-[#007AFF]/10 text-[#007AFF]'} rounded-[22px] flex items-center justify-center mb-5 shadow-sm transform rotate-3`}>
+                                    <Icon name={data.icon || 'Bell'} size={28} strokeWidth={2.5}/>
+                                </div>
+                                <h3 className="font-bold text-[20px] tracking-tight text-black dark:text-white mb-1.5">{data.title}</h3>
+                                <p className="text-[#3C3C43] dark:text-[#EBEBF5]/70 text-[15px] leading-relaxed px-2 font-medium whitespace-pre-wrap">{data.message}</p>
+                            </div>
+                            <button onClick={data.onClose} className="w-full py-3.5 rounded-[16px] bg-[#007AFF] hover:bg-[#0066CC] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm">
+                                Schließen
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Pop-Up für Vertretungsanfragen
             if (data.type === 'swap_request_ack') {
                 return (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
@@ -479,6 +508,7 @@
           const [newFamilyName, setNewFamilyName] = useState('');
           const [newMemberNames, setNewMemberNames] = useState({});
 
+          // FORM INPUT DEKLARATION FIX
           const [formInput, setFormInput] = useState({ familyId: '', familyName: '', name: '', password: '' });
           const [authError, setAuthError] = useState('');
 
@@ -536,34 +566,6 @@
               if (isNaN(time)) return true;
               return (Date.now() - time) > 5 * 60 * 1000;
           };
-
-          // --- GENTLE KEYBOARD FIX ---
-          useEffect(() => {
-            const handleFocusIn = (e) => { 
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
-            };
-            const handleFocusOut = () => { 
-                setIsKeyboardOpen(false);
-                let count = 0;
-                const interval = setInterval(() => {
-                    window.scrollTo(0, 0);
-                    document.body.style.paddingBottom = count % 2 === 0 ? '1px' : '0px';
-                    count++;
-                    if (count > 10) {
-                        document.body.style.paddingBottom = '0px';
-                        clearInterval(interval);
-                    }
-                }, 100);
-            };
-            
-            window.addEventListener('focusin', handleFocusIn); 
-            window.addEventListener('focusout', handleFocusOut);
-            
-            return () => { 
-                window.removeEventListener('focusin', handleFocusIn); 
-                window.removeEventListener('focusout', handleFocusOut); 
-            };
-          }, []);
 
           // --- 1. LOGIN & AUTH ---
           useEffect(() => {
@@ -715,7 +717,6 @@
                   const latestEventForMe = safeHistory.find(h => {
                       if (h.isExpense || h.isResend) return false;
                       if (h.reason === 'Erinnerung: Haushaltsdienst! 🧹') return false;
-                      if (h.isSuccessfulSwap || h.isRejectedSwap) return false; // FIX: Kein Pop-Up bei Vertretungs-Antworten!
                       if (!Array.isArray(h.targets) || !h.targets.includes(currentUser.name)) return false;
                       return true;
                   });
@@ -724,12 +725,25 @@
                       const safeAck = Array.isArray(latestEventForMe.acknowledgedBy) ? latestEventForMe.acknowledgedBy : [];
                       const alreadyAcked = safeAck.some(ack => ack === currentUser.name || ack.startsWith(currentUser.name + ':'));
                       
-                      if (!alreadyAcked && latestEventForMe.sender !== currentUser.name) {
+                      if (!alreadyAcked && latestEventForMe.sender !== currentUser.name && latestEventForMe.realSender !== currentUser.name) {
                           if (!isExpired(latestEventForMe.timestamp)) {
                               if (!sessionStorage.getItem(`prompted_${latestEventForMe.id}`)) {
                                   sessionStorage.setItem(`prompted_${latestEventForMe.id}`, 'true');
                                   
-                                  if (latestEventForMe.isSwapRequest) {
+                                  // FIX: Kein Pop-Up bei erfolgreichem/abgelehntem Tausch und bei Admin-Rundrufen
+                                  // Diese erhalten ein INFO Pop-Up ohne Standard-Buttons!
+                                  if (latestEventForMe.isCustomPush || latestEventForMe.isSuccessfulSwap || latestEventForMe.isRejectedSwap) {
+                                      setModal({ 
+                                          type: 'info_only', 
+                                          title: latestEventForMe.isCustomPush ? latestEventForMe.sender : "Vertretung", 
+                                          message: latestEventForMe.reason,
+                                          icon: latestEventForMe.isCustomPush ? "Bell" : "Users", 
+                                          onClose: () => {
+                                              handleAcknowledge(latestEventForMe.id, 'Gelesen');
+                                              setModal(null);
+                                          }
+                                      });
+                                  } else if (latestEventForMe.isSwapRequest) {
                                       setModal({ 
                                           type: 'swap_request_ack', 
                                           title: `Vertretungsanfrage`, 
@@ -749,7 +763,7 @@
                                   } else {
                                       setModal({ 
                                           type: 'custom_ack', 
-                                          title: latestEventForMe.isCustomPush ? latestEventForMe.sender : `Ruf von ${latestEventForMe.sender}`, 
+                                          title: `Ruf von ${latestEventForMe.sender}`, 
                                           message: `${latestEventForMe.reason}`, 
                                           onRespond: (responseType) => {
                                               handleAcknowledge(latestEventForMe.id, responseType);
@@ -1444,7 +1458,7 @@
               return (
                   <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
                       <Modal data={modal} onClose={() => setModal(null)} />
-                      <div className="flex-1 flex flex-col min-h-0 w-full max-w-5xl mx-auto relative h-full">
+                      <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full">
                           <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end sticky top-0">
                               <h1 className="text-[28px] font-extrabold text-black dark:text-white tracking-tight leading-none mt-6">Admin-Dashboard</h1>
                               <button onClick={() => setIsAdminMode(false)} className="text-[#FF3B30] font-semibold active:opacity-70">Logout</button>
@@ -1732,7 +1746,7 @@
                   </div>
               )}
 
-              <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
+              <div className="flex-1 flex flex-col min-h-0 w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
                   
                   <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full sticky top-0">
                     <div className="text-center w-full min-w-0">
@@ -2039,7 +2053,7 @@
                                                                 {task.assignedTo ? task.assignedTo : <span className="text-[#FF9500]">Jeder (Freiwillig)</span>}
                                                             </span>
                                                         </div>
-                                                        {task.status === 'completed' && task.completedAt && (
+                                                        {task.status === 'completed' && task.completedBy && (
                                                             <p className="text-[12px] text-[#34C759] mt-2 font-medium">Erledigt von {task.completedBy}</p>
                                                         )}
                                                     </div>
