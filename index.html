@@ -103,25 +103,13 @@
             originalConsoleError.apply(console, args);
         };
 
-        const setFallbackMessage = (message) => {
-            let fallback = document.getElementById('fallback');
-            if (!fallback) {
-                fallback = document.createElement('div');
-                fallback.id = 'fallback';
-                fallback.style.cssText = 'position:fixed;inset:0;background-color:var(--app-bg);display:flex;align-items:center;justify-content:center;color:#FF3B30;font-weight:bold;z-index:9999;padding:20px;text-align:center;';
-                document.body.appendChild(fallback);
-            }
-            fallback.style.display = 'flex';
-            fallback.textContent = message;
-        };
-
         window.addEventListener('error', (event) => {
-            console.error('Global error:', event.error || event.message);
-            setFallbackMessage('App konnte nicht gestartet werden. Bitte lade die Seite neu.');
+            // Ignoriere harmlose Netzwerk-Fehler beim Aufwecken der Web App aus dem Hintergrund!
+            console.warn('Ignored Global error:', event.error || event.message);
         });
 
         window.addEventListener('unhandledrejection', (event) => {
-            console.error('Unhandled rejection:', event.reason);
+            console.warn('Unhandled rejection:', event.reason);
         });
 
         // --- 2. REACT SETUP & GLOBALE DATEN ---
@@ -488,8 +476,8 @@
               { id: 'c3', name: 'Treppe und Vorhäuschen kehren & putzen' }
           ];
           const householdConfig = currentFamily?.householdConfig || {};
-          const safeHouseholdMembers = householdConfig.members || [];
-          const safeHouseholdChores = householdConfig.chores || defaultChores;
+          const safeHouseholdMembers = Array.isArray(householdConfig.members) ? householdConfig.members : [];
+          const safeHouseholdChores = Array.isArray(householdConfig.chores) ? householdConfig.chores : defaultChores;
           const householdTasks = currentFamily?.householdTasks || [];
 
           const isAdmin = safeMembers.length > 0 && safeMembers[0].name === currentUser?.name;
