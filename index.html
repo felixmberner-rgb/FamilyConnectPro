@@ -36,28 +36,15 @@
             :root { --app-bg: #000000; }
         }
 
-        /* NATIVES FUNDAMENT: Stoppt den iOS Keyboard Bug! */
-        html, body { 
+        /* ZURÜCK ZUM STABILEN NATIVEN FUNDAMENT */
+        body { 
             margin: 0; 
             padding: 0;
-            width: 100%;
-            height: 100%;
             background-color: var(--app-bg); 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             -webkit-text-size-adjust: 100%;
             overflow: hidden; 
-            position: fixed; 
-            top: 0;
-            left: 0;
-        }
-        
-        #root {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            overscroll-behavior-y: none;
         }
 
         .scrollable-area {
@@ -96,7 +83,7 @@
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <div id="root"></div>
+    <div id="root" class="w-full relative flex flex-col h-[100dvh]"></div>
 
     <script type="text/babel">
         try {
@@ -440,7 +427,7 @@
             );
         }
 
-        const LiquidTabBar = ({ activeTab, setActiveTab }) => {
+        const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
             { id: 'history', icon: 'Clock' },
@@ -452,8 +439,8 @@
 
           return (
             <div 
-              className="fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out"
-              style={{ paddingBottom: 'max(4px, calc(env(safe-area-inset-bottom) - 8px))' }}
+              className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
                 <div className="absolute inset-y-1.5 left-1.5 flex justify-center items-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: `calc((100% - 12px) / ${tabs.length})`, transform: `translateX(${activeIndex * 100}%)` }}>
@@ -503,6 +490,7 @@
           const [currentFamily, setCurrentFamily] = useState(null);
           const [currentUser, setCurrentUser] = useState(null);
           const [modal, setModal] = useState(null);
+          const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
           const [trackingEventId, setTrackingEventId] = useState(null);
           
           const [authMode, setAuthMode] = useState('login');
@@ -569,6 +557,24 @@
               return (Date.now() - time) > 5 * 60 * 1000;
           };
 
+          // --- SAUBERES KEYBOARD HANDLING ---
+          useEffect(() => {
+            const handleFocusIn = (e) => { 
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
+            };
+            const handleFocusOut = () => { 
+                setIsKeyboardOpen(false);
+            };
+            
+            window.addEventListener('focusin', handleFocusIn); 
+            window.addEventListener('focusout', handleFocusOut);
+            
+            return () => { 
+                window.removeEventListener('focusin', handleFocusIn); 
+                window.removeEventListener('focusout', handleFocusOut); 
+            };
+          }, []);
+
           // --- 1. LOGIN & AUTH ---
           useEffect(() => {
             const initAuth = async () => {
@@ -627,7 +633,7 @@
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
 
-          // --- 2.5 HAUSHALT AUTO-GENERATOR & ERINNERUNGEN (09:00 und 17:00) ---
+          // --- 2.5 HAUSHALT AUTO-GENERATOR ---
           useEffect(() => {
               if (appLoaded && currentFamily && safeHouseholdMembers.length > 0 && safeHouseholdChores.length > 0) {
                   const checkAndGenerate = async () => {
@@ -661,67 +667,6 @@
                               try { await getFamilyDocRef(currentFamily.id).update({ householdTasks: newTasks.slice(-150) }); } catch(e) {}
                           }
                       }
-
-                      // Erinnerungs-Pushes lokal (09:00 Uhr & 17:00 Uhr)
-                      const now = new Date();
-                      const localTodayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                      
-                      if (now.getDay() === 6) {
-                          const hour = now.getHours();
-                          
-                          // 09:00 Uhr Erinnerung
-                          if (hour >= 9) {
-                              const has9am = safeHistory.some(h => h.isSystemReminder && h.reminderType === '9am' && h.reminderDate === localTodayStr);
-                              if (!has9am && currentUser) {
-                                  const todaysTasks = householdTasks.filter(t => t.date === localTodayStr && t.assignedTo);
-                                  if (todaysTasks.length > 0) {
-                                      const assignees = [...new Set(todaysTasks.map(t => t.assignedTo))];
-                                      const newHistoryItem = { 
-                                          id: Date.now().toString(), 
-                                          timestamp: now.toISOString(), 
-                                          sender: 'System', 
-                                          reason: 'Erinnerung: Haushaltsdienst! 🧹', 
-                                          targets: assignees, 
-                                          acknowledgedBy: [], 
-                                          isExpense: false, 
-                                          isResend: false,
-                                          isHousehold: true,
-                                          isSystemReminder: true,
-                                          reminderType: '9am',
-                                          reminderDate: localTodayStr
-                                      };
-                                      try { await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) }); } catch(e) {}
-                                  }
-                              }
-                          }
-
-                          // 17:00 Uhr Erinnerung (letzter Weckruf)
-                          if (hour >= 17) {
-                              const has17pm = safeHistory.some(h => h.isSystemReminder && h.reminderType === '17pm' && h.reminderDate === localTodayStr);
-                              if (!has17pm && currentUser) {
-                                  // Prüfe, wer seine Aufgabe noch nicht auf 'completed' gesetzt hat
-                                  const pendingTasks = householdTasks.filter(t => t.date === localTodayStr && t.assignedTo && t.status !== 'completed');
-                                  if (pendingTasks.length > 0) {
-                                      const assignees = [...new Set(pendingTasks.map(t => t.assignedTo))];
-                                      const newHistoryItem = { 
-                                          id: Date.now().toString(), 
-                                          timestamp: now.toISOString(), 
-                                          sender: 'System', 
-                                          reason: 'Letzte Erinnerung: Deine Hausarbeit ist noch offen! 🧹', 
-                                          targets: assignees, 
-                                          acknowledgedBy: [], 
-                                          isExpense: false, 
-                                          isResend: false,
-                                          isHousehold: true,
-                                          isSystemReminder: true,
-                                          reminderType: '17pm',
-                                          reminderDate: localTodayStr
-                                      };
-                                      try { await getFamilyDocRef(currentFamily.id).update({ history: [newHistoryItem, ...safeHistory].slice(0, 50) }); } catch(e) {}
-                                  }
-                              }
-                          }
-                      }
                   };
                   checkAndGenerate();
               }
@@ -753,7 +698,7 @@
               if (currentFamily && currentUser) {
                   const latestEventForMe = safeHistory.find(h => {
                       if (h.isExpense || h.isResend) return false;
-                      if (h.isSystemReminder) return false; // Keine System-Erinnerungen als Ruf-PopUp!
+                      if (h.isSystemReminder) return false;
                       if (!Array.isArray(h.targets) || !h.targets.includes(currentUser.name)) return false;
                       return true;
                   });
@@ -767,7 +712,6 @@
                               if (!sessionStorage.getItem(`prompted_${latestEventForMe.id}`)) {
                                   sessionStorage.setItem(`prompted_${latestEventForMe.id}`, 'true');
                                   
-                                  // FIX: Nur ein "Info-Fenster" mit Schließen-Button bei Admin-News oder Tausch-Ergebnissen!
                                   if (latestEventForMe.isCustomPush || latestEventForMe.isSuccessfulSwap || latestEventForMe.isRejectedSwap) {
                                       setModal({ 
                                           type: 'info_only', 
@@ -860,7 +804,6 @@
               } catch (e) { setAuthError('Fehler beim Admin-Login. Bitte kurz warten.'); }
           };
 
-          // NEU: Haupt-Admin Rundruf sendet Custom-Push
           const handleSendAdminPush = async (fam) => {
               const data = adminPushData[fam.id] || {};
               if (!data.title?.trim() || !data.message?.trim()) return showAlert("Fehler", "Bitte Überschrift und Nachricht eingeben.");
@@ -1814,7 +1757,7 @@
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
                             <div className="grid grid-cols-4 md:grid-cols-8 gap-y-6 gap-x-2 p-5">
                               {REASONS.map((reason) => {
-                                if (reason.id === 'general_meal') return null; // Nur für Shortcut
+                                if (reason.id === 'general_meal') return null;
                                 const isSelected = selectedReason === reason.id;
                                 return (
                                   <div key={reason.id} onClick={() => { if(navigator.vibrate) navigator.vibrate(10); setSelectedReason(reason.id); }} className="flex flex-col items-center cursor-pointer group relative">
@@ -2092,7 +2035,7 @@
                                                                 {task.assignedTo ? task.assignedTo : <span className="text-[#FF9500]">Jeder (Freiwillig)</span>}
                                                             </span>
                                                         </div>
-                                                        {task.status === 'completed' && task.completedBy && (
+                                                        {task.status === 'completed' && task.completedAt && (
                                                             <p className="text-[12px] text-[#34C759] mt-2 font-medium">Erledigt von {task.completedBy}</p>
                                                         )}
                                                     </div>
@@ -2155,11 +2098,11 @@
                     {/* --- HISTORY TAB --- */}
                     {activeTab === 'history' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                        {/* FIX: Filtert ALLE internen Pushes restlos aus, zeigt nur echte Rufe und Tausche */}
-                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && !h.isSystemReminder && !h.isCustomPush).length) ? (
+                        {/* FIX: Filtert System-Pushes komplett aus, Zeigt nur echte Rufe und Tausche */}
+                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && !h.isCustomPush && !h.isSystemReminder && h.reason !== 'Erinnerung: Haushaltsdienst! 🧹').length) ? (
                           <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
                         ) : (
-                          safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && !h.isSystemReminder && !h.isCustomPush).map((item) => {
+                          safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && !h.isCustomPush && !h.isSystemReminder && h.reason !== 'Erinnerung: Haushaltsdienst! 🧹').map((item) => {
                             
                             // Sonder-Kachel: Erfolgreicher Dienst-Tausch (Nicht anklickbar)
                             if (item.isSuccessfulSwap) {
@@ -2186,6 +2129,8 @@
                             const targetList = Array.isArray(item.targets) ? item.targets : (Array.isArray(item.recipients) ? item.recipients : []);
                             
                             const handleCardClick = () => {
+                                if (item.isCustomPush) return;
+
                                 if (navigator.vibrate) navigator.vibrate(10);
                                 const isRecipient = targetList.includes(currentUser?.name);
                                 const hasAcknowledged = safeAckList.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
@@ -2392,7 +2337,7 @@
                   </main>
               </div>
 
-              <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+              <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
             </div>
           );
         }
