@@ -83,7 +83,7 @@
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <div id="root" class="w-full fixed inset-0 flex flex-col"></div>
+    <div id="root" class="w-full relative flex flex-col h-[100dvh]"></div>
 
     <script type="text/babel">
         try {
@@ -439,7 +439,7 @@
 
           return (
             <div 
-              className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 ${isKeyboardOpen ? 'hidden' : 'transition-transform duration-500 ease-out translate-y-0 opacity-100'}`}
+              className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'hidden' : 'translate-y-0 opacity-100'}`}
               style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
