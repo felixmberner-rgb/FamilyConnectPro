@@ -37,10 +37,7 @@
         }
 
         /* ZURÜCK ZUM STABILEN NATIVEN FUNDAMENT */
-        html, body { 
-            width: 100%;
-            height: 100%;
-            position: fixed; /* Der Schlüssel: Verhindert iOS Safari Resize-Jumps! */
+        body { 
             margin: 0; 
             padding: 0;
             background-color: var(--app-bg); 
@@ -86,7 +83,7 @@
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <div id="root" class="w-full h-full relative flex flex-col"></div>
+    <div id="root" class="w-full relative flex flex-col h-[100dvh]"></div>
 
     <script type="text/babel">
         try {
@@ -412,7 +409,7 @@
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-[100dvh] overflow-y-auto">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" />
                         <div>
@@ -442,7 +439,7 @@
 
           return (
             <div 
-              className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'hidden' : 'translate-y-0 opacity-100'}`}
+              className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}
               style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
             >
               <div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]">
@@ -572,6 +569,8 @@
                         const activeElementTag = document.activeElement ? document.activeElement.tagName : '';
                         if (activeElementTag !== 'INPUT' && activeElementTag !== 'TEXTAREA') {
                             setIsKeyboardOpen(false);
+                            // Setzt den Viewport nach dem Schließen der Tastatur hart zurück, verhindert den weißen Balken!
+                            window.scrollTo(0, 0);
                         }
                     }, 50);
                 }
@@ -1441,7 +1440,7 @@
           
           if (!appLoaded) {
               return (
-                  <div className="h-full w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50">
+                  <div className="h-[100dvh] w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50">
                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                   </div>
               );
@@ -1449,7 +1448,7 @@
 
           if (isAdminMode) {
               return (
-                  <div className="h-full w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
+                  <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
                       <Modal data={modal} onClose={() => setModal(null)} />
                       <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full">
                           <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end sticky top-0">
@@ -1593,7 +1592,7 @@
             
             if (localFamilyId) {
               return (
-                <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
+                <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                   <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
                     <Icon name="ShieldCheck" size={56} className="text-[#FF9500] mx-auto mb-5 animate-pulse" />
                     <h2 className="text-[22px] font-bold mb-3">Verbinde...</h2>
@@ -1612,7 +1611,7 @@
             }
 
             return (
-              <div className="h-full w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
+              <div className="h-[100dvh] w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
                 <div className="absolute bottom-[0%] right-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#5856D6] blur-[100px] opacity-20 pointer-events-none"></div>
 
@@ -1663,7 +1662,7 @@
           const isExecutionWindow = (nowGlobal.getDay() === 5 && nowGlobal.getHours() >= 16) || (nowGlobal.getDay() === 6);
 
           return (
-            <div className="h-full w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
+            <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
               <Modal data={modal} onClose={() => setModal(null)} />
               
               {trackingEvent && (
@@ -2415,7 +2414,7 @@
             }, [reason, fid]);
 
             return (
-                <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
+                <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
                     <div className="bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
                         <div className="w-20 h-20 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex items-center justify-center mx-auto mb-5">
                             <Icon name="Bell" size={36} />
@@ -2484,7 +2483,7 @@
             
             if (status === "error") {
                 return (
-                    <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
+                    <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
@@ -2497,7 +2496,7 @@
 
             if (status === "booting") {
                 return (
-                   <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50">
+                   <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50">
                       <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                    </div>
                 );
