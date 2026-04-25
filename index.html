@@ -565,14 +565,23 @@
             const handleFocusOut = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                     setTimeout(() => {
-                        // Sicherstellen, dass document.activeElement existiert, bevor tagName abgefragt wird!
                         const activeElementTag = document.activeElement ? document.activeElement.tagName : '';
                         if (activeElementTag !== 'INPUT' && activeElementTag !== 'TEXTAREA') {
                             setIsKeyboardOpen(false);
-                            // Setzt den Viewport nach dem Schließen der Tastatur hart zurück, verhindert den weißen Balken!
+                            
+                            // iOS Safari Bugfix: "Dreh-Effekt" programmgesteuert simulieren!
+                            // Wir zwingen die Rendering-Engine dazu, die 100dvh sofort neu zu berechnen.
                             window.scrollTo(0, 0);
+                            const rootEl = document.getElementById('root');
+                            if (rootEl) {
+                                rootEl.style.height = '99dvh'; // Kurzer, unsichtbarer Stupser
+                                setTimeout(() => {
+                                    rootEl.style.height = '100dvh'; // Zurück auf Normalmaß
+                                    window.dispatchEvent(new Event('resize')); // Zwingt alle Elemente an ihren Platz
+                                }, 50);
+                            }
                         }
-                    }, 50);
+                    }, 100); // 100ms gibt der iOS-Tastatur genug Zeit, komplett aus dem Bildschirm zu fahren
                 }
             };
             
