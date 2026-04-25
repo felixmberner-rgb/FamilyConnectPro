@@ -39,7 +39,6 @@
         /* ZURÜCK ZUM STABILEN NATIVEN FUNDAMENT */
         html {
             background-color: var(--app-bg);
-            /* Absoluter Fix gegen den iOS "weißen Spalt" beim Keyboard */
             height: 100vh;
             width: 100vw;
             overflow: hidden;
@@ -89,11 +88,18 @@
         .animate-action-sheet {
             animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
+        .custom-checkbox:checked + div {
+            background-color: #34C759;
+            border-color: #34C759;
+        }
+        .custom-checkbox:checked + div svg {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
     
-    <div id="root" class="w-full relative flex flex-col h-[100dvh]"></div>
+    <div id="root" class="w-full h-full relative flex flex-col"></div>
 
     <script type="text/babel">
         try {
@@ -156,10 +162,29 @@
             return 'text-[#34C759]'; 
         };
 
+        // --- INTELLIGENTE KATEGORISIERUNG FÜR DEN EINKAUF ---
+        const SHOPPING_CATEGORIES = [
+            'Obst & Gemüse', 'Eier & Backwaren', 'Kühlregal & Käse', 
+            'Fleisch & Wurst', 'Vorrat & Nährmittel', 'Snacks & Süßes', 
+            'Haushalt & Drogerie', 'Getränke', 'Sonstiges'
+        ];
+
+        const getAutoCategory = (itemName) => {
+            const lower = itemName.toLowerCase();
+            if (/apfel|banan|tomate|gurke|obst|gemüse|salat|zwiebel|kartoffel|knoblauch|beere|traube|paprika|möhre|karotte|pilz|zitrone|orange/i.test(lower)) return 'Obst & Gemüse';
+            if (/brot|brötchen|ei|eier|kuchen|mehl|zucker|hefe|toast|croissant|brezel/i.test(lower)) return 'Eier & Backwaren';
+            if (/milch|käse|quark|joghurt|butter|sahne|frischkäse|mozzarella|feta|gouda|pudding/i.test(lower)) return 'Kühlregal & Käse';
+            if (/wurst|fleisch|schinken|salami|hack|hähnchen|speck|schnitzel|steak|aufschnitt/i.test(lower)) return 'Fleisch & Wurst';
+            if (/nudel|reis|ketchup|senf|soße|dose|müsli|haferflocken|öl|essig|gewürz|salz|pfeffer|konserve/i.test(lower)) return 'Vorrat & Nährmittel';
+            if (/chips|schoko|keks|eis|süß|gummibär|nuss|riegel|popcorn/i.test(lower)) return 'Snacks & Süßes';
+            if (/spül|wasch|seife|klo|papier|tuch|shampoo|deo|zahnpasta|müll|putz|creme|dusch|rasier/i.test(lower)) return 'Haushalt & Drogerie';
+            if (/wasser|bier|wein|cola|saft|limo|kaffee|tee|sprudel|schorle/i.test(lower)) return 'Getränke';
+            return 'Sonstiges';
+        };
+
         const ICONS = {
           Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
           BellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
-          Clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
           Settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
           Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
           Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
@@ -183,7 +208,11 @@
           Users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
           Home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
           Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
-          Send: '<line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'
+          Send: '<line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+          ChevronRight: '<polyline points="9 18 15 12 9 6"/>',
+          ListTodo: '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
+          ShoppingCart: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+          PieChart: '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>'
         };
 
         const REASONS = [
@@ -202,7 +231,7 @@
             return React.createElement('svg', {
                 xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24",
                 fill: "none", stroke: "currentColor", strokeWidth: strokeWidth, strokeLinecap: "round", strokeLinejoin: "round",
-                className: `flex-shrink-0 ${className}`, onClick: onClick, dangerouslySetInnerHTML: { __html: ICONS[name] }
+                className: `flex-shrink-0 ${className}`, onClick: onClick, dangerouslySetInnerHTML: { __html: ICONS[name] || ICONS['Bell'] }
             });
         };
 
@@ -419,7 +448,7 @@
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-[100dvh] overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto">
                     <div className="w-full max-w-sm text-center space-y-8 my-auto">
                         <Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" />
                         <div>
@@ -440,7 +469,7 @@
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
-            { id: 'history', icon: 'Clock' },
+            { id: 'shopping', icon: 'ShoppingCart' }, // Geändert von 'history' zu 'shopping'
             { id: 'household', icon: 'Home' }, 
             { id: 'expenses', icon: 'Euro' }, 
             { id: 'settings', icon: 'Settings' }
@@ -525,17 +554,26 @@
           const [activeTab, setActiveTab] = useState(() => {
               const params = new URLSearchParams(window.location.search);
               const tab = params.get('tab');
-              return ['history', 'expenses', 'household'].includes(tab) ? tab : 'home';
+              return ['shopping', 'expenses', 'household'].includes(tab) ? tab : 'home'; // 'history' durch 'shopping' ersetzt
           });
           const [selectedReason, setSelectedReason] = useState(null);
           const [selectedMembers, setSelectedMembers] = useState([]);
           const [isSending, setIsSending] = useState(false);
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
+          // --- NEUE STATE-VARIABLEN FÜR SHOPPING & POLLS ---
+          const [shoppingSubTab, setShoppingSubTab] = useState('list'); // 'list' oder 'polls'
+          const [isShoppingMode, setIsShoppingMode] = useState(false);
+          const [newShoppingItem, setNewShoppingItem] = useState({ name: '', amount: '', notes: '', sharedWith: 'Alle' });
+          const [newPoll, setNewPoll] = useState({ question: '', options: ['', '', ''] });
+          const [isCreatingPoll, setIsCreatingPoll] = useState(false);
+
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
           const safeHistory = Array.isArray(currentFamily?.history) ? currentFamily.history.filter(h => h && typeof h === 'object' && h.id) : [];
+          const safeShopping = Array.isArray(currentFamily?.shopping) ? currentFamily.shopping : [];
+          const safePolls = Array.isArray(currentFamily?.polls) ? currentFamily.polls : [];
 
           const defaultChores = [
               { id: 'c1', name: 'großes Bad putzen' },
@@ -941,7 +979,7 @@
                   id: newId, 
                   name: newFamilyName.trim(), 
                   vapidKey: storedConfig.vapidKey || '', 
-                  expenses: [], history: [], members: [] 
+                  expenses: [], history: [], members: [], shopping: [], polls: [] 
               });
               setNewFamilyName('');
           };
@@ -1276,7 +1314,6 @@
               if(navigator.vibrate) navigator.vibrate([30, 50, 30]);
               if (!customReasonObj && reasonObj.category !== 'push_only' && !isResend) setTrackingEventId(newHistoryItem.id);
               setSelectedReason(null); setSelectedMembers([]); 
-              if (activeTab === 'home' && reasonObj.category === 'push_only') setActiveTab('history');
             } catch (err) {}
             setTimeout(() => setIsSending(false), 800);
           };
@@ -1313,6 +1350,114 @@
                 console.error("Fehler beim Bestätigen:", e);
             }
           };
+
+          // --- SHOPPING FUNKTIONEN ---
+          const handleAddShoppingItem = async () => {
+              if (!newShoppingItem.name.trim()) return;
+              
+              const category = getAutoCategory(newShoppingItem.name);
+              const newItem = {
+                  id: generateId(),
+                  name: newShoppingItem.name.trim(),
+                  amount: newShoppingItem.amount.trim(),
+                  notes: newShoppingItem.notes.trim(),
+                  category: category,
+                  addedBy: currentUser.name,
+                  sharedWith: newShoppingItem.sharedWith, 
+                  checked: false,
+                  timestamp: new Date().toISOString()
+              };
+
+              try {
+                  await getFamilyDocRef(currentFamily.id).update({ shopping: [...safeShopping, newItem] });
+                  setNewShoppingItem({ name: '', amount: '', notes: '', sharedWith: newShoppingItem.sharedWith });
+                  if(navigator.vibrate) navigator.vibrate(10);
+              } catch(e) { showAlert("Fehler", "Konnte nicht hinzugefügt werden."); }
+          };
+
+          const handleToggleShoppingItem = async (id, checked) => {
+              if (isShoppingMode && navigator.vibrate) navigator.vibrate([15, 25]); // Haptisches Feedback beim Einkaufen
+              try {
+                  const updated = safeShopping.map(item => item.id === id ? { ...item, checked: checked } : item);
+                  await getFamilyDocRef(currentFamily.id).update({ shopping: updated });
+              } catch(e) {}
+          };
+
+          const handleDeleteShoppingItem = async (id) => {
+              try {
+                  const updated = safeShopping.filter(item => item.id !== id);
+                  await getFamilyDocRef(currentFamily.id).update({ shopping: updated });
+              } catch(e) {}
+          };
+
+          const handleDeleteAllCheckedItems = async () => {
+              showConfirm("Aufräumen", "Möchtest du alle erledigten Artikel dauerhaft löschen?", async () => {
+                  try {
+                      const updated = safeShopping.filter(item => !item.checked);
+                      await getFamilyDocRef(currentFamily.id).update({ shopping: updated });
+                  } catch(e) {}
+              }, true);
+          };
+
+          // --- POLL FUNKTIONEN ---
+          const handleAddPoll = async () => {
+              if (!newPoll.question.trim()) return showAlert("Fehler", "Bitte eine Frage eingeben.");
+              const validOptions = newPoll.options.filter(o => o.trim() !== '');
+              if (validOptions.length < 2) return showAlert("Fehler", "Bitte mindestens zwei Optionen angeben.");
+
+              const pollObj = {
+                  id: generateId(),
+                  question: newPoll.question.trim(),
+                  options: validOptions.map(opt => ({ id: generateId(), text: opt.trim(), votes: [] })),
+                  createdBy: currentUser.name,
+                  active: true,
+                  timestamp: new Date().toISOString()
+              };
+
+              try {
+                  await getFamilyDocRef(currentFamily.id).update({ polls: [pollObj, ...safePolls] });
+                  setNewPoll({ question: '', options: ['', '', ''] });
+                  setIsCreatingPoll(false);
+              } catch(e) { showAlert("Fehler", "Konnte nicht erstellt werden."); }
+          };
+
+          const handleVote = async (pollId, optionId) => {
+              if(navigator.vibrate) navigator.vibrate(10);
+              try {
+                  const updatedPolls = safePolls.map(poll => {
+                      if (poll.id !== pollId) return poll;
+                      const newOptions = poll.options.map(opt => {
+                          // Entferne Nutzer aus allen Optionen
+                          let votes = opt.votes.filter(v => v !== currentUser.name);
+                          // Füge ihn der geklickten Option hinzu
+                          if (opt.id === optionId) votes.push(currentUser.name);
+                          return { ...opt, votes };
+                      });
+                      return { ...poll, options: newOptions };
+                  });
+                  await getFamilyDocRef(currentFamily.id).update({ polls: updatedPolls });
+              } catch(e) {}
+          };
+
+          const handleDeletePoll = async (pollId) => {
+              showConfirm("Abstimmung löschen", "Soll diese Abstimmung gelöscht werden?", async () => {
+                  const updated = safePolls.filter(p => p.id !== pollId);
+                  await getFamilyDocRef(currentFamily.id).update({ polls: updated });
+              }, true);
+          };
+
+          // Hilfsfunktionen Einkaufsliste
+          const myShoppingItems = safeShopping.filter(item => item.sharedWith === 'Alle' || item.sharedWith === currentUser.name || item.addedBy === currentUser.name);
+          const activeShoppingItems = myShoppingItems.filter(item => !item.checked);
+          const checkedShoppingItems = myShoppingItems.filter(item => item.checked);
+
+          const groupedShoppingItems = {};
+          SHOPPING_CATEGORIES.forEach(cat => groupedShoppingItems[cat] = []);
+          activeShoppingItems.forEach(item => {
+              if (groupedShoppingItems[item.category]) groupedShoppingItems[item.category].push(item);
+              else groupedShoppingItems['Sonstiges'].push(item);
+          });
+
 
           const resetExpenseForm = (overrides = {}) => {
               setExpenseForm({
@@ -1419,12 +1564,6 @@
               await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, dndUntil: dndTime } : m) });
           };
 
-          const handleClearHistory = () => {
-            showConfirm("Verlauf leeren", "Möchtest du den gesamten Verlauf für alle dauerhaft löschen?", async () => {
-                await getFamilyDocRef(currentFamily.id).update({ history: [] });
-            }, true);
-          };
-
           const handleDeleteMember = (memberName) => {
             if (memberName === currentUser.name) return; 
             showConfirm("Mitglied entfernen", `Möchtest du ${memberName} dauerhaft aus der Familie entfernen?`, async () => {
@@ -1448,7 +1587,7 @@
           
           if (!appLoaded) {
               return (
-                  <div className="h-[100dvh] w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50">
+                  <div className="h-full w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50">
                      <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                   </div>
               );
@@ -1456,7 +1595,7 @@
 
           if (isAdminMode) {
               return (
-                  <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
+                  <div className="h-full w-full bg-[var(--app-bg)] font-sans flex flex-col relative z-40 overflow-hidden">
                       <Modal data={modal} onClose={() => setModal(null)} />
                       <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full">
                           <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#E5E5EA] dark:border-[#38383A] z-40 flex justify-between items-end sticky top-0">
@@ -1526,7 +1665,6 @@
                                                       </div>
                                                   </div>
 
-                                                  {/* Haupt-Admin Feature: Rundruf pro Familie */}
                                                   <div className="p-5 border-b border-[#E5E5EA] dark:border-[#38383A]">
                                                       <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Rundruf an Familie senden</h4>
                                                       <div className="space-y-3">
@@ -1536,7 +1674,6 @@
                                                       </div>
                                                   </div>
 
-                                                  {/* Haupt-Admin Feature: Links für Kurzbefehle generieren */}
                                                   <div className="p-5 border-b border-[#E5E5EA] dark:border-[#38383A]">
                                                       <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Kurzbefehl Links generieren</h4>
                                                       <div className="space-y-3">
@@ -1600,7 +1737,7 @@
             
             if (localFamilyId) {
               return (
-                <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
+                <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                   <div className="bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
                     <Icon name="ShieldCheck" size={56} className="text-[#FF9500] mx-auto mb-5 animate-pulse" />
                     <h2 className="text-[22px] font-bold mb-3">Verbinde...</h2>
@@ -1619,7 +1756,7 @@
             }
 
             return (
-              <div className="h-[100dvh] w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
+              <div className="h-full w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 font-sans relative z-40 overflow-hidden">
                 <div className="absolute top-[0%] left-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#007AFF] blur-[100px] opacity-20 pointer-events-none"></div>
                 <div className="absolute bottom-[0%] right-[-10%] w-[50vw] max-w-[400px] h-[50vw] max-h-[400px] rounded-full bg-[#5856D6] blur-[100px] opacity-20 pointer-events-none"></div>
 
@@ -1669,8 +1806,15 @@
           const nowGlobal = new Date();
           const isExecutionWindow = (nowGlobal.getDay() === 5 && nowGlobal.getHours() >= 16) || (nowGlobal.getDay() === 6);
 
+          // Finde den aktuellsten aktiven Ruf (innerhalb von 5 Minuten)
+          const activeCallEvent = safeHistory.find(h => {
+              if (h.isExpense || h.isResend || h.isSwapRequest || h.isRejectedSwap || h.isCustomPush || h.isSystemReminder || h.reason === 'Erinnerung: Haushaltsdienst! 🧹') return false;
+              if (isExpired(h.timestamp)) return false;
+              return true; // Gefunden!
+          });
+
           return (
-            <div className="h-[100dvh] w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
+            <div className="h-full w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
               <Modal data={modal} onClose={() => setModal(null)} />
               
               {trackingEvent && (
@@ -1748,28 +1892,59 @@
 
               <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
                   
-                  <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex items-end justify-center w-full sticky top-0">
-                    <div className="text-center w-full min-w-0">
-                      <h1 className="text-[34px] font-bold text-black dark:text-white tracking-tight leading-tight truncate mt-6">
-                        {activeTab === 'home' && `Familie ${currentFamily?.name || ''}`}
-                        {activeTab === 'history' && 'Verlauf'}
-                        {activeTab === 'expenses' && 'Auslagen'}
-                        {activeTab === 'household' && 'Haushalt'}
-                        {activeTab === 'settings' && 'Einstellungen'}
-                      </h1>
-                    </div>
-                    {activeTab === 'history' && safeHistory.length > 0 && (
-                      <button onClick={handleClearHistory} className="absolute right-4 bottom-4 text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full active:opacity-70 transition-opacity flex items-center gap-1.5">
-                        <Icon name="Trash2" size={14} /> Leeren
-                      </button>
-                    )}
-                  </header>
+                  {!(activeTab === 'shopping' && isShoppingMode) && (
+                      <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex flex-col justify-end w-full sticky top-0 min-h-[70px]">
+                        <div className="text-center w-full min-w-0 flex items-center justify-center mt-4">
+                          <h1 className="text-[32px] md:text-[34px] font-bold text-black dark:text-white tracking-tight leading-tight truncate">
+                            {activeTab === 'home' && `Familie ${currentFamily?.name || ''}`}
+                            {activeTab === 'shopping' && 'Planung'}
+                            {activeTab === 'expenses' && 'Auslagen'}
+                            {activeTab === 'household' && 'Haushalt'}
+                            {activeTab === 'settings' && 'Einstellungen'}
+                          </h1>
+                        </div>
+                        
+                        {activeTab === 'shopping' && (
+                            <div className="flex justify-center mt-4">
+                                <div className="bg-[#E5E5EA] dark:bg-[#2C2C2E] p-1 rounded-[10px] flex gap-1 w-full max-w-sm">
+                                    <button onClick={() => setShoppingSubTab('list')} className={`flex-1 py-1.5 text-[14px] font-semibold rounded-[8px] transition-all shadow-sm ${shoppingSubTab === 'list' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>
+                                        Einkaufsliste
+                                    </button>
+                                    <button onClick={() => setShoppingSubTab('polls')} className={`flex-1 py-1.5 text-[14px] font-semibold rounded-[8px] transition-all shadow-sm ${shoppingSubTab === 'polls' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>
+                                        Abstimmungen
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                      </header>
+                  )}
 
-                  <main className="scrollable-area px-4 pt-6 w-full relative">
+                  <main className={`scrollable-area w-full relative ${activeTab === 'shopping' && isShoppingMode ? 'pt-safe-top px-0 pb-0 bg-white dark:bg-black' : 'px-4 pt-6'}`}>
                     
                     {/* --- HOME TAB --- */}
                     {activeTab === 'home' && (
                       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                        
+                        {/* Aktiver Ruf Widget */}
+                        {activeCallEvent && (
+                            <section>
+                                <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2">Laufender Ruf</h2>
+                                <div onClick={() => setTrackingEventId(activeCallEvent.id)} className="bg-gradient-to-br from-[#007AFF] to-[#5856D6] rounded-[20px] p-5 text-white shadow-[0_8px_20px_rgba(0,122,255,0.25)] cursor-pointer active:scale-95 transition-transform flex items-center justify-between">
+                                    <div className="flex items-center gap-4 min-w-0 pr-4">
+                                        <div className="bg-white/20 p-3 rounded-full flex-shrink-0 relative">
+                                            <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-75"></div>
+                                            <Icon name={activeCallEvent.isHousehold ? "Home" : "Bell"} size={24} className="text-white relative z-10" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold text-[18px] tracking-tight truncate mb-0.5">Ruf von {activeCallEvent.sender}</h3>
+                                            <p className="text-white/80 text-[14px] font-medium truncate">{activeCallEvent.reason}</p>
+                                        </div>
+                                    </div>
+                                    <Icon name="ChevronRight" size={20} className="text-white/60 flex-shrink-0" />
+                                </div>
+                            </section>
+                        )}
+
                         <section>
                           <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2">Grund</h2>
                           <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
@@ -1834,6 +2009,252 @@
                           </button>
                         </div>
                       </div>
+                    )}
+
+                    {/* --- SHOPPING & POLLS TAB --- */}
+                    {activeTab === 'shopping' && (
+                        <div className={`animate-in fade-in duration-500 ${isShoppingMode ? 'pb-0 h-full flex flex-col' : 'pb-10 space-y-6'}`}>
+                            
+                            {/* EINKAUFSLISTE VIEW */}
+                            {shoppingSubTab === 'list' && (
+                                <>
+                                    {isShoppingMode ? (
+                                        <div className="flex flex-col h-full bg-white dark:bg-[#1C1C1E]">
+                                            <div className="pt-4 pb-4 px-6 flex justify-between items-center bg-white dark:bg-[#1C1C1E] border-b border-[#E5E5EA] dark:border-[#38383A] sticky top-0 z-20">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full bg-[#34C759] animate-pulse"></div>
+                                                    <h2 className="font-bold text-[22px]">Einkauf läuft</h2>
+                                                </div>
+                                                <button onClick={() => setIsShoppingMode(false)} className="bg-[#FF3B30]/10 text-[#FF3B30] px-4 py-2 rounded-full font-bold text-[15px] active:opacity-70">
+                                                    Fertig
+                                                </button>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 pb-24">
+                                                {SHOPPING_CATEGORIES.map(cat => {
+                                                    const itemsInCat = groupedShoppingItems[cat];
+                                                    if (!itemsInCat || itemsInCat.length === 0) return null;
+                                                    return (
+                                                        <div key={cat} className="space-y-2">
+                                                            <h3 className="font-bold text-[18px] text-[#8E8E93] dark:text-[#EBEBF5]/60 ml-2">{cat}</h3>
+                                                            {itemsInCat.map(item => (
+                                                                <label key={item.id} className="flex items-center bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] active:scale-[0.98] transition-transform cursor-pointer">
+                                                                    <div className="flex-1 min-w-0 pr-4">
+                                                                        <div className="flex items-baseline gap-2">
+                                                                            <span className="font-bold text-[18px] text-black dark:text-white truncate">{item.name}</span>
+                                                                            {item.amount && <span className="text-[15px] font-semibold text-[#007AFF] shrink-0">{item.amount}</span>}
+                                                                        </div>
+                                                                        {item.notes && <p className="text-[14px] text-[#8E8E93] mt-1 truncate">{item.notes}</p>}
+                                                                    </div>
+                                                                    <div className="relative">
+                                                                        <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={item.checked} onChange={(e) => handleToggleShoppingItem(item.id, e.target.checked)} />
+                                                                        <div className="w-8 h-8 rounded-full border-2 border-[#C6C6C8] dark:border-[#38383A] flex items-center justify-center transition-colors">
+                                                                            <Icon name="Check" size={18} className="text-white opacity-0" />
+                                                                        </div>
+                                                                    </div>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                })}
+                                                {activeShoppingItems.length === 0 && (
+                                                    <div className="text-center text-[#8E8E93] mt-10">
+                                                        <Icon name="CheckCircle2" size={48} className="mx-auto mb-4 text-[#34C759] opacity-50" />
+                                                        <p className="font-medium text-[18px]">Alles erledigt!</p>
+                                                    </div>
+                                                )}
+                                                
+                                                {checkedShoppingItems.length > 0 && (
+                                                    <div className="pt-8 opacity-60">
+                                                        <h3 className="font-bold text-[15px] text-[#8E8E93] uppercase tracking-wider ml-2 mb-3">Abgehakt</h3>
+                                                        <div className="space-y-2">
+                                                            {checkedShoppingItems.map(item => (
+                                                                <label key={item.id} className="flex items-center bg-transparent p-2 cursor-pointer">
+                                                                    <span className="flex-1 font-medium text-[16px] text-gray-500 line-through truncate">{item.name} {item.amount && `(${item.amount})`}</span>
+                                                                    <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={item.checked} onChange={(e) => handleToggleShoppingItem(item.id, e.target.checked)} />
+                                                                    <div className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                                                                        <Icon name="Check" size={14} className="text-gray-400 opacity-100" />
+                                                                    </div>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Normaler Bearbeitungsmodus */}
+                                            <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
+                                                <h2 className="font-bold text-[18px] text-black dark:text-white mb-4">Auf die Liste</h2>
+                                                <div className="space-y-3">
+                                                    <div className="flex gap-3">
+                                                        <input type="text" placeholder="Produkt (z.B. Äpfel)" className="flex-[2] bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.name} onChange={e => setNewShoppingItem({...newShoppingItem, name: e.target.value})} />
+                                                        <input type="text" placeholder="Menge" className="flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.amount} onChange={e => setNewShoppingItem({...newShoppingItem, amount: e.target.value})} />
+                                                    </div>
+                                                    <input type="text" placeholder="Notiz (Optional)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.notes} onChange={e => setNewShoppingItem({...newShoppingItem, notes: e.target.value})} />
+                                                    <div className="flex justify-between items-center bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px]">
+                                                        <span className="text-[15px] font-medium text-[#8E8E93]">Teilen mit:</span>
+                                                        <select className="bg-transparent text-[#007AFF] font-bold text-[15px] outline-none appearance-none cursor-pointer pr-4" value={newShoppingItem.sharedWith} onChange={e => setNewShoppingItem({...newShoppingItem, sharedWith: e.target.value})}>
+                                                            <option value="Alle">Familie (Alle)</option>
+                                                            <option value={currentUser?.name}>Nur ich (Privat)</option>
+                                                            {activeMembersList.filter(m => m.name !== currentUser?.name).map(m => (
+                                                                <option key={m.name} value={m.name}>Nur mit {m.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <button onClick={handleAddShoppingItem} disabled={!newShoppingItem.name.trim()} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[12px] font-bold text-[17px] active:opacity-80 transition-opacity disabled:opacity-50">Hinzufügen</button>
+                                                </div>
+                                            </section>
+
+                                            {activeShoppingItems.length > 0 && (
+                                                <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
+                                                    <div className="p-4 bg-[#007AFF]/5 flex justify-between items-center">
+                                                        <h2 className="font-bold text-[18px] text-black dark:text-white flex items-center gap-2"><Icon name="ShoppingCart" size={20} className="text-[#007AFF]"/> {activeShoppingItems.length} Artikel</h2>
+                                                        <button onClick={() => setIsShoppingMode(true)} className="bg-[#007AFF] text-white px-4 py-2 rounded-full font-bold text-[14px] shadow-sm active:scale-95 transition-transform">
+                                                            Einkauf starten
+                                                        </button>
+                                                    </div>
+                                                    <div className="p-4 space-y-6">
+                                                        {SHOPPING_CATEGORIES.map(cat => {
+                                                            const itemsInCat = groupedShoppingItems[cat];
+                                                            if (!itemsInCat || itemsInCat.length === 0) return null;
+                                                            return (
+                                                                <div key={cat} className="space-y-2">
+                                                                    <h3 className="font-bold text-[15px] text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-wider ml-1">{cat}</h3>
+                                                                    <div className="space-y-1">
+                                                                        {itemsInCat.map(item => (
+                                                                            <div key={item.id} className="flex justify-between items-center py-2 border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0">
+                                                                                <div className="flex-1 min-w-0 pr-3">
+                                                                                    <p className="font-semibold text-[16px] text-black dark:text-white truncate">
+                                                                                        {item.name} {item.amount && <span className="text-[#007AFF] font-bold ml-1">{item.amount}</span>}
+                                                                                    </p>
+                                                                                    {item.notes && <p className="text-[13px] text-[#8E8E93] truncate mt-0.5">{item.notes}</p>}
+                                                                                    <p className="text-[11px] text-[#8E8E93]/60 mt-0.5 uppercase tracking-wider">{item.sharedWith === 'Alle' ? 'Familie' : (item.sharedWith === currentUser?.name ? 'Privat' : `Mit ${item.sharedWith}`)}</p>
+                                                                                </div>
+                                                                                <button onClick={() => handleDeleteShoppingItem(item.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Trash2" size={14}/></button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </section>
+                                            )}
+
+                                            {checkedShoppingItems.length > 0 && (
+                                                <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden opacity-70">
+                                                    <div className="p-4 flex justify-between items-center border-b border-[#E5E5EA] dark:border-[#38383A]">
+                                                        <h2 className="font-bold text-[16px] text-black dark:text-white">Abgehakt ({checkedShoppingItems.length})</h2>
+                                                        <button onClick={handleDeleteAllCheckedItems} className="text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full active:opacity-70">Alle löschen</button>
+                                                    </div>
+                                                    <div className="p-4 space-y-2">
+                                                        {checkedShoppingItems.slice(0, 5).map(item => (
+                                                            <div key={item.id} className="flex justify-between items-center py-1">
+                                                                <span className="font-medium text-[15px] text-gray-500 line-through truncate">{item.name} {item.amount && `(${item.amount})`}</span>
+                                                                <button onClick={() => handleToggleShoppingItem(item.id, false)} className="text-[#007AFF] text-[13px] font-bold">Wiederherstellen</button>
+                                                            </div>
+                                                        ))}
+                                                        {checkedShoppingItems.length > 5 && <div className="text-center text-[13px] text-[#8E8E93] pt-2">... und {checkedShoppingItems.length - 5} weitere</div>}
+                                                    </div>
+                                                </section>
+                                            )}
+                                        </>
+                                    )}
+                                </>
+                            )}
+
+                            {/* ABSTIMMUNGEN VIEW */}
+                            {shoppingSubTab === 'polls' && (
+                                <>
+                                    <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
+                                        {!isCreatingPoll ? (
+                                            <button onClick={() => setIsCreatingPoll(true)} className="w-full bg-[#007AFF]/10 text-[#007AFF] py-3.5 rounded-[12px] font-bold text-[17px] active:opacity-70 transition-opacity flex items-center justify-center gap-2">
+                                                <Icon name="Plus" size={20} /> Neue Abstimmung
+                                            </button>
+                                        ) : (
+                                            <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h2 className="font-bold text-[18px]">Frage stellen</h2>
+                                                    <button onClick={() => setIsCreatingPoll(false)} className="text-[#8E8E93]"><Icon name="X" size={20}/></button>
+                                                </div>
+                                                <input type="text" placeholder="z.B. Welchen Film schauen wir heute?" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={newPoll.question} onChange={e => setNewPoll({...newPoll, question: e.target.value})} />
+                                                
+                                                <div className="space-y-2 pt-2">
+                                                    <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-1">Optionen</h3>
+                                                    {newPoll.options.map((opt, idx) => (
+                                                        <input key={idx} type="text" placeholder={`Option ${idx + 1}`} className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={opt} onChange={e => {
+                                                            const newOpts = [...newPoll.options];
+                                                            newOpts[idx] = e.target.value;
+                                                            // Leere Option unten anhängen, wenn die letzte ausgefüllt wird
+                                                            if (idx === newOpts.length - 1 && e.target.value.trim() !== '') newOpts.push('');
+                                                            setNewPoll({...newPoll, options: newOpts});
+                                                        }} />
+                                                    ))}
+                                                </div>
+                                                <button onClick={handleAddPoll} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[12px] font-bold text-[17px] active:opacity-80 transition-opacity mt-2">Umfrage starten</button>
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <div className="space-y-6">
+                                        {safePolls.length === 0 && !isCreatingPoll ? (
+                                            <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-10">Keine aktiven Abstimmungen.</div>
+                                        ) : (
+                                            safePolls.map(poll => {
+                                                const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
+                                                const hasVoted = poll.options.some(opt => opt.votes.includes(currentUser?.name));
+
+                                                return (
+                                                    <div key={poll.id} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
+                                                        <div className="flex justify-between items-start mb-4">
+                                                            <div className="pr-4">
+                                                                <h3 className="font-bold text-[20px] leading-tight text-black dark:text-white">{poll.question}</h3>
+                                                                <p className="text-[13px] text-[#8E8E93] mt-1">Von {poll.createdBy} • {totalVotes} Stimmen</p>
+                                                            </div>
+                                                            {poll.createdBy === currentUser?.name && (
+                                                                <button onClick={() => handleDeletePoll(poll.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Trash2" size={14}/></button>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="space-y-3">
+                                                            {poll.options.map(opt => {
+                                                                const myVote = opt.votes.includes(currentUser?.name);
+                                                                const percentage = totalVotes > 0 ? Math.round((opt.votes.length / totalVotes) * 100) : 0;
+                                                                
+                                                                return (
+                                                                    <div key={opt.id} onClick={() => handleVote(poll.id, opt.id)} className={`relative overflow-hidden rounded-[14px] p-4 cursor-pointer transition-transform active:scale-[0.98] border ${myVote ? 'border-[#007AFF]' : 'border-[#E5E5EA] dark:border-[#38383A] bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}>
+                                                                        {/* Progress Background */}
+                                                                        {hasVoted && (
+                                                                            <div className={`absolute inset-y-0 left-0 transition-all duration-500 ease-out ${myVote ? 'bg-[#007AFF]/15' : 'bg-[#000000]/5 dark:bg-[#FFFFFF]/5'}`} style={{ width: `${percentage}%` }}></div>
+                                                                        )}
+                                                                        
+                                                                        <div className="relative z-10 flex justify-between items-center">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${myVote ? 'border-[#007AFF] bg-[#007AFF]' : 'border-[#C6C6C8] dark:border-[#545458]'}`}>
+                                                                                    {myVote && <Icon name="Check" size={12} className="text-white" />}
+                                                                                </div>
+                                                                                <span className={`font-semibold text-[16px] ${myVote ? 'text-[#007AFF]' : 'text-black dark:text-white'}`}>{opt.text}</span>
+                                                                            </div>
+                                                                            {hasVoted && (
+                                                                                <div className="flex flex-col items-end">
+                                                                                    <span className="font-bold text-[15px]">{opt.votes.length}</span>
+                                                                                    {opt.votes.length > 0 && <span className="text-[11px] text-[#8E8E93] truncate max-w-[80px]">{opt.votes.join(', ')}</span>}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     )}
 
                     {/* --- EXPENSES TAB --- */}
@@ -2113,103 +2534,6 @@
                         </div>
                     )}
 
-                    {/* --- HISTORY TAB --- */}
-                    {activeTab === 'history' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                        {/* FIX: Filtert System-Pushes komplett aus, Zeigt nur echte Rufe und Tausche */}
-                        {(!safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && !h.isCustomPush && !h.isSystemReminder && h.reason !== 'Erinnerung: Haushaltsdienst! 🧹').length) ? (
-                          <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-16 md:col-span-2 lg:col-span-3">Keine Benachrichtigungen.</div>
-                        ) : (
-                          safeHistory.filter(h => !h.isExpense && !h.isResend && !h.isSwapRequest && !h.isRejectedSwap && !h.isCustomPush && !h.isSystemReminder && h.reason !== 'Erinnerung: Haushaltsdienst! 🧹').map((item) => {
-                            
-                            // Sonder-Kachel: Erfolgreicher Dienst-Tausch (Nicht anklickbar)
-                            if (item.isSuccessfulSwap) {
-                                return (
-                                    <div key={item.id} className="bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-default">
-                                        <div className="flex items-center space-x-4 min-w-0">
-                                            <div className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-[#34C759]/10 text-[#34C759]">
-                                                <Icon name="Users" size={24} />
-                                            </div>
-                                            <div className="flex-1 min-w-0 pr-2">
-                                                <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">Vertretung übernommen</p>
-                                                <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">{item.historyText}</p>
-                                                <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-semibold mt-0.5 truncate">{item.choreName}</p>
-                                            </div>
-                                            <div className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 self-start mt-1 flex-shrink-0">
-                                                {formatTime(item.timestamp)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            }
-
-                            const safeAckList = Array.isArray(item.acknowledgedBy) ? item.acknowledgedBy : [];
-                            const targetList = Array.isArray(item.targets) ? item.targets : (Array.isArray(item.recipients) ? item.recipients : []);
-                            
-                            const handleCardClick = () => {
-                                if (item.isCustomPush) return;
-
-                                if (navigator.vibrate) navigator.vibrate(10);
-                                const isRecipient = targetList.includes(currentUser?.name);
-                                const hasAcknowledged = safeAckList.some(ack => ack === currentUser?.name || ack.startsWith(currentUser?.name + ':'));
-                                
-                                if (isRecipient && !hasAcknowledged && item.sender !== currentUser?.name && item.sender !== 'System') {
-                                    if (isExpired(item.timestamp)) {
-                                        setTrackingEventId(item.id); 
-                                    } else {
-                                        setModal({ 
-                                            type: 'custom_ack', 
-                                            title: `Ruf von ${item.sender}`, 
-                                            message: `${item.reason}`, 
-                                            onRespond: (responseType) => {
-                                                handleAcknowledge(item.id, responseType);
-                                                setModal(null);
-                                            },
-                                            onCancel: () => setModal(null) 
-                                        });
-                                    }
-                                } else {
-                                    setTrackingEventId(item.id);
-                                }
-                            };
-                            
-                            const renderRecipientStatus = (name) => {
-                              const ackEntry = safeAckList.find(ack => ack === name || ack.startsWith(name + ':'));
-                              return (
-                                <span key={name} className={`font-semibold ${getStatusColor(ackEntry)}`}>
-                                  {name}{targetList.indexOf(name) !== targetList.length - 1 && <span className="text-[#E5E5EA] dark:text-[#38383A] mr-1">,</span>}
-                                </span>
-                              );
-                            };
-
-                            return (
-                              <div key={item.id} onClick={handleCardClick} className={`bg-white dark:bg-[#1C1C1E] p-5 rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-transform`}>
-                                <div className="space-y-4">
-                                    <div className="flex items-center space-x-4 min-w-0">
-                                      <div className={`w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0 ${item.isHousehold ? 'bg-[#AF52DE]/10 text-[#AF52DE]' : 'bg-[#007AFF]/10 text-[#007AFF]'}`}>
-                                        <Icon name={item.isHousehold ? "Home" : "Clock"} size={24} />
-                                      </div>
-                                      <div className="flex-1 min-w-0 pr-2">
-                                        <p className="font-semibold text-[17px] tracking-tight text-[#1C1C1E] dark:text-white truncate">{item.reason}</p>
-                                        <p className="text-[14px] text-[#8E8E93] dark:text-[#EBEBF5]/60 font-normal mt-0.5 truncate">Von <span className="font-medium text-[#3C3C43] dark:text-gray-300">{item.sender}</span></p>
-                                      </div>
-                                      <div className="text-[13px] font-medium text-[#8E8E93] dark:text-[#EBEBF5]/60 self-start mt-1 flex-shrink-0">
-                                        {formatTime(item.timestamp)}
-                                      </div>
-                                    </div>
-
-                                    <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[14px] p-3.5 flex flex-wrap gap-1.5 items-center text-[14px]">
-                                      <span className="text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mr-1">An:</span>
-                                      {targetList.map(name => renderRecipientStatus(name))}
-                                    </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
-
                     {/* --- SETTINGS TAB --- */}
                     {activeTab === 'settings' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
@@ -2422,7 +2746,7 @@
             }, [reason, fid]);
 
             return (
-                <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
+                <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
                     <div className="bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center">
                         <div className="w-20 h-20 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex items-center justify-center mx-auto mb-5">
                             <Icon name="Bell" size={36} />
@@ -2491,7 +2815,7 @@
             
             if (status === "error") {
                 return (
-                    <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
+                    <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50">
                         <Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" />
                         <h2 className="text-xl font-bold mb-2">Systemfehler</h2>
                         <p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{errorMsg}</p>
@@ -2504,7 +2828,7 @@
 
             if (status === "booting") {
                 return (
-                   <div className="h-[100dvh] w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50">
+                   <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50">
                       <Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" />
                    </div>
                 );
