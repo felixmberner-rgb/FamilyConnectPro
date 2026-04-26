@@ -36,7 +36,6 @@
             :root { --app-bg: #000000; }
         }
 
-        /* ZURÜCK ZUM STABILEN NATIVEN FUNDAMENT */
         html {
             background-color: var(--app-bg);
             height: 100vh;
@@ -95,6 +94,12 @@
         }
         .custom-checkbox:checked + div svg {
             opacity: 1;
+        }
+        input[type="datetime-local"] {
+            max-width: 100%;
+            box-sizing: border-box;
+            display: block;
+            width: 100%;
         }
     </style>
 </head>
@@ -163,23 +168,22 @@
             return 'text-[#34C759]'; 
         };
 
-        // --- INTELLIGENTE KATEGORISIERUNG FÜR DEN EINKAUF ---
         const SHOPPING_CATEGORIES = [
             'Obst & Gemüse', 'Eier & Backwaren', 'Kühlregal & Käse', 
-            'Fleisch & Wurst', 'Vorrat & Nährmittel', 'Snacks & Süßes', 
+            'Fleisch & Fisch', 'Vorrat & Nährmittel', 'Snacks & Süßes', 
             'Haushalt & Drogerie', 'Getränke', 'Sonstiges'
         ];
 
         const getAutoCategory = (itemName) => {
             const lower = itemName.toLowerCase();
-            if (/apfel|banan|tomate|gurke|obst|gemüse|salat|zwiebel|kartoffel|knoblauch|beere|traube|paprika|möhre|karotte|pilz|zitrone|orange/i.test(lower)) return 'Obst & Gemüse';
-            if (/brot|brötchen|ei|eier|kuchen|mehl|zucker|hefe|toast|croissant|brezel/i.test(lower)) return 'Eier & Backwaren';
-            if (/milch|käse|quark|joghurt|butter|sahne|frischkäse|mozzarella|feta|gouda|pudding/i.test(lower)) return 'Kühlregal & Käse';
-            if (/wurst|fleisch|schinken|salami|hack|hähnchen|speck|schnitzel|steak|aufschnitt/i.test(lower)) return 'Fleisch & Wurst';
-            if (/nudel|reis|ketchup|senf|soße|dose|müsli|haferflocken|öl|essig|gewürz|salz|pfeffer|konserve/i.test(lower)) return 'Vorrat & Nährmittel';
-            if (/chips|schoko|keks|eis|süß|gummibär|nuss|riegel|popcorn/i.test(lower)) return 'Snacks & Süßes';
-            if (/spül|wasch|seife|klo|papier|tuch|shampoo|deo|zahnpasta|müll|putz|creme|dusch|rasier/i.test(lower)) return 'Haushalt & Drogerie';
-            if (/wasser|bier|wein|cola|saft|limo|kaffee|tee|sprudel|schorle/i.test(lower)) return 'Getränke';
+            if (/apfel|äpfel|banan|tomate|gurke|obst|gemüse|salat|zwiebel|kartoffel|knoblauch|beere|traube|paprika|möhre|karotte|pilz|zitrone|orange|birne|pflaume|melone|kiwi|kürbis|lauch|sellerie|brokkoli|zucchini|apfelsine|mandarine|pfirsich|nektarine|kirsche|avocado|aubergine|spinat|kohl|linsen|bohnen|erbsen|mais/i.test(lower)) return 'Obst & Gemüse';
+            if (/brot|brötchen|ei|eier|kuchen|mehl|zucker|hefe|toast|croissant|brezel|baguette|backpulver|torte|teig|vanillezucker/i.test(lower)) return 'Eier & Backwaren';
+            if (/milch|käse|quark|joghurt|butter|sahne|frischkäse|mozzarella|feta|gouda|pudding|margarine|parmesan|creme fraiche|emmentaler|camembert/i.test(lower)) return 'Kühlregal & Käse';
+            if (/wurst|fleisch|schinken|salami|hack|hähnchen|speck|schnitzel|steak|aufschnitt|pute|rind|schwein|lamm|bratwurst|würstchen|fisch|lachs|thunfisch|garnele/i.test(lower)) return 'Fleisch & Fisch';
+            if (/nudel|reis|ketchup|senf|soße|sosse|dose|müsli|haferflocken|öl|oel|essig|gewürz|salz|pfeffer|konserve|pesto|tomaten|suppe|brühe|honig|marmelade|nutella|aufstrich/i.test(lower)) return 'Vorrat & Nährmittel';
+            if (/chips|schoko|keks|eis|süß|gummibär|nuss|riegel|popcorn|flips|nachos|praline|bonbon|kaugummi|mandel|cashew|pistazie/i.test(lower)) return 'Snacks & Süßes';
+            if (/spül|wasch|seife|klo|papier|tuch|shampoo|deo|zahnpasta|müll|putz|creme|dusch|rasier|bürste|schwamm|reiniger|watte|windel|slipeinlage|tampon|binde|rolle|wc/i.test(lower)) return 'Haushalt & Drogerie';
+            if (/wasser|bier|wein|cola|saft|limo|kaffee|tee|sprudel|schorle|getränk|sirup|energy|sekt|sprit/i.test(lower)) return 'Getränke';
             return 'Sonstiges';
         };
 
@@ -255,7 +259,7 @@
                                 <p className="text-[14px] text-[#8E8E93] mt-2">Gestartet von {data.poll.createdBy}</p>
                             </div>
                             
-                            <div className="space-y-3">
+                            <div className="space-y-3 max-h-[40vh] overflow-y-auto custom-scrollbar">
                                 {data.poll.options.map(opt => (
                                     <button key={opt.id} onClick={() => data.onVote(opt.id)} className="w-full py-4 rounded-[16px] bg-[#F2F2F7] dark:bg-[#2C2C2E] hover:bg-[#E5E5EA] dark:hover:bg-[#38383A] text-black dark:text-white font-bold text-[17px] active:scale-[0.98] transition-transform border border-transparent shadow-sm">
                                         {opt.text}
@@ -671,7 +675,6 @@
           const [isSending, setIsSending] = useState(false);
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
-          // --- NEUE STATE-VARIABLEN FÜR SHOPPING & POLLS ---
           const [shoppingSubTab, setShoppingSubTab] = useState('list'); 
           const [isShoppingMode, setIsShoppingMode] = useState(false);
           const [selectedShoppingListId, setSelectedShoppingListId] = useState(null);
@@ -684,9 +687,8 @@
           };
 
           const [newShoppingItem, setNewShoppingItem] = useState({ name: '', amountValue: '', amountUnit: '', notes: '' });
-          const [newPoll, setNewPoll] = useState({ type: 'direct', question: '', options: ['', '', ''], collectionDeadline: getLocalIsoString(12), votingDeadline: getLocalIsoString(48), sharedWith: ['Alle'] });
+          const [newPoll, setNewPoll] = useState({ type: 'direct', question: '', options: ['', ''], collectionDeadline: getLocalIsoString(12), votingDeadline: getLocalIsoString(48), sharedWith: ['Alle'] });
           const [isCreatingPoll, setIsCreatingPoll] = useState(false);
-          const [pollNewOptions, setPollNewOptions] = useState({});
 
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
@@ -695,9 +697,8 @@
           const safeShoppingLists = Array.isArray(currentFamily?.shoppingLists) ? currentFamily.shoppingLists : [];
           const safePolls = Array.isArray(currentFamily?.polls) ? currentFamily.polls : [];
 
-          // Umfragen filtern, sodass man nur jene sieht, auf die man Zugriff hat
           const myPolls = safePolls.filter(poll => {
-              if (!poll.sharedWith) return true; // Abwärtskompatibilität für alte Umfragen
+              if (!poll.sharedWith) return true; 
               if (poll.sharedWith.includes('Alle')) return true;
               if (poll.createdBy === currentUser?.name) return true;
               if (poll.sharedWith.includes(currentUser?.name)) return true;
@@ -734,7 +735,6 @@
               return (Date.now() - time) > maxMinutes * 60 * 1000;
           };
 
-          // --- SAUBERES KEYBOARD HANDLING ---
           useEffect(() => {
             const handleFocusIn = (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); 
@@ -745,7 +745,7 @@
                         const activeElementTag = document.activeElement ? document.activeElement.tagName : '';
                         if (activeElementTag !== 'INPUT' && activeElementTag !== 'TEXTAREA') {
                             setIsKeyboardOpen(false);
-                            window.scrollTo(0, 0); // iOS Viewport nach der Tastatur sicher zurücksetzen
+                            window.scrollTo(0, 0);
                         }
                     }, 50);
                 }
@@ -760,7 +760,6 @@
             };
           }, []);
 
-          // --- 1. LOGIN & AUTH ---
           useEffect(() => {
             const initAuth = async () => {
               try {
@@ -784,7 +783,6 @@
             return () => unsubscribe();
           }, [localFamilyId]);
 
-          // --- 2. DATENBANK-VERBINDUNG ---
           useEffect(() => {
             if (!localFamilyId || !localUserName) {
                 setAppLoaded(true);
@@ -818,7 +816,6 @@
             return () => unsubscribe();
           }, [firebaseUser, localFamilyId, localUserName, isAdminMode]);
 
-          // --- 2.5 HAUSHALT AUTO-GENERATOR ---
           useEffect(() => {
               if (appLoaded && currentFamily && safeHouseholdMembers.length > 0 && safeHouseholdChores.length > 0) {
                   const checkAndGenerate = async () => {
@@ -868,7 +865,6 @@
               }
           }, [isAdminMode]);
 
-          // --- 3. AUTO-PUSH BEIM START ---
           useEffect(() => {
               if (appLoaded && currentFamily && currentUser) {
                   const timer = setTimeout(() => {
@@ -878,13 +874,10 @@
               }
           }, [appLoaded, currentFamily?.id, currentUser?.name]);
 
-          // MODAL LISTENER FÜR RUFE, TAUSCHANFRAGEN UND NEUE UMFRAGEN
           useEffect(() => {
               if (currentFamily && currentUser) {
-                  
-                  // 1. Prüfe auf neue Abstimmungen (Polls)
                   const activePolls = myPolls.filter(p => p.active);
-                  const newPoll = activePolls.find(p => !p.options.some(o => o.votes.includes(currentUser.name)) && !isExpired(p.timestamp, 60)); // 60 Min Gültigkeit für PopUp
+                  const newPoll = activePolls.find(p => !p.options.some(o => o.votes.includes(currentUser.name)) && !isExpired(p.timestamp, 60));
                   if (newPoll && !sessionStorage.getItem(`prompted_poll_${newPoll.id}`)) {
                       sessionStorage.setItem(`prompted_poll_${newPoll.id}`, 'true');
                       setModal({
@@ -894,10 +887,9 @@
                           onVote: (optId) => { handleVote(newPoll.id, optId); setModal(null); },
                           onClose: () => setModal(null)
                       });
-                      return; // Nur ein Modal zur Zeit
+                      return; 
                   }
 
-                  // 2. Prüfe auf History-Events (Rufe, Tausch)
                   const latestEventForMe = safeHistory.find(h => {
                       if (h.isExpense || h.isResend) return false;
                       if (h.isSystemReminder) return false;
@@ -986,8 +978,6 @@
                   if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', handleSWMessage);
               };
           }, []);
-
-          // --- HANDLER FUNKTIONEN ---
 
           const handleAdminAuth = async () => {
               setAuthError('');
@@ -1499,7 +1489,6 @@
 
           // --- SHOPPING FUNKTIONEN (NEU) ---
           
-          // Bestimme die Listen, die der Nutzer sehen darf
           const myShoppingLists = safeShoppingLists.filter(list => {
               if (list.sharedWith.includes('Alle')) return true;
               if (list.createdBy === currentUser?.name) return true;
@@ -1507,7 +1496,6 @@
               return false;
           });
 
-          // Setze Standard-Liste, falls nicht gewählt
           useEffect(() => {
               if (!selectedShoppingListId && myShoppingLists.length > 0) {
                   setSelectedShoppingListId(myShoppingLists[0].id);
@@ -1525,6 +1513,7 @@
                   sharedWith: listData.sharedWith,
                   createdBy: currentUser.name,
                   items: [],
+                  isShoppingActive: false, // Globaler Shopping-Status
                   timestamp: new Date().toISOString()
               };
 
@@ -1537,10 +1526,10 @@
           };
 
           const performDeleteList = async (listId) => {
+              if (selectedShoppingListId === listId) setSelectedShoppingListId(null);
               try {
                   const updated = safeShoppingLists.filter(l => l.id !== listId);
                   await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updated });
-                  if (selectedShoppingListId === listId) setSelectedShoppingListId(null);
               } catch(e) {}
           };
 
@@ -1574,7 +1563,8 @@
                       }
                       return l;
                   });
-                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                  // Auch offline sofort in die State schreiben
+                  getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists }).catch(e => console.warn(e));
                   setNewShoppingItem({ name: '', amountValue: '', amountUnit: '', notes: '' });
                   if(navigator.vibrate) navigator.vibrate(10);
               } catch(e) { showAlert("Fehler", "Konnte nicht hinzugefügt werden."); }
@@ -1590,7 +1580,7 @@
                       }
                       return l;
                   });
-                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                  getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists }).catch(e => console.warn(e));
               } catch(e) {}
           };
 
@@ -1603,7 +1593,7 @@
                       }
                       return l;
                   });
-                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                  getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists }).catch(e => console.warn(e));
               } catch(e) {}
           };
           
@@ -1616,7 +1606,7 @@
                       }
                       return l;
                   });
-                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                  getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists }).catch(e => console.warn(e));
                   setModal(null);
               } catch(e) { showAlert("Fehler", "Konnte nicht gespeichert werden."); }
           };
@@ -1630,37 +1620,37 @@
                           }
                           return l;
                       });
-                      await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                      getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists }).catch(e => console.warn(e));
                   } catch(e) {}
               }, true);
           };
 
           const toggleShoppingMode = async () => {
               if (isShoppingMode) {
-                  // Schließe Modus
+                  // Beenden des Modus
                   if (activeShoppingItems.length === 0 && checkedShoppingItems.length > 0) {
                       showConfirm("Einkauf abgeschlossen!", "Du hast alle Artikel besorgt. Möchtest du diese Einkaufsliste nun löschen?", async () => {
-                          await performDeleteList(activeList.id);
                           setIsShoppingMode(false);
-                      }, false);
+                          await performDeleteList(activeList.id);
+                      }, false); 
                   } else {
-                      try {
-                          const updatedLists = safeShoppingLists.map(l => l.id === activeList.id ? { ...l, shoppingActiveBy: null } : l);
-                          await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
-                      } catch(e) {}
                       setIsShoppingMode(false);
+                      try {
+                          if (activeList.shoppingActiveBy === currentUser.name) {
+                              const updatedLists = safeShoppingLists.map(l => l.id === activeList.id ? { ...l, shoppingActiveBy: null } : l);
+                              getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists }).catch(e=>{});
+                          }
+                      } catch(e) {}
                   }
               } else {
-                  // Öffne Modus
-                  if (activeList.shoppingActiveBy && activeList.shoppingActiveBy !== currentUser.name) {
-                       showAlert("Gesperrt", `${activeList.shoppingActiveBy} kauft diese Liste gerade ein!`);
-                       return;
-                  }
-                  try {
-                      const updatedLists = safeShoppingLists.map(l => l.id === activeList.id ? { ...l, shoppingActiveBy: currentUser.name } : l);
-                      await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
-                  } catch(e) {}
+                  // Starten / Beitreten
                   setIsShoppingMode(true);
+                  if (!activeList.shoppingActiveBy) {
+                      try {
+                          const updatedLists = safeShoppingLists.map(l => l.id === activeList.id ? { ...l, shoppingActiveBy: currentUser.name } : l);
+                          getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists }).catch(e=>{});
+                      } catch(e) {}
+                  }
               }
           };
 
@@ -1702,7 +1692,7 @@
 
               try {
                   await getFamilyDocRef(currentFamily.id).update({ polls: [pollObj, ...safePolls] });
-                  setNewPoll({ type: 'direct', question: '', options: ['', '', ''], collectionDeadline: getLocalIsoString(12), votingDeadline: getLocalIsoString(48), sharedWith: ['Alle'] });
+                  setNewPoll({ type: 'direct', question: '', options: ['', ''], collectionDeadline: getLocalIsoString(12), votingDeadline: getLocalIsoString(48), sharedWith: ['Alle'] });
                   setIsCreatingPoll(false);
               } catch(e) { showAlert("Fehler", "Konnte nicht erstellt werden."); }
           };
@@ -1744,7 +1734,6 @@
               }, true);
           };
 
-          // Gruppierung der aktuellen Einkaufsliste
           const activeShoppingItems = (activeList?.items || []).filter(item => !item.checked);
           const checkedShoppingItems = (activeList?.items || []).filter(item => item.checked);
 
@@ -1755,7 +1744,6 @@
               else groupedShoppingItems['Sonstiges'].push(item);
           });
 
-          // Prüfe, ob Liste gerade von wem anders eingekauft wird
           const isLockedByOther = activeList?.shoppingActiveBy && activeList.shoppingActiveBy !== currentUser?.name;
 
           const resetExpenseForm = (overrides = {}) => {
@@ -2105,11 +2093,10 @@
           const nowGlobal = new Date();
           const isExecutionWindow = (nowGlobal.getDay() === 5 && nowGlobal.getHours() >= 16) || (nowGlobal.getDay() === 6);
 
-          // Finde den aktuellsten aktiven Ruf (innerhalb von 5 Minuten)
           const activeCallEvent = safeHistory.find(h => {
               if (h.isExpense || h.isResend || h.isSwapRequest || h.isRejectedSwap || h.isCustomPush || h.isSystemReminder || h.reason === 'Erinnerung: Haushaltsdienst! 🧹') return false;
               if (isExpired(h.timestamp)) return false;
-              return true; // Gefunden!
+              return true; 
           });
 
           return (
@@ -2127,7 +2114,6 @@
                   />
               )}
 
-              {/* Haushalts Historien Modal */}
               {householdHistoryModal && (
                   <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
                       <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-md shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden flex flex-col max-h-[85vh]">
@@ -2169,7 +2155,6 @@
                   </div>
               )}
 
-              {/* Haushalts Swap Request Modal */}
               {householdSwapModal && (
                   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity">
                       <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-[#E5E5EA] dark:border-[#38383A]">
@@ -2224,7 +2209,6 @@
                     {activeTab === 'home' && (
                       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                         
-                        {/* Aktiver Ruf Widget */}
                         {activeCallEvent && (
                             <section>
                                 <h2 className="text-[13px] font-semibold text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-widest mb-2 ml-2">Laufender Ruf</h2>
@@ -2410,9 +2394,12 @@
                                                 )}
                                                 
                                                 {isLockedByOther ? (
-                                                    <div className="bg-[#FF9500]/10 border border-[#FF9500]/30 p-4 rounded-[16px] mb-4 flex items-center gap-3">
-                                                         <Icon name="ShoppingCart" size={24} className="text-[#FF9500] shrink-0" />
-                                                         <p className="text-[14px] text-[#FF9500] font-medium leading-snug"><b>{activeList.shoppingActiveBy}</b> kauft diese Liste gerade ein. Bearbeiten gesperrt.</p>
+                                                    <div className="bg-[#34C759]/10 border border-[#34C759]/30 p-4 rounded-[16px] mb-4 flex items-center justify-between gap-3">
+                                                         <div className="flex items-center gap-3">
+                                                             <Icon name="ShoppingCart" size={24} className="text-[#34C759] shrink-0" />
+                                                             <p className="text-[14px] text-[#34C759] font-medium leading-snug">Der Einkauf läuft gerade! Hinzufügen gesperrt.</p>
+                                                         </div>
+                                                         <button onClick={toggleShoppingMode} className="bg-[#34C759] text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-sm active:opacity-80 shrink-0">Beitreten</button>
                                                     </div>
                                                 ) : (
                                                     <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
@@ -2523,30 +2510,40 @@
 
                                                 <input type="text" placeholder="z.B. Welchen Film schauen wir heute?" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={newPoll.question} onChange={e => setNewPoll({...newPoll, question: e.target.value})} />
                                                 
-                                                <div className="flex flex-col sm:flex-row gap-3">
+                                                <div className="flex flex-col gap-3 w-full">
                                                     {newPoll.type === 'collection' && (
-                                                        <div className="flex-1 min-w-0">
+                                                        <div className="w-full box-border">
                                                             <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Sammeln bis</p>
-                                                            <input type="datetime-local" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.collectionDeadline} onChange={e => setNewPoll({...newPoll, collectionDeadline: e.target.value})} />
+                                                            <input type="datetime-local" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none" value={newPoll.collectionDeadline} onChange={e => setNewPoll({...newPoll, collectionDeadline: e.target.value})} />
                                                         </div>
                                                     )}
-                                                    <div className="flex-1 min-w-0">
+                                                    <div className="w-full box-border">
                                                         <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Abstimmen bis</p>
-                                                        <input type="datetime-local" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.votingDeadline} onChange={e => setNewPoll({...newPoll, votingDeadline: e.target.value})} />
+                                                        <input type="datetime-local" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none" value={newPoll.votingDeadline} onChange={e => setNewPoll({...newPoll, votingDeadline: e.target.value})} />
                                                     </div>
                                                 </div>
 
                                                 {newPoll.type === 'direct' && (
-                                                    <div className="space-y-2 pt-2">
-                                                        <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-1">Vorgegebene Optionen</h3>
+                                                    <div className="space-y-3 pt-2 w-full box-border">
+                                                        <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-1">Optionen</h3>
                                                         {newPoll.options.map((opt, idx) => (
-                                                            <input key={idx} type="text" placeholder={`Option ${idx + 1}`} className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={opt} onChange={e => {
-                                                                const newOpts = [...newPoll.options];
-                                                                newOpts[idx] = e.target.value;
-                                                                if (idx === newOpts.length - 1 && e.target.value.trim() !== '') newOpts.push('');
-                                                                setNewPoll({...newPoll, options: newOpts});
-                                                            }} />
+                                                            <div key={idx} className="flex items-center gap-2 w-full box-border">
+                                                                <input type="text" placeholder={`Option ${idx + 1}`} className="flex-1 min-w-0 w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={opt} onChange={e => {
+                                                                    const newOpts = [...newPoll.options];
+                                                                    newOpts[idx] = e.target.value;
+                                                                    setNewPoll({...newPoll, options: newOpts});
+                                                                }} />
+                                                                {newPoll.options.length > 2 && (
+                                                                    <button onClick={() => {
+                                                                        const newOpts = newPoll.options.filter((_, i) => i !== idx);
+                                                                        setNewPoll({...newPoll, options: newOpts});
+                                                                    }} className="w-[52px] h-[52px] bg-[#FF3B30]/10 text-[#FF3B30] rounded-[12px] flex items-center justify-center flex-shrink-0 active:opacity-70 transition-opacity"><Icon name="Trash2" size={20}/></button>
+                                                                )}
+                                                            </div>
                                                         ))}
+                                                        <button onClick={() => setNewPoll({...newPoll, options: [...newPoll.options, '']})} className="w-full py-3.5 bg-[#34C759]/10 text-[#34C759] rounded-[12px] font-bold text-[16px] active:opacity-70 transition-opacity flex justify-center items-center gap-2 mt-2">
+                                                            <Icon name="Plus" size={20}/> Weitere Option
+                                                        </button>
                                                     </div>
                                                 )}
 
