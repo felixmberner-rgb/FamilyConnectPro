@@ -212,7 +212,9 @@
           ChevronRight: '<polyline points="9 18 15 12 9 6"/>',
           ListTodo: '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
           ShoppingCart: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
-          PieChart: '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>'
+          PieChart: '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
+          Trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+          Timer: '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>'
         };
 
         const REASONS = [
@@ -238,6 +240,103 @@
         function Modal({ data, onClose }) {
             if (!data) return null;
             
+            if (data.type === 'poll_vote') {
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/50 dark:bg-black/70 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
+                        <div className="bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-white/40 dark:border-[#38383A]/50 overflow-hidden animate-action-sheet relative">
+                            <button onClick={data.onClose} className="absolute top-4 right-4 text-[#8E8E93] active:opacity-70"><Icon name="X" size={24}/></button>
+                            <div className="flex flex-col items-center mb-6 mt-2 text-center">
+                                <div className="w-16 h-16 bg-gradient-to-tr from-[#AF52DE] to-[#5856D6] text-white rounded-[24px] flex items-center justify-center mb-5 shadow-lg transform rotate-3">
+                                    <Icon name="PieChart" size={32} strokeWidth={2.5}/>
+                                </div>
+                                <span className="text-[13px] font-bold text-[#AF52DE] uppercase tracking-wider mb-1">Neue Abstimmung</span>
+                                <h3 className="font-extrabold text-[22px] tracking-tight text-black dark:text-white leading-tight px-2">{data.title}</h3>
+                                <p className="text-[14px] text-[#8E8E93] mt-2">Gestartet von {data.poll.createdBy}</p>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {data.poll.options.map(opt => (
+                                    <button key={opt.id} onClick={() => data.onVote(opt.id)} className="w-full py-4 rounded-[16px] bg-[#F2F2F7] dark:bg-[#2C2C2E] hover:bg-[#E5E5EA] dark:hover:bg-[#38383A] text-black dark:text-white font-bold text-[17px] active:scale-[0.98] transition-transform border border-transparent shadow-sm">
+                                        {opt.text}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (data.type === 'shopping_list_create') {
+                const isAllSelected = data.listData.sharedWith.includes('Alle');
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden animate-action-sheet">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="font-bold text-[20px] text-black dark:text-white">Neue Liste</h3>
+                                <button onClick={data.onClose} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center"><Icon name="X" size={16}/></button>
+                            </div>
+                            <div className="space-y-4">
+                                <input type="text" placeholder="Name der Liste (z.B. Rewe)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[17px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.listData.name} onChange={e => data.setListData({...data.listData, name: e.target.value})} />
+                                
+                                <div>
+                                    <p className="text-[14px] font-semibold text-[#8E8E93] uppercase tracking-wider mb-2 mt-2">Wer darf die Liste sehen?</p>
+                                    <div className="space-y-2 max-h-[30vh] overflow-y-auto">
+                                        <label className="flex items-center justify-between bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[12px] cursor-pointer">
+                                            <span className="font-bold text-[16px]">Familie (Alle)</span>
+                                            <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isAllSelected} onChange={() => data.setListData({...data.listData, sharedWith: ['Alle']})} />
+                                            <div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors">
+                                                <Icon name="Check" size={14} className="text-white opacity-0" />
+                                            </div>
+                                        </label>
+                                        
+                                        {!isAllSelected && data.activeMembersList.map(m => {
+                                            if (m.name === data.currentUser.name) return null;
+                                            const isSel = data.listData.sharedWith.includes(m.name);
+                                            return (
+                                                <label key={m.name} className="flex items-center justify-between bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[12px] cursor-pointer">
+                                                    <span className="font-medium text-[16px]">{m.name}</span>
+                                                    <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e) => {
+                                                        let newShared = [...data.listData.sharedWith].filter(n => n !== 'Alle');
+                                                        if (e.target.checked) newShared.push(m.name);
+                                                        else newShared = newShared.filter(n => n !== m.name);
+                                                        data.setListData({...data.listData, sharedWith: newShared});
+                                                    }} />
+                                                    <div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors">
+                                                        <Icon name="Check" size={14} className="text-white opacity-0" />
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                    {!isAllSelected && data.listData.sharedWith.length === 0 && <p className="text-[12px] text-[#FF9500] mt-2 font-medium">Diese Liste ist aktuell "Privat" (Nur für dich sichtbar).</p>}
+                                </div>
+                                <button onClick={data.onSave} disabled={!data.listData.name.trim()} className="w-full py-3.5 rounded-[16px] bg-[#007AFF] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50 mt-2">Liste erstellen</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (data.type === 'shopping_item_edit') {
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden animate-action-sheet">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="font-bold text-[20px] text-black dark:text-white">Artikel bearbeiten</h3>
+                                <button onClick={data.onClose} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center"><Icon name="X" size={16}/></button>
+                            </div>
+                            <div className="space-y-3">
+                                <input type="text" placeholder="Produktname" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.itemData.name} onChange={e => data.setItemData({...data.itemData, name: e.target.value})} />
+                                <input type="text" placeholder="Menge (inkl. Einheit)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.itemData.amount} onChange={e => data.setItemData({...data.itemData, amount: e.target.value})} />
+                                <input type="text" placeholder="Notiz" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.itemData.notes} onChange={e => data.setItemData({...data.itemData, notes: e.target.value})} />
+                                
+                                <button onClick={data.onSave} disabled={!data.itemData.name.trim()} className="w-full py-3.5 rounded-[16px] bg-[#007AFF] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50 mt-2">Speichern</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
             if (data.type === 'info_only') {
                 return (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
@@ -469,7 +568,7 @@
         const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
           const tabs = [
             { id: 'home', icon: 'Bell' },
-            { id: 'shopping', icon: 'ShoppingCart' }, // Geändert von 'history' zu 'shopping'
+            { id: 'shopping', icon: 'ShoppingCart' }, 
             { id: 'household', icon: 'Home' }, 
             { id: 'expenses', icon: 'Euro' }, 
             { id: 'settings', icon: 'Settings' }
@@ -554,7 +653,7 @@
           const [activeTab, setActiveTab] = useState(() => {
               const params = new URLSearchParams(window.location.search);
               const tab = params.get('tab');
-              return ['shopping', 'expenses', 'household'].includes(tab) ? tab : 'home'; // 'history' durch 'shopping' ersetzt
+              return ['shopping', 'expenses', 'household'].includes(tab) ? tab : 'home'; 
           });
           const [selectedReason, setSelectedReason] = useState(null);
           const [selectedMembers, setSelectedMembers] = useState([]);
@@ -562,18 +661,37 @@
           const [pushStatus, setPushStatus] = useState('Nicht konfiguriert');
 
           // --- NEUE STATE-VARIABLEN FÜR SHOPPING & POLLS ---
-          const [shoppingSubTab, setShoppingSubTab] = useState('list'); // 'list' oder 'polls'
+          const [shoppingSubTab, setShoppingSubTab] = useState('list'); 
           const [isShoppingMode, setIsShoppingMode] = useState(false);
-          const [newShoppingItem, setNewShoppingItem] = useState({ name: '', amount: '', notes: '', sharedWith: 'Alle' });
-          const [newPoll, setNewPoll] = useState({ question: '', options: ['', '', ''] });
+          const [selectedShoppingListId, setSelectedShoppingListId] = useState(null);
+          
+          const getLocalIsoString = (addHours) => {
+              const d = new Date();
+              d.setHours(d.getHours() + addHours);
+              d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+              return d.toISOString().slice(0, 16);
+          };
+
+          const [newShoppingItem, setNewShoppingItem] = useState({ name: '', amountValue: '', amountUnit: '', notes: '' });
+          const [newPoll, setNewPoll] = useState({ type: 'direct', question: '', options: ['', '', ''], collectionDeadline: getLocalIsoString(12), votingDeadline: getLocalIsoString(48), sharedWith: ['Alle'] });
           const [isCreatingPoll, setIsCreatingPoll] = useState(false);
+          const [pollNewOptions, setPollNewOptions] = useState({});
 
           const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
           const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
           const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
           const safeHistory = Array.isArray(currentFamily?.history) ? currentFamily.history.filter(h => h && typeof h === 'object' && h.id) : [];
-          const safeShopping = Array.isArray(currentFamily?.shopping) ? currentFamily.shopping : [];
+          const safeShoppingLists = Array.isArray(currentFamily?.shoppingLists) ? currentFamily.shoppingLists : [];
           const safePolls = Array.isArray(currentFamily?.polls) ? currentFamily.polls : [];
+
+          // Umfragen filtern, sodass man nur jene sieht, auf die man Zugriff hat
+          const myPolls = safePolls.filter(poll => {
+              if (!poll.sharedWith) return true; // Abwärtskompatibilität für alte Umfragen
+              if (poll.sharedWith.includes('Alle')) return true;
+              if (poll.createdBy === currentUser?.name) return true;
+              if (poll.sharedWith.includes(currentUser?.name)) return true;
+              return false;
+          });
 
           const defaultChores = [
               { id: 'c1', name: 'großes Bad putzen' },
@@ -598,11 +716,11 @@
           const showConfirm = (title, message, onConfirm, danger = false) => setModal({ type: 'confirm', title, message, danger, onConfirm: () => { onConfirm(); setModal(null); }, onCancel: () => setModal(null) });
           const showAlert = (title, message) => setModal({ type: 'alert', title, message, onConfirm: () => setModal(null) });
 
-          const isExpired = (timestamp) => {
+          const isExpired = (timestamp, maxMinutes = 5) => {
               if (!timestamp) return true;
               const time = new Date(timestamp).getTime();
               if (isNaN(time)) return true;
-              return (Date.now() - time) > 5 * 60 * 1000;
+              return (Date.now() - time) > maxMinutes * 60 * 1000;
           };
 
           // --- SAUBERES KEYBOARD HANDLING ---
@@ -749,9 +867,26 @@
               }
           }, [appLoaded, currentFamily?.id, currentUser?.name]);
 
-          // MODAL LISTENER FÜR RUFE UND TAUSCHANFRAGEN
+          // MODAL LISTENER FÜR RUFE, TAUSCHANFRAGEN UND NEUE UMFRAGEN
           useEffect(() => {
               if (currentFamily && currentUser) {
+                  
+                  // 1. Prüfe auf neue Abstimmungen (Polls)
+                  const activePolls = myPolls.filter(p => p.active);
+                  const newPoll = activePolls.find(p => !p.options.some(o => o.votes.includes(currentUser.name)) && !isExpired(p.timestamp, 60)); // 60 Min Gültigkeit für PopUp
+                  if (newPoll && !sessionStorage.getItem(`prompted_poll_${newPoll.id}`)) {
+                      sessionStorage.setItem(`prompted_poll_${newPoll.id}`, 'true');
+                      setModal({
+                          type: 'poll_vote',
+                          title: newPoll.question,
+                          poll: newPoll,
+                          onVote: (optId) => { handleVote(newPoll.id, optId); setModal(null); },
+                          onClose: () => setModal(null)
+                      });
+                      return; // Nur ein Modal zur Zeit
+                  }
+
+                  // 2. Prüfe auf History-Events (Rufe, Tausch)
                   const latestEventForMe = safeHistory.find(h => {
                       if (h.isExpense || h.isResend) return false;
                       if (h.isSystemReminder) return false;
@@ -979,7 +1114,7 @@
                   id: newId, 
                   name: newFamilyName.trim(), 
                   vapidKey: storedConfig.vapidKey || '', 
-                  expenses: [], history: [], members: [], shopping: [], polls: [] 
+                  expenses: [], history: [], members: [], shoppingLists: [], polls: [] 
               });
               setNewFamilyName('');
           };
@@ -1351,74 +1486,206 @@
             }
           };
 
-          // --- SHOPPING FUNKTIONEN ---
+          // --- SHOPPING FUNKTIONEN (NEU) ---
+          
+          // Bestimme die Listen, die der Nutzer sehen darf
+          const myShoppingLists = safeShoppingLists.filter(list => {
+              if (list.sharedWith.includes('Alle')) return true;
+              if (list.createdBy === currentUser?.name) return true;
+              if (list.sharedWith.includes(currentUser?.name)) return true;
+              return false;
+          });
+
+          // Setze Standard-Liste, falls nicht gewählt
+          useEffect(() => {
+              if (!selectedShoppingListId && myShoppingLists.length > 0) {
+                  setSelectedShoppingListId(myShoppingLists[0].id);
+              }
+          }, [myShoppingLists, selectedShoppingListId]);
+
+          const activeList = myShoppingLists.find(l => l.id === selectedShoppingListId);
+
+          const handleCreateList = async (listData) => {
+              if (!listData.name.trim()) return;
+              
+              const newList = {
+                  id: generateId(),
+                  name: listData.name.trim(),
+                  sharedWith: listData.sharedWith,
+                  createdBy: currentUser.name,
+                  items: [],
+                  timestamp: new Date().toISOString()
+              };
+
+              try {
+                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: [...safeShoppingLists, newList] });
+                  setSelectedShoppingListId(newList.id);
+                  if(navigator.vibrate) navigator.vibrate(10);
+                  setModal(null);
+              } catch(e) { showAlert("Fehler", "Konnte Liste nicht erstellen."); }
+          };
+
+          const handleDeleteList = async (listId) => {
+              showConfirm("Liste löschen", "Möchtest du diese Einkaufsliste mitsamt allen Artikeln wirklich löschen?", async () => {
+                  try {
+                      const updated = safeShoppingLists.filter(l => l.id !== listId);
+                      await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updated });
+                      if (selectedShoppingListId === listId) setSelectedShoppingListId(null);
+                  } catch(e) {}
+              }, true);
+          };
+
           const handleAddShoppingItem = async () => {
-              if (!newShoppingItem.name.trim()) return;
+              if (!newShoppingItem.name.trim() || !activeList) return;
               
               const category = getAutoCategory(newShoppingItem.name);
+              const combinedAmount = `${newShoppingItem.amountValue} ${newShoppingItem.amountUnit}`.trim();
+              
               const newItem = {
                   id: generateId(),
                   name: newShoppingItem.name.trim(),
-                  amount: newShoppingItem.amount.trim(),
+                  amount: combinedAmount,
                   notes: newShoppingItem.notes.trim(),
                   category: category,
                   addedBy: currentUser.name,
-                  sharedWith: newShoppingItem.sharedWith, 
                   checked: false,
                   timestamp: new Date().toISOString()
               };
 
               try {
-                  await getFamilyDocRef(currentFamily.id).update({ shopping: [...safeShopping, newItem] });
-                  setNewShoppingItem({ name: '', amount: '', notes: '', sharedWith: newShoppingItem.sharedWith });
+                  const updatedLists = safeShoppingLists.map(l => {
+                      if (l.id === activeList.id) {
+                          return { ...l, items: [...(l.items || []), newItem] };
+                      }
+                      return l;
+                  });
+                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                  setNewShoppingItem({ name: '', amountValue: '', amountUnit: '', notes: '' });
                   if(navigator.vibrate) navigator.vibrate(10);
               } catch(e) { showAlert("Fehler", "Konnte nicht hinzugefügt werden."); }
           };
 
-          const handleToggleShoppingItem = async (id, checked) => {
-              if (isShoppingMode && navigator.vibrate) navigator.vibrate([15, 25]); // Haptisches Feedback beim Einkaufen
+          const handleToggleShoppingItem = async (itemId, checked) => {
+              if (isShoppingMode && navigator.vibrate) navigator.vibrate([15, 25]);
               try {
-                  const updated = safeShopping.map(item => item.id === id ? { ...item, checked: checked } : item);
-                  await getFamilyDocRef(currentFamily.id).update({ shopping: updated });
+                  const updatedLists = safeShoppingLists.map(l => {
+                      if (l.id === activeList.id) {
+                          const newItems = (l.items || []).map(i => i.id === itemId ? { ...i, checked: checked } : i);
+                          return { ...l, items: newItems };
+                      }
+                      return l;
+                  });
+                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
               } catch(e) {}
           };
 
-          const handleDeleteShoppingItem = async (id) => {
+          const handleDeleteShoppingItem = async (itemId) => {
               try {
-                  const updated = safeShopping.filter(item => item.id !== id);
-                  await getFamilyDocRef(currentFamily.id).update({ shopping: updated });
+                  const updatedLists = safeShoppingLists.map(l => {
+                      if (l.id === activeList.id) {
+                          const newItems = (l.items || []).filter(i => i.id !== itemId);
+                          return { ...l, items: newItems };
+                      }
+                      return l;
+                  });
+                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
               } catch(e) {}
+          };
+          
+          const handleSaveEditedShoppingItem = async (editedItem) => {
+              try {
+                  const updatedLists = safeShoppingLists.map(l => {
+                      if (l.id === activeList.id) {
+                          const newItems = (l.items || []).map(i => i.id === editedItem.id ? { ...i, ...editedItem, category: getAutoCategory(editedItem.name) } : i);
+                          return { ...l, items: newItems };
+                      }
+                      return l;
+                  });
+                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                  setModal(null);
+              } catch(e) { showAlert("Fehler", "Konnte nicht gespeichert werden."); }
           };
 
           const handleDeleteAllCheckedItems = async () => {
               showConfirm("Aufräumen", "Möchtest du alle erledigten Artikel dauerhaft löschen?", async () => {
                   try {
-                      const updated = safeShopping.filter(item => !item.checked);
-                      await getFamilyDocRef(currentFamily.id).update({ shopping: updated });
+                      const updatedLists = safeShoppingLists.map(l => {
+                          if (l.id === activeList.id) {
+                              return { ...l, items: (l.items || []).filter(i => !i.checked) };
+                          }
+                          return l;
+                      });
+                      await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
                   } catch(e) {}
               }, true);
+          };
+
+          const toggleShoppingMode = () => {
+              if (isShoppingMode && activeShoppingItems.length === 0 && checkedShoppingItems.length > 0) {
+                  showConfirm("Einkauf abgeschlossen!", "Du hast alle Artikel besorgt. Möchtest du diese Einkaufsliste nun löschen?", () => {
+                      handleDeleteList(activeList.id);
+                      setIsShoppingMode(false);
+                  }, false);
+              } else {
+                  setIsShoppingMode(!isShoppingMode);
+              }
+          };
+
+          const handleExtendList = async (listId) => {
+              try {
+                  const updatedLists = safeShoppingLists.map(l => l.id === listId ? { ...l, timestamp: new Date().toISOString(), expirationWarned: false } : l);
+                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                  showAlert("Erfolgreich", "Die Liste wurde um 3 Monate verlängert.");
+              } catch(e) {}
           };
 
           // --- POLL FUNKTIONEN ---
           const handleAddPoll = async () => {
               if (!newPoll.question.trim()) return showAlert("Fehler", "Bitte eine Frage eingeben.");
-              const validOptions = newPoll.options.filter(o => o.trim() !== '');
-              if (validOptions.length < 2) return showAlert("Fehler", "Bitte mindestens zwei Optionen angeben.");
+              if (!newPoll.votingDeadline) return showAlert("Fehler", "Bitte eine Frist für die Abstimmung festlegen.");
+              
+              let validOptions = newPoll.options.filter(o => o.trim() !== '');
+              
+              if (newPoll.type === 'direct') {
+                  if (validOptions.length < 2) return showAlert("Fehler", "Bitte mindestens zwei Optionen angeben.");
+              } else {
+                  if (!newPoll.collectionDeadline) return showAlert("Fehler", "Bitte eine Frist für das Sammeln festlegen.");
+                  if (new Date(newPoll.collectionDeadline) >= new Date(newPoll.votingDeadline)) return showAlert("Fehler", "Die Sammel-Frist muss vor der Abstimmungs-Frist liegen.");
+              }
 
               const pollObj = {
                   id: generateId(),
+                  type: newPoll.type,
                   question: newPoll.question.trim(),
-                  options: validOptions.map(opt => ({ id: generateId(), text: opt.trim(), votes: [] })),
+                  options: validOptions.map(opt => ({ id: generateId(), text: opt.trim(), votes: [], addedBy: currentUser.name })),
+                  collectionDeadline: newPoll.type === 'collection' ? new Date(newPoll.collectionDeadline).toISOString() : null,
+                  votingDeadline: new Date(newPoll.votingDeadline).toISOString(),
+                  sharedWith: newPoll.sharedWith,
                   createdBy: currentUser.name,
                   active: true,
+                  reminded: false,
                   timestamp: new Date().toISOString()
               };
 
               try {
                   await getFamilyDocRef(currentFamily.id).update({ polls: [pollObj, ...safePolls] });
-                  setNewPoll({ question: '', options: ['', '', ''] });
+                  setNewPoll({ type: 'direct', question: '', options: ['', '', ''], collectionDeadline: getLocalIsoString(12), votingDeadline: getLocalIsoString(48), sharedWith: ['Alle'] });
                   setIsCreatingPoll(false);
               } catch(e) { showAlert("Fehler", "Konnte nicht erstellt werden."); }
+          };
+
+          const handleAddPollOption = async (pollId) => {
+              const text = pollNewOptions[pollId];
+              if (!text || !text.trim()) return;
+              
+              try {
+                  const updatedPolls = safePolls.map(poll => {
+                      if (poll.id !== pollId) return poll;
+                      return { ...poll, options: [...poll.options, { id: generateId(), text: text.trim(), votes: [], addedBy: currentUser.name }] };
+                  });
+                  await getFamilyDocRef(currentFamily.id).update({ polls: updatedPolls });
+                  setPollNewOptions({ ...pollNewOptions, [pollId]: '' });
+              } catch(e) {}
           };
 
           const handleVote = async (pollId, optionId) => {
@@ -1427,9 +1694,7 @@
                   const updatedPolls = safePolls.map(poll => {
                       if (poll.id !== pollId) return poll;
                       const newOptions = poll.options.map(opt => {
-                          // Entferne Nutzer aus allen Optionen
                           let votes = opt.votes.filter(v => v !== currentUser.name);
-                          // Füge ihn der geklickten Option hinzu
                           if (opt.id === optionId) votes.push(currentUser.name);
                           return { ...opt, votes };
                       });
@@ -1446,10 +1711,9 @@
               }, true);
           };
 
-          // Hilfsfunktionen Einkaufsliste
-          const myShoppingItems = safeShopping.filter(item => item.sharedWith === 'Alle' || item.sharedWith === currentUser.name || item.addedBy === currentUser.name);
-          const activeShoppingItems = myShoppingItems.filter(item => !item.checked);
-          const checkedShoppingItems = myShoppingItems.filter(item => item.checked);
+          // Gruppierung der aktuellen Einkaufsliste
+          const activeShoppingItems = (activeList?.items || []).filter(item => !item.checked);
+          const checkedShoppingItems = (activeList?.items || []).filter(item => item.checked);
 
           const groupedShoppingItems = {};
           SHOPPING_CATEGORIES.forEach(cat => groupedShoppingItems[cat] = []);
@@ -2018,148 +2282,178 @@
                             {/* EINKAUFSLISTE VIEW */}
                             {shoppingSubTab === 'list' && (
                                 <>
-                                    {isShoppingMode ? (
-                                        <div className="flex flex-col h-full bg-white dark:bg-[#1C1C1E]">
-                                            <div className="pt-4 pb-4 px-6 flex justify-between items-center bg-white dark:bg-[#1C1C1E] border-b border-[#E5E5EA] dark:border-[#38383A] sticky top-0 z-20">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-3 h-3 rounded-full bg-[#34C759] animate-pulse"></div>
-                                                    <h2 className="font-bold text-[22px]">Einkauf läuft</h2>
-                                                </div>
-                                                <button onClick={() => setIsShoppingMode(false)} className="bg-[#FF3B30]/10 text-[#FF3B30] px-4 py-2 rounded-full font-bold text-[15px] active:opacity-70">
-                                                    Fertig
+                                    {!isShoppingMode && (
+                                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 custom-scrollbar">
+                                            {myShoppingLists.map(list => (
+                                                <button key={list.id} onClick={() => setSelectedShoppingListId(list.id)} className={`px-4 py-2 rounded-full font-bold text-[14px] whitespace-nowrap transition-colors border ${selectedShoppingListId === list.id ? 'bg-[#007AFF] text-white border-[#007AFF]' : 'bg-white dark:bg-[#1C1C1E] text-[#8E8E93] border-[#E5E5EA] dark:border-[#38383A]'}`}>
+                                                    {list.name}
                                                 </button>
-                                            </div>
-                                            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 pb-24">
-                                                {SHOPPING_CATEGORIES.map(cat => {
-                                                    const itemsInCat = groupedShoppingItems[cat];
-                                                    if (!itemsInCat || itemsInCat.length === 0) return null;
-                                                    return (
-                                                        <div key={cat} className="space-y-2">
-                                                            <h3 className="font-bold text-[18px] text-[#8E8E93] dark:text-[#EBEBF5]/60 ml-2">{cat}</h3>
-                                                            {itemsInCat.map(item => (
-                                                                <label key={item.id} className="flex items-center bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] active:scale-[0.98] transition-transform cursor-pointer">
-                                                                    <div className="flex-1 min-w-0 pr-4">
-                                                                        <div className="flex items-baseline gap-2">
-                                                                            <span className="font-bold text-[18px] text-black dark:text-white truncate">{item.name}</span>
-                                                                            {item.amount && <span className="text-[15px] font-semibold text-[#007AFF] shrink-0">{item.amount}</span>}
-                                                                        </div>
-                                                                        {item.notes && <p className="text-[14px] text-[#8E8E93] mt-1 truncate">{item.notes}</p>}
-                                                                    </div>
-                                                                    <div className="relative">
-                                                                        <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={item.checked} onChange={(e) => handleToggleShoppingItem(item.id, e.target.checked)} />
-                                                                        <div className="w-8 h-8 rounded-full border-2 border-[#C6C6C8] dark:border-[#38383A] flex items-center justify-center transition-colors">
-                                                                            <Icon name="Check" size={18} className="text-white opacity-0" />
-                                                                        </div>
-                                                                    </div>
-                                                                </label>
-                                                            ))}
-                                                        </div>
-                                                    );
-                                                })}
-                                                {activeShoppingItems.length === 0 && (
-                                                    <div className="text-center text-[#8E8E93] mt-10">
-                                                        <Icon name="CheckCircle2" size={48} className="mx-auto mb-4 text-[#34C759] opacity-50" />
-                                                        <p className="font-medium text-[18px]">Alles erledigt!</p>
-                                                    </div>
-                                                )}
-                                                
-                                                {checkedShoppingItems.length > 0 && (
-                                                    <div className="pt-8 opacity-60">
-                                                        <h3 className="font-bold text-[15px] text-[#8E8E93] uppercase tracking-wider ml-2 mb-3">Abgehakt</h3>
-                                                        <div className="space-y-2">
-                                                            {checkedShoppingItems.map(item => (
-                                                                <label key={item.id} className="flex items-center bg-transparent p-2 cursor-pointer">
-                                                                    <span className="flex-1 font-medium text-[16px] text-gray-500 line-through truncate">{item.name} {item.amount && `(${item.amount})`}</span>
-                                                                    <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={item.checked} onChange={(e) => handleToggleShoppingItem(item.id, e.target.checked)} />
-                                                                    <div className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center">
-                                                                        <Icon name="Check" size={14} className="text-gray-400 opacity-100" />
-                                                                    </div>
-                                                                </label>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            ))}
+                                            <button onClick={() => setModal({ type: 'shopping_list_create', listData: { name: '', sharedWith: ['Alle'] }, setListData: (data) => setModal(prev => ({...prev, listData: data})), activeMembersList, currentUser, onSave: () => handleCreateList(document.querySelector('.animate-action-sheet')?.__reactProps$?.children[1]?.props?.children[0]?.props?.value ? { name: document.querySelector('.animate-action-sheet input[type="text"]').value, sharedWith: modal?.listData?.sharedWith } : modal.listData), onClose: () => setModal(null) })} className="px-4 py-2 rounded-full font-bold text-[14px] whitespace-nowrap bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] border border-[#007AFF]/30 flex items-center gap-1 active:opacity-70">
+                                                <Icon name="Plus" size={16} /> Neu
+                                            </button>
                                         </div>
-                                    ) : (
-                                        <>
-                                            {/* Normaler Bearbeitungsmodus */}
-                                            <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
-                                                <h2 className="font-bold text-[18px] text-black dark:text-white mb-4">Auf die Liste</h2>
-                                                <div className="space-y-3">
-                                                    <div className="flex gap-3">
-                                                        <input type="text" placeholder="Produkt (z.B. Äpfel)" className="flex-[2] bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.name} onChange={e => setNewShoppingItem({...newShoppingItem, name: e.target.value})} />
-                                                        <input type="text" placeholder="Menge" className="flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.amount} onChange={e => setNewShoppingItem({...newShoppingItem, amount: e.target.value})} />
+                                    )}
+
+                                    {!activeList && myShoppingLists.length === 0 ? (
+                                        <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 mt-16">
+                                            <Icon name="ShoppingCart" size={48} className="mx-auto mb-4 opacity-50" />
+                                            <p className="font-medium text-[16px] mb-4">Noch keine Einkaufsliste vorhanden.</p>
+                                            <button onClick={() => setModal({ type: 'shopping_list_create', listData: { name: '', sharedWith: ['Alle'] }, setListData: (data) => setModal(prev => ({...prev, listData: data})), activeMembersList, currentUser, onSave: () => handleCreateList(modal.listData), onClose: () => setModal(null) })} className="bg-[#007AFF] text-white px-6 py-3 rounded-full font-bold shadow-sm">Erste Liste erstellen</button>
+                                        </div>
+                                    ) : activeList && (
+                                        isShoppingMode ? (
+                                            <div className="flex flex-col h-full bg-white dark:bg-black">
+                                                <div className="pt-4 pb-4 px-6 flex justify-between items-center bg-white dark:bg-[#1C1C1E] border-b border-[#E5E5EA] dark:border-[#38383A] sticky top-0 z-20 shadow-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-3 h-3 rounded-full bg-[#34C759] animate-pulse"></div>
+                                                        <h2 className="font-bold text-[22px] truncate max-w-[200px]">{activeList.name}</h2>
                                                     </div>
-                                                    <input type="text" placeholder="Notiz (Optional)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.notes} onChange={e => setNewShoppingItem({...newShoppingItem, notes: e.target.value})} />
-                                                    <div className="flex justify-between items-center bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px]">
-                                                        <span className="text-[15px] font-medium text-[#8E8E93]">Teilen mit:</span>
-                                                        <select className="bg-transparent text-[#007AFF] font-bold text-[15px] outline-none appearance-none cursor-pointer pr-4" value={newShoppingItem.sharedWith} onChange={e => setNewShoppingItem({...newShoppingItem, sharedWith: e.target.value})}>
-                                                            <option value="Alle">Familie (Alle)</option>
-                                                            <option value={currentUser?.name}>Nur ich (Privat)</option>
-                                                            {activeMembersList.filter(m => m.name !== currentUser?.name).map(m => (
-                                                                <option key={m.name} value={m.name}>Nur mit {m.name}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <button onClick={handleAddShoppingItem} disabled={!newShoppingItem.name.trim()} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[12px] font-bold text-[17px] active:opacity-80 transition-opacity disabled:opacity-50">Hinzufügen</button>
+                                                    <button onClick={toggleShoppingMode} className="bg-[#FF3B30]/10 text-[#FF3B30] px-4 py-2 rounded-full font-bold text-[15px] active:opacity-70">
+                                                        Fertig
+                                                    </button>
                                                 </div>
-                                            </section>
-
-                                            {activeShoppingItems.length > 0 && (
-                                                <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
-                                                    <div className="p-4 bg-[#007AFF]/5 flex justify-between items-center">
-                                                        <h2 className="font-bold text-[18px] text-black dark:text-white flex items-center gap-2"><Icon name="ShoppingCart" size={20} className="text-[#007AFF]"/> {activeShoppingItems.length} Artikel</h2>
-                                                        <button onClick={() => setIsShoppingMode(true)} className="bg-[#007AFF] text-white px-4 py-2 rounded-full font-bold text-[14px] shadow-sm active:scale-95 transition-transform">
-                                                            Einkauf starten
-                                                        </button>
-                                                    </div>
-                                                    <div className="p-4 space-y-6">
-                                                        {SHOPPING_CATEGORIES.map(cat => {
-                                                            const itemsInCat = groupedShoppingItems[cat];
-                                                            if (!itemsInCat || itemsInCat.length === 0) return null;
-                                                            return (
-                                                                <div key={cat} className="space-y-2">
-                                                                    <h3 className="font-bold text-[15px] text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-wider ml-1">{cat}</h3>
-                                                                    <div className="space-y-1">
-                                                                        {itemsInCat.map(item => (
-                                                                            <div key={item.id} className="flex justify-between items-center py-2 border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0">
-                                                                                <div className="flex-1 min-w-0 pr-3">
-                                                                                    <p className="font-semibold text-[16px] text-black dark:text-white truncate">
-                                                                                        {item.name} {item.amount && <span className="text-[#007AFF] font-bold ml-1">{item.amount}</span>}
-                                                                                    </p>
-                                                                                    {item.notes && <p className="text-[13px] text-[#8E8E93] truncate mt-0.5">{item.notes}</p>}
-                                                                                    <p className="text-[11px] text-[#8E8E93]/60 mt-0.5 uppercase tracking-wider">{item.sharedWith === 'Alle' ? 'Familie' : (item.sharedWith === currentUser?.name ? 'Privat' : `Mit ${item.sharedWith}`)}</p>
-                                                                                </div>
-                                                                                <button onClick={() => handleDeleteShoppingItem(item.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Trash2" size={14}/></button>
+                                                <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 pb-24">
+                                                    {SHOPPING_CATEGORIES.map(cat => {
+                                                        const itemsInCat = groupedShoppingItems[cat];
+                                                        if (!itemsInCat || itemsInCat.length === 0) return null;
+                                                        return (
+                                                            <div key={cat} className="space-y-2">
+                                                                <h3 className="font-bold text-[18px] text-[#8E8E93] dark:text-[#EBEBF5]/60 ml-2">{cat}</h3>
+                                                                {itemsInCat.map(item => (
+                                                                    <label key={item.id} className="flex items-center bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] active:scale-[0.98] transition-transform cursor-pointer border border-transparent">
+                                                                        <div className="flex-1 min-w-0 pr-4">
+                                                                            <div className="flex items-baseline gap-2">
+                                                                                <span className="font-bold text-[18px] text-black dark:text-white truncate">{item.name}</span>
+                                                                                {item.amount && <span className="text-[15px] font-semibold text-[#007AFF] shrink-0">{item.amount}</span>}
                                                                             </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </section>
-                                            )}
-
-                                            {checkedShoppingItems.length > 0 && (
-                                                <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden opacity-70">
-                                                    <div className="p-4 flex justify-between items-center border-b border-[#E5E5EA] dark:border-[#38383A]">
-                                                        <h2 className="font-bold text-[16px] text-black dark:text-white">Abgehakt ({checkedShoppingItems.length})</h2>
-                                                        <button onClick={handleDeleteAllCheckedItems} className="text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full active:opacity-70">Alle löschen</button>
-                                                    </div>
-                                                    <div className="p-4 space-y-2">
-                                                        {checkedShoppingItems.slice(0, 5).map(item => (
-                                                            <div key={item.id} className="flex justify-between items-center py-1">
-                                                                <span className="font-medium text-[15px] text-gray-500 line-through truncate">{item.name} {item.amount && `(${item.amount})`}</span>
-                                                                <button onClick={() => handleToggleShoppingItem(item.id, false)} className="text-[#007AFF] text-[13px] font-bold">Wiederherstellen</button>
+                                                                            {item.notes && <p className="text-[14px] text-[#8E8E93] mt-1 truncate">{item.notes}</p>}
+                                                                        </div>
+                                                                        <div className="relative">
+                                                                            <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={item.checked} onChange={(e) => handleToggleShoppingItem(item.id, e.target.checked)} />
+                                                                            <div className="w-8 h-8 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors">
+                                                                                <Icon name="Check" size={18} className="text-white opacity-0" />
+                                                                            </div>
+                                                                        </div>
+                                                                    </label>
+                                                                ))}
                                                             </div>
-                                                        ))}
-                                                        {checkedShoppingItems.length > 5 && <div className="text-center text-[13px] text-[#8E8E93] pt-2">... und {checkedShoppingItems.length - 5} weitere</div>}
+                                                        );
+                                                    })}
+                                                    {activeShoppingItems.length === 0 && (
+                                                        <div className="text-center text-[#8E8E93] mt-10">
+                                                            <Icon name="CheckCircle2" size={48} className="mx-auto mb-4 text-[#34C759] opacity-50" />
+                                                            <p className="font-medium text-[18px]">Alles erledigt!</p>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {checkedShoppingItems.length > 0 && (
+                                                        <div className="pt-8 opacity-60">
+                                                            <h3 className="font-bold text-[15px] text-[#8E8E93] uppercase tracking-wider ml-2 mb-3">Abgehakt</h3>
+                                                            <div className="space-y-2">
+                                                                {checkedShoppingItems.map(item => (
+                                                                    <label key={item.id} className="flex items-center bg-transparent p-2 cursor-pointer">
+                                                                        <span className="flex-1 font-medium text-[16px] text-gray-500 line-through truncate">{item.name} {item.amount && `(${item.amount})`}</span>
+                                                                        <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={item.checked} onChange={(e) => handleToggleShoppingItem(item.id, e.target.checked)} />
+                                                                        <div className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                                                                            <Icon name="Check" size={14} className="text-gray-400 opacity-100" />
+                                                                        </div>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {activeList && Date.now() - new Date(activeList.timestamp).getTime() > 80 * 24 * 60 * 60 * 1000 && (
+                                                    <div className="bg-[#FF9500]/10 border border-[#FF9500]/30 p-4 rounded-[16px] mb-4 flex justify-between items-center">
+                                                        <p className="text-[13px] text-[#FF9500] font-medium pr-4">Diese Liste wird bald automatisch gelöscht (3 Monate Limit).</p>
+                                                        <button onClick={() => handleExtendList(activeList.id)} className="bg-[#FF9500] text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-sm active:opacity-80 shrink-0">Verlängern</button>
+                                                    </div>
+                                                )}
+                                                {/* Normaler Bearbeitungsmodus Liste */}
+                                                <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h2 className="font-bold text-[18px] text-black dark:text-white">Auf die Liste</h2>
+                                                        <button onClick={() => handleDeleteList(activeList.id)} className="text-[13px] text-[#FF3B30] font-bold bg-[#FF3B30]/10 px-3 py-1.5 rounded-full">Liste löschen</button>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <input type="text" placeholder="Produkt (z.B. Äpfel)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.name} onChange={e => setNewShoppingItem({...newShoppingItem, name: e.target.value})} />
+                                                        <div className="flex gap-2">
+                                                            <div className="relative flex-1">
+                                                                <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none cursor-pointer" value={newShoppingItem.amountValue} onChange={e => setNewShoppingItem({...newShoppingItem, amountValue: e.target.value})}>
+                                                                    <option value="">Menge...</option>
+                                                                    {[1,2,3,4,5,6,7,8,9,10,12,15,20,25,50].map(n => <option key={n} value={n}>{n}</option>)}
+                                                                </select>
+                                                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#8E8E93]">▼</div>
+                                                            </div>
+                                                            <input type="text" placeholder="Einheit (x, Pkg, Liter...)" className="flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.amountUnit} onChange={e => setNewShoppingItem({...newShoppingItem, amountUnit: e.target.value})} />
+                                                        </div>
+                                                        <input type="text" placeholder="Notiz (Optional)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.notes} onChange={e => setNewShoppingItem({...newShoppingItem, notes: e.target.value})} />
+                                                        
+                                                        <button onClick={handleAddShoppingItem} disabled={!newShoppingItem.name.trim()} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[12px] font-bold text-[17px] active:opacity-80 transition-opacity disabled:opacity-50">Hinzufügen</button>
                                                     </div>
                                                 </section>
-                                            )}
-                                        </>
+
+                                                {activeShoppingItems.length > 0 && (
+                                                    <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
+                                                        <div className="p-4 bg-[#007AFF]/5 flex justify-between items-center">
+                                                            <h2 className="font-bold text-[18px] text-black dark:text-white flex items-center gap-2"><Icon name="ShoppingCart" size={20} className="text-[#007AFF]"/> {activeShoppingItems.length} Artikel</h2>
+                                                            <button onClick={() => setIsShoppingMode(true)} className="bg-[#007AFF] text-white px-4 py-2 rounded-full font-bold text-[14px] shadow-sm active:scale-95 transition-transform">
+                                                                Einkauf starten
+                                                            </button>
+                                                        </div>
+                                                        <div className="p-4 space-y-6">
+                                                            {SHOPPING_CATEGORIES.map(cat => {
+                                                                const itemsInCat = groupedShoppingItems[cat];
+                                                                if (!itemsInCat || itemsInCat.length === 0) return null;
+                                                                return (
+                                                                    <div key={cat} className="space-y-2">
+                                                                        <h3 className="font-bold text-[15px] text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-wider ml-1">{cat}</h3>
+                                                                        <div className="space-y-1">
+                                                                            {itemsInCat.map(item => (
+                                                                                <div key={item.id} className="flex justify-between items-center py-2 border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0 group">
+                                                                                    <div className="flex-1 min-w-0 pr-3">
+                                                                                        <p className="font-semibold text-[16px] text-black dark:text-white truncate">
+                                                                                            {item.name} {item.amount && <span className="text-[#007AFF] font-bold ml-1">{item.amount}</span>}
+                                                                                        </p>
+                                                                                        {item.notes && <p className="text-[13px] text-[#8E8E93] truncate mt-0.5">{item.notes}</p>}
+                                                                                    </div>
+                                                                                    <div className="flex gap-1.5 shrink-0">
+                                                                                        <button onClick={() => setModal({ type: 'shopping_item_edit', itemData: item, setItemData: (data) => setModal(prev => ({...prev, itemData: data})), onSave: () => handleSaveEditedShoppingItem(modal.itemData), onClose: () => setModal(null) })} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70"><Icon name="Pencil" size={14}/></button>
+                                                                                        <button onClick={() => handleDeleteShoppingItem(item.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center active:opacity-70"><Icon name="Trash2" size={14}/></button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </section>
+                                                )}
+
+                                                {checkedShoppingItems.length > 0 && (
+                                                    <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden opacity-70">
+                                                        <div className="p-4 flex justify-between items-center border-b border-[#E5E5EA] dark:border-[#38383A]">
+                                                            <h2 className="font-bold text-[16px] text-black dark:text-white">Abgehakt ({checkedShoppingItems.length})</h2>
+                                                            <button onClick={handleDeleteAllCheckedItems} className="text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full active:opacity-70">Alle löschen</button>
+                                                        </div>
+                                                        <div className="p-4 space-y-2">
+                                                            {checkedShoppingItems.slice(0, 5).map(item => (
+                                                                <div key={item.id} className="flex justify-between items-center py-1">
+                                                                    <span className="font-medium text-[15px] text-gray-500 line-through truncate">{item.name} {item.amount && `(${item.amount})`}</span>
+                                                                    <button onClick={() => handleToggleShoppingItem(item.id, false)} className="text-[#007AFF] text-[13px] font-bold">Wiederherstellen</button>
+                                                                </div>
+                                                            ))}
+                                                            {checkedShoppingItems.length > 5 && <div className="text-center text-[13px] text-[#8E8E93] pt-2">... und {checkedShoppingItems.length - 5} weitere</div>}
+                                                        </div>
+                                                    </section>
+                                                )}
+                                            </>
+                                        )
                                     )}
                                 </>
                             )}
@@ -2178,67 +2472,144 @@
                                                     <h2 className="font-bold text-[18px]">Frage stellen</h2>
                                                     <button onClick={() => setIsCreatingPoll(false)} className="text-[#8E8E93]"><Icon name="X" size={20}/></button>
                                                 </div>
+                                                
+                                                <div className="flex bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-1 rounded-[10px] mb-4">
+                                                    <button onClick={() => setNewPoll({...newPoll, type: 'direct'})} className={`flex-1 py-2 text-[14px] font-semibold rounded-[8px] transition-all ${newPoll.type === 'direct' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-[#8E8E93]'}`}>Direkt abstimmen</button>
+                                                    <button onClick={() => setNewPoll({...newPoll, type: 'collection'})} className={`flex-1 py-2 text-[14px] font-semibold rounded-[8px] transition-all ${newPoll.type === 'collection' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-[#8E8E93]'}`}>Erst sammeln</button>
+                                                </div>
+
                                                 <input type="text" placeholder="z.B. Welchen Film schauen wir heute?" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={newPoll.question} onChange={e => setNewPoll({...newPoll, question: e.target.value})} />
                                                 
-                                                <div className="space-y-2 pt-2">
-                                                    <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-1">Optionen</h3>
-                                                    {newPoll.options.map((opt, idx) => (
-                                                        <input key={idx} type="text" placeholder={`Option ${idx + 1}`} className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={opt} onChange={e => {
-                                                            const newOpts = [...newPoll.options];
-                                                            newOpts[idx] = e.target.value;
-                                                            // Leere Option unten anhängen, wenn die letzte ausgefüllt wird
-                                                            if (idx === newOpts.length - 1 && e.target.value.trim() !== '') newOpts.push('');
-                                                            setNewPoll({...newPoll, options: newOpts});
-                                                        }} />
-                                                    ))}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {newPoll.type === 'collection' && (
+                                                        <div>
+                                                            <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Sammeln bis</p>
+                                                            <input type="datetime-local" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium focus:ring-2 text-black dark:text-white" value={newPoll.collectionDeadline} onChange={e => setNewPoll({...newPoll, collectionDeadline: e.target.value})} />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Abstimmen bis</p>
+                                                        <input type="datetime-local" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium focus:ring-2 text-black dark:text-white" value={newPoll.votingDeadline} onChange={e => setNewPoll({...newPoll, votingDeadline: e.target.value})} />
+                                                    </div>
                                                 </div>
+
+                                                {newPoll.type === 'direct' && (
+                                                    <div className="space-y-2 pt-2">
+                                                        <h3 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-1">Vorgegebene Optionen</h3>
+                                                        {newPoll.options.map((opt, idx) => (
+                                                            <input key={idx} type="text" placeholder={`Option ${idx + 1}`} className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={opt} onChange={e => {
+                                                                const newOpts = [...newPoll.options];
+                                                                newOpts[idx] = e.target.value;
+                                                                if (idx === newOpts.length - 1 && e.target.value.trim() !== '') newOpts.push('');
+                                                                setNewPoll({...newPoll, options: newOpts});
+                                                            }} />
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div>
+                                                    <p className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-1 mt-4 mb-2">Wer darf abstimmen?</p>
+                                                    <div className="space-y-2 max-h-[25vh] overflow-y-auto custom-scrollbar">
+                                                        <label className="flex items-center justify-between bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[12px] cursor-pointer">
+                                                            <span className="font-bold text-[16px]">Familie (Alle)</span>
+                                                            <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={newPoll.sharedWith.includes('Alle')} onChange={() => setNewPoll({...newPoll, sharedWith: ['Alle']})} />
+                                                            <div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors">
+                                                                <Icon name="Check" size={14} className="text-white opacity-0" />
+                                                            </div>
+                                                        </label>
+                                                        
+                                                        {!newPoll.sharedWith.includes('Alle') && activeMembersList.map(m => {
+                                                            if (m.name === currentUser?.name) return null;
+                                                            const isSel = newPoll.sharedWith.includes(m.name);
+                                                            return (
+                                                                <label key={m.name} className="flex items-center justify-between bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[12px] cursor-pointer">
+                                                                    <span className="font-medium text-[16px]">{m.name}</span>
+                                                                    <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e) => {
+                                                                        let newShared = [...newPoll.sharedWith].filter(n => n !== 'Alle');
+                                                                        if (e.target.checked) newShared.push(m.name);
+                                                                        else newShared = newShared.filter(n => n !== m.name);
+                                                                        setNewPoll({...newPoll, sharedWith: newShared});
+                                                                    }} />
+                                                                    <div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors">
+                                                                        <Icon name="Check" size={14} className="text-white opacity-0" />
+                                                                    </div>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    {!newPoll.sharedWith.includes('Alle') && newPoll.sharedWith.length === 0 && <p className="text-[12px] text-[#FF9500] mt-2 font-medium ml-1">Diese Abstimmung ist aktuell "Privat".</p>}
+                                                </div>
+                                                
                                                 <button onClick={handleAddPoll} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[12px] font-bold text-[17px] active:opacity-80 transition-opacity mt-2">Umfrage starten</button>
                                             </div>
                                         )}
                                     </section>
 
                                     <div className="space-y-6">
-                                        {safePolls.length === 0 && !isCreatingPoll ? (
+                                        {myPolls.length === 0 && !isCreatingPoll ? (
                                             <div className="text-center text-[#8E8E93] dark:text-[#EBEBF5]/60 font-medium mt-10">Keine aktiven Abstimmungen.</div>
                                         ) : (
-                                            safePolls.map(poll => {
+                                            myPolls.map(poll => {
+                                                const now = new Date();
+                                                const isCollection = poll.type === 'collection' && new Date(poll.collectionDeadline) > now;
+                                                const isVoting = !isCollection && new Date(poll.votingDeadline) > now;
+                                                const isFinished = new Date(poll.votingDeadline) <= now;
+                                                
                                                 const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
                                                 const hasVoted = poll.options.some(opt => opt.votes.includes(currentUser?.name));
+                                                
+                                                // Sieger berechnen
+                                                let topOptions = [];
+                                                if (isFinished && totalVotes > 0) {
+                                                    const maxVotes = Math.max(...poll.options.map(o => o.votes.length));
+                                                    topOptions = poll.options.filter(o => o.votes.length === maxVotes).map(o => o.id);
+                                                }
 
                                                 return (
-                                                    <div key={poll.id} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
-                                                        <div className="flex justify-between items-start mb-4">
+                                                    <div key={poll.id} className={`bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border ${isFinished ? 'border-[#E5E5EA] dark:border-[#38383A] opacity-80' : 'border-[#007AFF]/30'}`}>
+                                                        <div className="flex justify-between items-start mb-2">
                                                             <div className="pr-4">
                                                                 <h3 className="font-bold text-[20px] leading-tight text-black dark:text-white">{poll.question}</h3>
-                                                                <p className="text-[13px] text-[#8E8E93] mt-1">Von {poll.createdBy} • {totalVotes} Stimmen</p>
+                                                                <p className="text-[13px] text-[#8E8E93] mt-1 flex items-center gap-1.5">
+                                                                    <Icon name="Timer" size={14} /> 
+                                                                    {isCollection ? `Sammeln bis ${formatDate(poll.collectionDeadline)} ${formatTime(poll.collectionDeadline)}` : 
+                                                                     isVoting ? `Abstimmen bis ${formatDate(poll.votingDeadline)} ${formatTime(poll.votingDeadline)}` : 
+                                                                     'Abstimmung beendet'}
+                                                                </p>
                                                             </div>
                                                             {poll.createdBy === currentUser?.name && (
                                                                 <button onClick={() => handleDeletePoll(poll.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Trash2" size={14}/></button>
                                                             )}
                                                         </div>
+                                                        
+                                                        {isFinished && totalVotes > 0 && <div className="text-[13px] font-bold text-[#34C759] uppercase tracking-wider mb-4 flex items-center gap-1"><Icon name="Trophy" size={16}/> Endergebnis</div>}
 
-                                                        <div className="space-y-3">
+                                                        <div className="space-y-3 mt-4">
+                                                            {poll.options.length === 0 && <p className="text-sm text-gray-500 italic">Noch keine Vorschläge.</p>}
                                                             {poll.options.map(opt => {
                                                                 const myVote = opt.votes.includes(currentUser?.name);
                                                                 const percentage = totalVotes > 0 ? Math.round((opt.votes.length / totalVotes) * 100) : 0;
+                                                                const isWinner = topOptions.includes(opt.id);
                                                                 
                                                                 return (
-                                                                    <div key={opt.id} onClick={() => handleVote(poll.id, opt.id)} className={`relative overflow-hidden rounded-[14px] p-4 cursor-pointer transition-transform active:scale-[0.98] border ${myVote ? 'border-[#007AFF]' : 'border-[#E5E5EA] dark:border-[#38383A] bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}>
+                                                                    <div key={opt.id} onClick={() => { if(isVoting) handleVote(poll.id, opt.id); }} className={`relative overflow-hidden rounded-[14px] p-4 ${isVoting ? 'cursor-pointer active:scale-[0.98]' : ''} transition-transform border ${isWinner ? 'border-[#34C759] bg-[#34C759]/10' : myVote && !isFinished ? 'border-[#007AFF]' : 'border-[#E5E5EA] dark:border-[#38383A] bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}>
                                                                         {/* Progress Background */}
-                                                                        {hasVoted && (
-                                                                            <div className={`absolute inset-y-0 left-0 transition-all duration-500 ease-out ${myVote ? 'bg-[#007AFF]/15' : 'bg-[#000000]/5 dark:bg-[#FFFFFF]/5'}`} style={{ width: `${percentage}%` }}></div>
+                                                                        {(hasVoted || isFinished) && (
+                                                                            <div className={`absolute inset-y-0 left-0 transition-all duration-500 ease-out ${isWinner ? 'bg-[#34C759]/20' : myVote && !isFinished ? 'bg-[#007AFF]/15' : 'bg-[#000000]/5 dark:bg-[#FFFFFF]/5'}`} style={{ width: `${percentage}%` }}></div>
                                                                         )}
                                                                         
                                                                         <div className="relative z-10 flex justify-between items-center">
                                                                             <div className="flex items-center gap-3">
-                                                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${myVote ? 'border-[#007AFF] bg-[#007AFF]' : 'border-[#C6C6C8] dark:border-[#545458]'}`}>
-                                                                                    {myVote && <Icon name="Check" size={12} className="text-white" />}
-                                                                                </div>
-                                                                                <span className={`font-semibold text-[16px] ${myVote ? 'text-[#007AFF]' : 'text-black dark:text-white'}`}>{opt.text}</span>
+                                                                                {(isVoting || (isFinished && myVote)) && (
+                                                                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${myVote ? (isWinner ? 'border-[#34C759] bg-[#34C759]' : 'border-[#007AFF] bg-[#007AFF]') : 'border-[#C6C6C8] dark:border-[#545458]'}`}>
+                                                                                        {myVote && <Icon name="Check" size={12} className="text-white" />}
+                                                                                    </div>
+                                                                                )}
+                                                                                <span className={`font-semibold text-[16px] ${isWinner ? 'text-[#34C759]' : myVote && !isFinished ? 'text-[#007AFF]' : 'text-black dark:text-white'}`}>{opt.text} {isCollection && <span className="text-[11px] text-gray-400 ml-1 font-normal">(von {opt.addedBy})</span>}</span>
                                                                             </div>
-                                                                            {hasVoted && (
+                                                                            {(hasVoted || isFinished) && (
                                                                                 <div className="flex flex-col items-end">
-                                                                                    <span className="font-bold text-[15px]">{opt.votes.length}</span>
+                                                                                    <span className={`font-bold text-[15px] ${isWinner ? 'text-[#34C759]' : ''}`}>{opt.votes.length}</span>
                                                                                     {opt.votes.length > 0 && <span className="text-[11px] text-[#8E8E93] truncate max-w-[80px]">{opt.votes.join(', ')}</span>}
                                                                                 </div>
                                                                             )}
@@ -2246,6 +2617,13 @@
                                                                     </div>
                                                                 );
                                                             })}
+                                                            
+                                                            {isCollection && (
+                                                                <div className="flex gap-2 mt-4 pt-4 border-t border-[#E5E5EA] dark:border-[#38383A]">
+                                                                    <input type="text" placeholder="Dein Vorschlag..." className="flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={pollNewOptions[poll.id] || ''} onChange={e => setPollNewOptions({...pollNewOptions, [poll.id]: e.target.value})} />
+                                                                    <button onClick={() => handleAddPollOption(poll.id)} className="bg-[#007AFF]/10 text-[#007AFF] px-4 py-3 rounded-[12px] font-bold active:opacity-70">Senden</button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 );
@@ -2388,7 +2766,7 @@
                       </div>
                     )}
 
-                    {/* --- HAUSHALT TAB --- */}
+                    {/* --- HAUS রুমে TAB --- */}
                     {activeTab === 'household' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                             <div className="flex justify-between items-center pl-2 pr-1 mb-1">
