@@ -80,6 +80,7 @@
         
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
 
         @keyframes slideUpFade {
             from { opacity: 0; transform: translateY(20px) scale(0.95); }
@@ -267,7 +268,8 @@
             }
 
             if (data.type === 'shopping_list_create') {
-                const isAllSelected = data.listData.sharedWith.includes('Alle');
+                const shareType = data.listData.shareType || 'Alle';
+                
                 return (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
                         <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden animate-action-sheet">
@@ -280,35 +282,44 @@
                                 
                                 <div>
                                     <p className="text-[14px] font-semibold text-[#8E8E93] uppercase tracking-wider mb-2 mt-2">Wer darf die Liste sehen?</p>
-                                    <div className="space-y-2 max-h-[30vh] overflow-y-auto">
-                                        <label className="flex items-center justify-between bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[12px] cursor-pointer">
-                                            <span className="font-bold text-[16px]">Familie (Alle)</span>
-                                            <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isAllSelected} onChange={(e) => data.setListData({...data.listData, sharedWith: e.target.checked ? ['Alle'] : []})} />
-                                            <div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors">
-                                                <Icon name="Check" size={14} className="text-white opacity-0" />
-                                            </div>
-                                        </label>
-                                        
-                                        {data.activeMembersList.map(m => {
-                                            if (m.name === data.currentUser.name) return null;
-                                            const isSel = data.listData.sharedWith.includes(m.name);
-                                            return (
-                                                <label key={m.name} className="flex items-center justify-between bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[12px] cursor-pointer mt-2">
-                                                    <span className="font-medium text-[16px]">{m.name}</span>
-                                                    <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e) => {
-                                                        let newShared = [...data.listData.sharedWith].filter(n => n !== 'Alle');
-                                                        if (e.target.checked) newShared.push(m.name);
-                                                        else newShared = newShared.filter(n => n !== m.name);
-                                                        data.setListData({...data.listData, sharedWith: newShared});
-                                                    }} />
-                                                    <div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors">
-                                                        <Icon name="Check" size={14} className="text-white opacity-0" />
-                                                    </div>
-                                                </label>
-                                            );
-                                        })}
+                                    <div className="relative">
+                                        <select 
+                                            className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white appearance-none cursor-pointer"
+                                            value={shareType}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                data.setListData({...data.listData, shareType: val, sharedWith: val === 'Alle' ? ['Alle'] : []});
+                                            }}
+                                        >
+                                            <option value="Alle">Familie (Alle)</option>
+                                            <option value="Privat">Nur für mich (Privat)</option>
+                                            <option value="Custom">Einzelne Personen auswählen...</option>
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#8E8E93]"><Icon name="ChevronRight" size={16} className="transform rotate-90" /></div>
                                     </div>
-                                    {!isAllSelected && data.listData.sharedWith.length === 0 && <p className="text-[12px] text-[#FF9500] mt-2 font-medium">Diese Liste ist aktuell "Privat" (Nur für dich sichtbar).</p>}
+                                    
+                                    {shareType === 'Custom' && (
+                                        <div className="mt-3 space-y-2 max-h-[25vh] overflow-y-auto custom-scrollbar">
+                                            {data.activeMembersList.map(m => {
+                                                if (m.name === data.currentUser.name) return null;
+                                                const isSel = data.listData.sharedWith.includes(m.name);
+                                                return (
+                                                    <label key={m.name} className="flex items-center justify-between bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[12px] cursor-pointer border border-transparent active:scale-[0.98] transition-transform">
+                                                        <span className="font-medium text-[16px]">{m.name}</span>
+                                                        <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e) => {
+                                                            let newShared = [...data.listData.sharedWith].filter(n => n !== 'Alle');
+                                                            if (e.target.checked) newShared.push(m.name);
+                                                            else newShared = newShared.filter(n => n !== m.name);
+                                                            data.setListData({...data.listData, sharedWith: newShared});
+                                                        }} />
+                                                        <div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors">
+                                                            <Icon name="Check" size={14} className="text-white opacity-0" />
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                                 <button onClick={() => data.onSave(data.listData)} disabled={!data.listData.name.trim()} className="w-full py-3.5 rounded-[16px] bg-[#007AFF] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50 mt-2">Liste erstellen</button>
                             </div>
@@ -1525,13 +1536,17 @@
               } catch(e) { showAlert("Fehler", "Konnte Liste nicht erstellen."); }
           };
 
+          const performDeleteList = async (listId) => {
+              try {
+                  const updated = safeShoppingLists.filter(l => l.id !== listId);
+                  await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updated });
+                  if (selectedShoppingListId === listId) setSelectedShoppingListId(null);
+              } catch(e) {}
+          };
+
           const handleDeleteList = async (listId) => {
               showConfirm("Liste löschen", "Möchtest du diese Einkaufsliste mitsamt allen Artikeln wirklich löschen?", async () => {
-                  try {
-                      const updated = safeShoppingLists.filter(l => l.id !== listId);
-                      await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updated });
-                      if (selectedShoppingListId === listId) setSelectedShoppingListId(null);
-                  } catch(e) {}
+                  await performDeleteList(listId);
               }, true);
           };
 
@@ -1620,14 +1635,32 @@
               }, true);
           };
 
-          const toggleShoppingMode = () => {
-              if (isShoppingMode && activeShoppingItems.length === 0 && checkedShoppingItems.length > 0) {
-                  showConfirm("Einkauf abgeschlossen!", "Du hast alle Artikel besorgt. Möchtest du diese Einkaufsliste nun löschen?", () => {
-                      handleDeleteList(activeList.id);
+          const toggleShoppingMode = async () => {
+              if (isShoppingMode) {
+                  // Schließe Modus
+                  if (activeShoppingItems.length === 0 && checkedShoppingItems.length > 0) {
+                      showConfirm("Einkauf abgeschlossen!", "Du hast alle Artikel besorgt. Möchtest du diese Einkaufsliste nun löschen?", async () => {
+                          await performDeleteList(activeList.id);
+                          setIsShoppingMode(false);
+                      }, false);
+                  } else {
+                      try {
+                          const updatedLists = safeShoppingLists.map(l => l.id === activeList.id ? { ...l, shoppingActiveBy: null } : l);
+                          await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                      } catch(e) {}
                       setIsShoppingMode(false);
-                  }, false);
+                  }
               } else {
-                  setIsShoppingMode(!isShoppingMode);
+                  // Öffne Modus
+                  if (activeList.shoppingActiveBy && activeList.shoppingActiveBy !== currentUser.name) {
+                       showAlert("Gesperrt", `${activeList.shoppingActiveBy} kauft diese Liste gerade ein!`);
+                       return;
+                  }
+                  try {
+                      const updatedLists = safeShoppingLists.map(l => l.id === activeList.id ? { ...l, shoppingActiveBy: currentUser.name } : l);
+                      await getFamilyDocRef(currentFamily.id).update({ shoppingLists: updatedLists });
+                  } catch(e) {}
+                  setIsShoppingMode(true);
               }
           };
 
@@ -1722,6 +1755,8 @@
               else groupedShoppingItems['Sonstiges'].push(item);
           });
 
+          // Prüfe, ob Liste gerade von wem anders eingekauft wird
+          const isLockedByOther = activeList?.shoppingActiveBy && activeList.shoppingActiveBy !== currentUser?.name;
 
           const resetExpenseForm = (overrides = {}) => {
               setExpenseForm({
@@ -2323,9 +2358,9 @@
                                                                 {itemsInCat.map(item => (
                                                                     <label key={item.id} className="flex items-center bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] active:scale-[0.98] transition-transform cursor-pointer border border-transparent">
                                                                         <div className="flex-1 min-w-0 pr-4">
-                                                                            <div className="flex items-baseline gap-2">
+                                                                            <div className="flex items-center gap-1">
                                                                                 <span className="font-bold text-[18px] text-black dark:text-white truncate">{item.name}</span>
-                                                                                {item.amount && <span className="text-[15px] font-semibold text-[#007AFF] shrink-0">{item.amount}</span>}
+                                                                                {item.amount && <span className="text-[13px] font-bold text-[#007AFF] bg-[#007AFF]/10 border border-[#007AFF]/20 px-2.5 py-1 rounded-full shrink-0 ml-2">{item.amount}</span>}
                                                                             </div>
                                                                             {item.notes && <p className="text-[14px] text-[#8E8E93] mt-1 truncate">{item.notes}</p>}
                                                                         </div>
@@ -2373,35 +2408,42 @@
                                                         <button onClick={() => handleExtendList(activeList.id)} className="bg-[#FF9500] text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-sm active:opacity-80 shrink-0">Verlängern</button>
                                                     </div>
                                                 )}
-                                                {/* Normaler Bearbeitungsmodus Liste */}
-                                                <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <h2 className="font-bold text-[18px] text-black dark:text-white">Auf die Liste</h2>
-                                                        <button onClick={() => handleDeleteList(activeList.id)} className="text-[13px] text-[#FF3B30] font-bold bg-[#FF3B30]/10 px-3 py-1.5 rounded-full">Liste löschen</button>
+                                                
+                                                {isLockedByOther ? (
+                                                    <div className="bg-[#FF9500]/10 border border-[#FF9500]/30 p-4 rounded-[16px] mb-4 flex items-center gap-3">
+                                                         <Icon name="ShoppingCart" size={24} className="text-[#FF9500] shrink-0" />
+                                                         <p className="text-[14px] text-[#FF9500] font-medium leading-snug"><b>{activeList.shoppingActiveBy}</b> kauft diese Liste gerade ein. Bearbeiten gesperrt.</p>
                                                     </div>
-                                                    <div className="space-y-3">
-                                                        <input type="text" placeholder="Produkt (z.B. Äpfel)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.name} onChange={e => setNewShoppingItem({...newShoppingItem, name: e.target.value})} />
-                                                        <div className="flex gap-2">
-                                                            <div className="relative flex-1">
-                                                                <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none cursor-pointer" value={newShoppingItem.amountValue} onChange={e => setNewShoppingItem({...newShoppingItem, amountValue: e.target.value})}>
-                                                                    <option value="">Menge...</option>
-                                                                    {[1,2,3,4,5,6,7,8,9,10,12,15,20,25,50].map(n => <option key={n} value={n}>{n}</option>)}
-                                                                </select>
-                                                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#8E8E93]">▼</div>
-                                                            </div>
-                                                            <input type="text" placeholder="Einheit (x, Pkg, Liter...)" className="flex-1 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.amountUnit} onChange={e => setNewShoppingItem({...newShoppingItem, amountUnit: e.target.value})} />
+                                                ) : (
+                                                    <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <h2 className="font-bold text-[18px] text-black dark:text-white">Auf die Liste</h2>
+                                                            <button onClick={() => handleDeleteList(activeList.id)} className="text-[13px] text-[#FF3B30] font-bold bg-[#FF3B30]/10 px-3 py-1.5 rounded-full">Liste löschen</button>
                                                         </div>
-                                                        <input type="text" placeholder="Notiz (Optional)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.notes} onChange={e => setNewShoppingItem({...newShoppingItem, notes: e.target.value})} />
-                                                        
-                                                        <button onClick={handleAddShoppingItem} disabled={!newShoppingItem.name.trim()} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[12px] font-bold text-[17px] active:opacity-80 transition-opacity disabled:opacity-50">Hinzufügen</button>
-                                                    </div>
-                                                </section>
+                                                        <div className="space-y-3">
+                                                            <input type="text" placeholder="Produkt (z.B. Äpfel)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.name} onChange={e => setNewShoppingItem({...newShoppingItem, name: e.target.value})} />
+                                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                                <div className="relative flex-1 min-w-0">
+                                                                    <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none cursor-pointer box-border" value={newShoppingItem.amountValue} onChange={e => setNewShoppingItem({...newShoppingItem, amountValue: e.target.value})}>
+                                                                        <option value="">Anzahl...</option>
+                                                                        {[1,2,3,4,5,6,7,8,9,10,12,15,20,25,50].map(n => <option key={n} value={n}>{n}</option>)}
+                                                                    </select>
+                                                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#8E8E93]"><Icon name="ChevronRight" size={16} className="transform rotate-90" /></div>
+                                                                </div>
+                                                                <input type="text" placeholder="Einheit (Pkg, Liter...)" className="flex-1 min-w-0 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.amountUnit} onChange={e => setNewShoppingItem({...newShoppingItem, amountUnit: e.target.value})} />
+                                                            </div>
+                                                            <input type="text" placeholder="Notiz (Optional)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={newShoppingItem.notes} onChange={e => setNewShoppingItem({...newShoppingItem, notes: e.target.value})} />
+                                                            
+                                                            <button onClick={handleAddShoppingItem} disabled={!newShoppingItem.name.trim()} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[12px] font-bold text-[17px] active:opacity-80 transition-opacity disabled:opacity-50">Hinzufügen</button>
+                                                        </div>
+                                                    </section>
+                                                )}
 
                                                 {activeShoppingItems.length > 0 && (
                                                     <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
                                                         <div className="p-4 bg-[#007AFF]/5 flex justify-between items-center">
                                                             <h2 className="font-bold text-[18px] text-black dark:text-white flex items-center gap-2"><Icon name="ShoppingCart" size={20} className="text-[#007AFF]"/> {activeShoppingItems.length} Artikel</h2>
-                                                            <button onClick={() => setIsShoppingMode(true)} className="bg-[#007AFF] text-white px-4 py-2 rounded-full font-bold text-[14px] shadow-sm active:scale-95 transition-transform">
+                                                            <button onClick={toggleShoppingMode} className="bg-[#007AFF] text-white px-4 py-2 rounded-full font-bold text-[14px] shadow-sm active:scale-95 transition-transform">
                                                                 Einkauf starten
                                                             </button>
                                                         </div>
@@ -2414,16 +2456,17 @@
                                                                         <h3 className="font-bold text-[15px] text-[#8E8E93] dark:text-[#EBEBF5]/60 uppercase tracking-wider ml-1">{cat}</h3>
                                                                         <div className="space-y-1">
                                                                             {itemsInCat.map(item => (
-                                                                                <div key={item.id} className="flex justify-between items-center py-2 border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0 group">
+                                                                                <div key={item.id} className={`flex justify-between items-center py-2 border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0 ${isLockedByOther ? 'opacity-50' : 'group'}`}>
                                                                                     <div className="flex-1 min-w-0 pr-3">
-                                                                                        <p className="font-semibold text-[16px] text-black dark:text-white truncate">
-                                                                                            {item.name} {item.amount && <span className="text-[#007AFF] font-bold ml-1">{item.amount}</span>}
+                                                                                        <p className="font-semibold text-[16px] text-black dark:text-white truncate flex items-center">
+                                                                                            {item.name} 
+                                                                                            {item.amount && <span className="text-[13px] font-bold text-[#007AFF] bg-[#007AFF]/10 border border-[#007AFF]/20 px-2.5 py-1 rounded-full shrink-0 ml-2">{item.amount}</span>}
                                                                                         </p>
-                                                                                        {item.notes && <p className="text-[13px] text-[#8E8E93] truncate mt-0.5">{item.notes}</p>}
+                                                                                        {item.notes && <p className="text-[13px] text-[#8E8E93] truncate mt-1">{item.notes}</p>}
                                                                                     </div>
                                                                                     <div className="flex gap-1.5 shrink-0">
-                                                                                        <button onClick={() => setModal({ type: 'shopping_item_edit', itemData: item, setItemData: (data) => setModal(prev => ({...prev, itemData: data})), onSave: () => handleSaveEditedShoppingItem(modal.itemData), onClose: () => setModal(null) })} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70"><Icon name="Pencil" size={14}/></button>
-                                                                                        <button onClick={() => handleDeleteShoppingItem(item.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center active:opacity-70"><Icon name="Trash2" size={14}/></button>
+                                                                                        <button disabled={isLockedByOther} onClick={() => setModal({ type: 'shopping_item_edit', itemData: item, setItemData: (data) => setModal(prev => ({...prev, itemData: data})), onSave: () => handleSaveEditedShoppingItem(modal.itemData), onClose: () => setModal(null) })} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 disabled:opacity-50"><Icon name="Pencil" size={14}/></button>
+                                                                                        <button disabled={isLockedByOther} onClick={() => handleDeleteShoppingItem(item.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center active:opacity-70 disabled:opacity-50"><Icon name="Trash2" size={14}/></button>
                                                                                     </div>
                                                                                 </div>
                                                                             ))}
@@ -2439,13 +2482,13 @@
                                                     <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden opacity-70">
                                                         <div className="p-4 flex justify-between items-center border-b border-[#E5E5EA] dark:border-[#38383A]">
                                                             <h2 className="font-bold text-[16px] text-black dark:text-white">Abgehakt ({checkedShoppingItems.length})</h2>
-                                                            <button onClick={handleDeleteAllCheckedItems} className="text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full active:opacity-70">Alle löschen</button>
+                                                            <button onClick={handleDeleteAllCheckedItems} disabled={isLockedByOther} className="text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full active:opacity-70 disabled:opacity-50">Alle löschen</button>
                                                         </div>
                                                         <div className="p-4 space-y-2">
                                                             {checkedShoppingItems.slice(0, 5).map(item => (
                                                                 <div key={item.id} className="flex justify-between items-center py-1">
                                                                     <span className="font-medium text-[15px] text-gray-500 line-through truncate">{item.name} {item.amount && `(${item.amount})`}</span>
-                                                                    <button onClick={() => handleToggleShoppingItem(item.id, false)} className="text-[#007AFF] text-[13px] font-bold">Wiederherstellen</button>
+                                                                    <button disabled={isLockedByOther} onClick={() => handleToggleShoppingItem(item.id, false)} className="text-[#007AFF] text-[13px] font-bold disabled:opacity-50">Wiederherstellen</button>
                                                                 </div>
                                                             ))}
                                                             {checkedShoppingItems.length > 5 && <div className="text-center text-[13px] text-[#8E8E93] pt-2">... und {checkedShoppingItems.length - 5} weitere</div>}
@@ -2480,16 +2523,16 @@
 
                                                 <input type="text" placeholder="z.B. Welchen Film schauen wir heute?" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={newPoll.question} onChange={e => setNewPoll({...newPoll, question: e.target.value})} />
                                                 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="flex flex-col sm:flex-row gap-3">
                                                     {newPoll.type === 'collection' && (
-                                                        <div className="min-w-0 w-full">
+                                                        <div className="flex-1 min-w-0">
                                                             <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Sammeln bis</p>
-                                                            <input type="datetime-local" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[14px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.collectionDeadline} onChange={e => setNewPoll({...newPoll, collectionDeadline: e.target.value})} />
+                                                            <input type="datetime-local" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.collectionDeadline} onChange={e => setNewPoll({...newPoll, collectionDeadline: e.target.value})} />
                                                         </div>
                                                     )}
-                                                    <div className="min-w-0 w-full">
+                                                    <div className="flex-1 min-w-0">
                                                         <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Abstimmen bis</p>
-                                                        <input type="datetime-local" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[14px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.votingDeadline} onChange={e => setNewPoll({...newPoll, votingDeadline: e.target.value})} />
+                                                        <input type="datetime-local" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.votingDeadline} onChange={e => setNewPoll({...newPoll, votingDeadline: e.target.value})} />
                                                     </div>
                                                 </div>
 
@@ -2766,7 +2809,7 @@
                       </div>
                     )}
 
-                    {/* --- HAUS রুমে TAB --- */}
+                    {/* --- HAUSHALT TAB --- */}
                     {activeTab === 'household' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                             <div className="flex justify-between items-center pl-2 pr-1 mb-1">
