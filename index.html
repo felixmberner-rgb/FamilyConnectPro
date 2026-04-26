@@ -148,6 +148,34 @@ const Icon=({name,size=24,strokeWidth=2,className="",onClick})=>{
 
 function Modal({data,onClose}){
   if(!data)return null;
+  const isDanger=data.danger;
+  
+  if(data.type==='confirm'||data.type==='alert'){
+    return(
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/50 dark:bg-black/70 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
+        <div className="bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-white/40 dark:border-[#38383A]/50 overflow-hidden animate-action-sheet relative">
+          <div className="flex flex-col items-center mb-6 mt-2 text-center">
+            <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center mb-5 shadow-lg transform rotate-3 ${isDanger?'bg-gradient-to-tr from-[#FF3B30] to-[#FF6961] text-white':'bg-gradient-to-tr from-[#007AFF] to-[#5856D6] text-white'}`}>
+                <Icon name={isDanger?"Trash2":"Bell"} size={32} strokeWidth={2.5}/>
+            </div>
+            <h3 className="font-extrabold text-[22px] tracking-tight text-black dark:text-white leading-tight px-2 mb-2">{data.title}</h3>
+            <p className="text-[15px] text-[#8E8E93] leading-relaxed">{data.message}</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <button onClick={data.onConfirm} className={`w-full py-4 rounded-[16px] font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm ${isDanger?'bg-[#FF3B30] hover:bg-[#D70015] text-white':'bg-[#007AFF] hover:bg-[#0066CC] text-white'}`}>
+              {data.confirmText||(data.type==='confirm'?'Bestätigen':'OK')}
+            </button>
+            {data.type==='confirm'&&(
+              <button onClick={data.onCancel} className="w-full py-4 rounded-[16px] bg-[#F2F2F7] dark:bg-[#2C2C2E] hover:bg-[#E5E5EA] dark:hover:bg-[#38383A] text-black dark:text-white font-bold text-[17px] active:scale-[0.98] transition-transform border border-transparent shadow-sm">
+                Abbrechen
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   if(data.type==='poll_vote'){
     return(
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/50 dark:bg-black/70 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
@@ -289,20 +317,7 @@ function Modal({data,onClose}){
       </div>
     );
   }
-  return(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity">
-      <div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[14px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-white/50 dark:border-[#38383A]/50">
-        <div className="text-center mb-6">
-          <h3 className="font-semibold text-[17px] mb-2 text-black dark:text-white leading-snug">{data.title}</h3>
-          <p className="text-[#3C3C4399] dark:text-[#EBEBF5]/60 text-[13px] leading-relaxed whitespace-pre-wrap">{data.message}</p>
-        </div>
-        <div className="flex flex-col gap-2">
-          <button onClick={data.onConfirm} className={`w-full py-3.5 rounded-[12px] font-semibold text-[17px] active:opacity-70 transition-opacity ${data.danger?'bg-[#FF3B30] text-white':'bg-[#007AFF] text-white'}`}>{data.confirmText||'OK'}</button>
-          {data.type==='confirm'&&<button onClick={data.onCancel} className="w-full py-3.5 rounded-[12px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#007AFF] font-semibold text-[17px] active:opacity-70 transition-opacity">Abbrechen</button>}
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
 
 function TrackingOverlay({event,currentFamily,currentUser,safeMembers,onClose,onResend}){
@@ -460,6 +475,7 @@ function App(){
   const [newShoppingItem,setNewShoppingItem]=useState({name:'',amountValue:'',amountUnit:'',notes:''});
   const [newPoll,setNewPoll]=useState({type:'direct',question:'',options:['',''],collectionDeadline:getLocalIsoString(12),votingDeadline:getLocalIsoString(48),sharedWith:['Alle']});
   const [isCreatingPoll,setIsCreatingPoll]=useState(false);
+  const [pollNewOptions,setPollNewOptions]=useState({});
 
   const safeMembers=Array.isArray(currentFamily?.members)?currentFamily.members.filter(m=>m&&typeof m==='object'&&m.name):[];
   const activeMembersList=safeMembers.filter(m=>m.status!=='pending');
@@ -493,7 +509,7 @@ function App(){
   useEffect(()=>{
     const initAuth=async()=>{
       try{if(typeof __initial_auth_token!=='undefined'&&__initial_auth_token)await auth.signInWithCustomToken(__initial_auth_token);else await auth.signInAnonymously();}
-      catch(e){console.warn("Auth error (offline?):",e);}
+      catch(e){console.warn("Auth error:",e);}
     };
     initAuth();
     const unsub=auth.onAuthStateChanged(u=>{setFirebaseUser(u);if(!u&&!localFamilyId)setAppLoaded(true);});
@@ -528,7 +544,7 @@ function App(){
               chg=true;
             }
           });
-          if(chg)getFamilyDocRef(currentFamily.id).update({householdTasks:nT.slice(-150)}).catch(e=>console.warn(e));
+          if(chg)getFamilyDocRef(currentFamily.id).update({householdTasks:nT.slice(-150)}).catch(e=>{});
         }
       };chk();
     }
@@ -605,7 +621,7 @@ function App(){
   const handleLogin=async()=>{
     setAuthError('');if(!formInput.familyId||!formInput.name||!formInput.password)return setAuthError('Alle Felder ausfüllen.');
     try{
-      const cI=formInput.familyId.trim();const cN=formInput.name.trim().toLowerCase();const s=await getFamilyDocRef(cI).get();if(!s.exists)return setAuthError('Familie nicht gefunden.');
+      const cI=formInput.familyId.trim();const cN=formInput.name.trim().toLowerCase();const s=await getFamilyDocRef(cI).get();if(!s.exists)return setAuthError('Familie nicht gefunden. Überprüfe die ID.');
       const d=s.data();const m=(Array.isArray(d.members)?d.members:[]).find(m=>m&&typeof m==='object'&&m.name.toLowerCase()===cN&&m.password===formInput.password.trim());
       if(!m||m.status==='pending')return setAuthError('Falsches Passwort.');
       let sC={};try{sC=JSON.parse(localStorage.getItem('firebaseConfig')||'{}');}catch(e){}if(!d.vapidKey&&sC.vapidKey)getFamilyDocRef(cI).update({vapidKey:sC.vapidKey}).catch(e=>{});
@@ -1068,19 +1084,19 @@ function App(){
                     ):(
                       <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
                         <div className="flex justify-between items-center mb-2"><h2 className="font-bold text-[18px]">Frage stellen</h2><button onClick={()=>setIsCreatingPoll(false)} className="text-[#8E8E93]"><Icon name="X" size={20}/></button></div>
-                        <div className="flex bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-1 rounded-[10px] mb-4"><button onClick={()=>setNewPoll({...newPoll,type:'direct'})} className={`flex-1 py-2 text-[14px] font-semibold rounded-[8px] ${newPoll.type==='direct'?'bg-white dark:bg-[#1C1C1E] shadow-sm':'text-[#8E8E93]'}`}>Direkt</button><button onClick={()=>setNewPoll({...newPoll,type:'collection'})} className={`flex-1 py-2 text-[14px] font-semibold rounded-[8px] ${newPoll.type==='collection'?'bg-white dark:bg-[#1C1C1E] shadow-sm':'text-[#8E8E93]'}`}>Erst sammeln</button></div>
+                        <div className="flex bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-1 rounded-[10px] mb-4"><button onClick={()=>setNewPoll({...newPoll,type:'direct'})} className={`flex-1 py-2 text-[14px] font-semibold rounded-[8px] transition-all ${newPoll.type==='direct'?'bg-white dark:bg-[#1C1C1E] shadow-sm':'text-[#8E8E93]'}`}>Direkt</button><button onClick={()=>setNewPoll({...newPoll,type:'collection'})} className={`flex-1 py-2 text-[14px] font-semibold rounded-[8px] transition-all ${newPoll.type==='collection'?'bg-white dark:bg-[#1C1C1E] shadow-sm':'text-[#8E8E93]'}`}>Erst sammeln</button></div>
                         <input type="text" placeholder="Frage?" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] box-border text-black dark:text-white" value={newPoll.question} onChange={e=>setNewPoll({...newPoll,question:e.target.value})} />
                         
-                        <div className="flex flex-col gap-3 w-full">
+                        <div className="flex flex-col gap-3 w-full overflow-hidden">
                           {newPoll.type==='collection'&&(
-                            <div className="w-full box-border">
+                            <div className="w-full overflow-hidden">
                               <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Sammeln bis</p>
-                              <div className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] focus-within:ring-2 ring-[#007AFF]/20"><input type="datetime-local" className="w-full bg-transparent outline-none font-medium text-[16px] text-black dark:text-white appearance-none" style={{display:'block',width:'100%',minWidth:'100%'}} value={newPoll.collectionDeadline} onChange={e=>setNewPoll({...newPoll,collectionDeadline:e.target.value})} /></div>
+                              <input type="datetime-local" style={{width:'100%',maxWidth:'100%',boxSizing:'border-box'}} className="block bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.collectionDeadline} onChange={e=>setNewPoll({...newPoll,collectionDeadline:e.target.value})} />
                             </div>
                           )}
-                          <div className="w-full box-border">
+                          <div className="w-full overflow-hidden">
                             <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Abstimmen bis</p>
-                            <div className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] focus-within:ring-2 ring-[#007AFF]/20"><input type="datetime-local" className="w-full bg-transparent outline-none font-medium text-[16px] text-black dark:text-white appearance-none" style={{display:'block',width:'100%',minWidth:'100%'}} value={newPoll.votingDeadline} onChange={e=>setNewPoll({...newPoll,votingDeadline:e.target.value})} /></div>
+                            <input type="datetime-local" style={{width:'100%',maxWidth:'100%',boxSizing:'border-box'}} className="block bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.votingDeadline} onChange={e=>setNewPoll({...newPoll,votingDeadline:e.target.value})} />
                           </div>
                         </div>
 
@@ -1090,7 +1106,7 @@ function App(){
                             {newPoll.options.map((opt,idx)=>(
                               <div key={idx} className="flex items-center gap-2 w-full box-border">
                                 <input type="text" placeholder={`Option ${idx+1}`} className="flex-1 min-w-0 w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] box-border text-black dark:text-white" value={opt} onChange={e=>{const n=[...newPoll.options];n[idx]=e.target.value;setNewPoll({...newPoll,options:n});}} />
-                                {newPoll.options.length>2&&<button onClick={()=>{setNewPoll({...newPoll,options:newPoll.options.filter((_,i)=>i!==idx)});}} className="w-[52px] h-[52px] bg-[#FF3B30]/10 text-[#FF3B30] rounded-[12px] flex items-center justify-center flex-shrink-0"><Icon name="Trash2" size={20}/></button>}
+                                {newPoll.options.length>2&&<button onClick={()=>{setNewPoll({...newPoll,options:newPoll.options.filter((_,i)=>i!==idx)});}} className="w-[52px] h-[52px] bg-[#FF3B30]/10 text-[#FF3B30] rounded-[12px] flex items-center justify-center flex-shrink-0 active:opacity-70 transition-opacity"><Icon name="Trash2" size={20}/></button>}
                               </div>
                             ))}
                             <button onClick={()=>setNewPoll({...newPoll,options:[...newPoll.options,'']})} className="w-full py-3.5 bg-[#34C759]/10 text-[#34C759] rounded-[12px] font-bold text-[16px] flex justify-center items-center gap-2 mt-2"><Icon name="Plus" size={20}/> Weitere Option</button>
@@ -1191,7 +1207,7 @@ function App(){
                     const eWT=safeExpenses.filter(e=>!e.isPaid&&((e.creditor===currentUser?.name&&e.debtor===m.name)||(e.creditor===m.name&&e.debtor===currentUser?.name)));
                     let iO=0;let tO=0;eWT.forEach(e=>{const a=parseFloat(e.amount)||0;if(e.creditor===currentUser?.name)tO+=a;else iO+=a;});const net=tO-iO;
                     return(
-                      <div key={m.name} className="bg-white dark:bg-[#1C1C1E] rounded-[20px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A] flex flex-col h-full">
+                      <div key={m.name} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col h-full">
                         <div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]"><div className="min-w-0 pr-2"><p className="font-bold text-[18px] truncate">{m.name}</p><p className={`text-[14px] font-semibold mt-0.5 truncate ${net>0?'text-[#34C759]':net<0?'text-[#FF3B30]':'text-[#8E8E93]'}`}>{net>0?`Schuldet dir: ${net.toFixed(2)}€`:net<0?`Noch fällig: ${Math.abs(net).toFixed(2)}€`:'Alles beglichen'}</p></div><button onClick={()=>openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Plus" size={20}/></button></div>
                         {eWT.length>0&&(
                           <div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">
@@ -1373,7 +1389,7 @@ function Root(){
     try{
       const fC=cfg.firebaseConfig?cfg.firebaseConfig:cfg;
       if(!firebase.apps.length)app=firebase.initializeApp(fC);else app=firebase.app();
-      db=firebase.firestore();try{db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn(e));}catch(e){}
+      db=firebase.firestore();try{db.enablePersistence({synchronizeTabs:true}).catch(e=>{});}catch(e){}
       auth=firebase.auth();setS("ready");
     }catch(e){setEM("Verbindungsfehler: "+e.message);setS("error");}
   },[cfg]);
