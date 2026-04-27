@@ -551,7 +551,7 @@ function App(){
     if(aT.length===0)return showAlert("Hinweis","Keine aktiven Mitglieder.");
     setIsSending(true);if(navigator.vibrate)navigator.vibrate(10);
     const nI={id:Date.now().toString(),timestamp:new Date().toISOString(),sender:d.title.trim(),realSender:'Haupt-Admin',reason:d.message.trim(),targets:aT,acknowledgedBy:[],isExpense:false,isResend:false,isCustomPush:true,category:'other'};
-    try{await getFamilyDocRef(fam.id).update({history:[nI,...(fam.history||[])].slice(0,50)});setAdminPushData({...adminPushData,[fam.id]:{title:'',message:''}});showAlert("Erfolg","Gesendet!");}catch(e){showAlert("Fehler","Fehlgeschlagen.");}
+    try{await getFamilyDocRef(fam.id).update({history:[nI,...(fam.history||[])].slice(0,50)});setAdminPushData({...adminPushData,[fam.id]:{title:'',message:''}});showAlert("Erfolg","Gesendet!");}catch(e){showAlert("Fehler","Senden fehlgeschlagen.");}
     setIsSending(false);
   };
 
@@ -1085,12 +1085,12 @@ function App(){
                           {newPoll.type==='collection'&&(
                             <div className="w-full box-border">
                               <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Sammeln bis</p>
-                              <input type="datetime-local" style={{width:'100%',maxWidth:'100%',boxSizing:'border-box'}} className="block bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.collectionDeadline} onChange={e=>setNewPoll({...newPoll,collectionDeadline:e.target.value})} />
+                              <div className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] focus-within:ring-2 ring-[#007AFF]/20"><input type="datetime-local" className="w-full bg-transparent outline-none font-medium text-[16px] text-black dark:text-white appearance-none" style={{display:'block',width:'100%',minWidth:'100%'}} value={newPoll.collectionDeadline} onChange={e=>setNewPoll({...newPoll,collectionDeadline:e.target.value})} /></div>
                             </div>
                           )}
                           <div className="w-full box-border">
                             <p className="text-[13px] font-semibold text-[#8E8E93] uppercase mb-1.5 ml-1">Abstimmen bis</p>
-                            <input type="datetime-local" style={{width:'100%',maxWidth:'100%',boxSizing:'border-box'}} className="block bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3 rounded-[12px] outline-none font-medium text-[15px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white" value={newPoll.votingDeadline} onChange={e=>setNewPoll({...newPoll,votingDeadline:e.target.value})} />
+                            <div className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] focus-within:ring-2 ring-[#007AFF]/20"><input type="datetime-local" className="w-full bg-transparent outline-none font-medium text-[16px] text-black dark:text-white appearance-none" style={{display:'block',width:'100%',minWidth:'100%'}} value={newPoll.votingDeadline} onChange={e=>setNewPoll({...newPoll,votingDeadline:e.target.value})} /></div>
                           </div>
                         </div>
 
@@ -1317,22 +1317,6 @@ function App(){
                         {activeMembersList.map(m=>{if(m.name===currentUser.name)return null;const iC=safeHouseholdAdmins.includes(m.name);return(<div key={`ca-${m.name}`} onClick={()=>toggleCoAdmin(m.name)} className={`flex items-center justify-between p-3.5 rounded-[14px] cursor-pointer ${iC?'bg-[#007AFF]/10 border border-[#007AFF]/30':'bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}><span className={`font-semibold text-[15px] ${iC?'text-[#007AFF]':''}`}>{m.name}</span>{iC&&<Icon name="CheckCircle2" size={18} className="text-[#007AFF]" />}</div>)})}
                       </div>
                     </div>
-                    <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A]">
-                      <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Apple Kurzbefehle generieren</p>
-                      <div className="space-y-3">
-                        <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] border border-[#007AFF]/30">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Listen Scanner</span>
-                                <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${currentFamily.id}&cfg=${c}&listName=&user=&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Spezial-Link für den KI Scanner kopiert. Bitte im Kurzbefehl am Ende einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
-                            </div>
-                            <div className="text-[11px] text-[#8E8E93]">Dieser Link nimmt Listen von ChatGPT entgegen.</div>
-                        </div>
-                        {[{id:'general_meal',label:'Essen rufen',icon:'Utensils'},{id:'message',label:'Ins Wohnzimmer rufen',icon:'MessageCircle'}].map(r=>{
-                          let c=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const cb=c?encodeURIComponent(btoa(unescape(encodeURIComponent(c)))):'';const u=`${window.location.origin}${window.location.pathname}?action=shortcut&reason=${r.id}&fid=${currentFamily.id}&cfg=${cb}`;
-                          return(<div key={r.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]"><div className="flex justify-between items-center mb-2"><span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={r.icon} size={16} /> {r.label}</span><button onClick={()=>{try{const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button></div><div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{u}</div></div>);
-                        })}
-                      </div>
-                    </div>
                     <div className="p-4">
                       <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Mitglieder verwalten</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1406,7 +1390,7 @@ function ShortcutTrigger({action,reason,fid,itemsParam,listNameParam,userParam})
               
               let lists=d.shoppingLists||[];
               const tName=listNameParam?decodeURIComponent(listNameParam).trim():'Einkauf (KI)';
-              let targetList=lists.find(l=>l.name.toLowerCase()===tName.toLowerCase());
+              let targetList=lists.find(l=>l.name.trim().toLowerCase()===tName.toLowerCase());
               
               if(!targetList){
                   targetList={id:generateId(),name:tName,sharedWith:[tUser],createdBy:tUser,items:[],isShoppingActive:false,timestamp:new Date().toISOString()};
