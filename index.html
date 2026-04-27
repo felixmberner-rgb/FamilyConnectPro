@@ -199,7 +199,7 @@ function Modal({data,onClose}){
           <div className="space-y-3">
             <input type="text" placeholder="Produktname" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.itemData.name} onChange={e=>data.setItemData({...data.itemData,name:e.target.value})} />
             <div className="flex flex-row gap-3">
-              <div className="relative w-1/3">
+              <div className="relative w-1/3 min-w-[100px]">
                 <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none cursor-pointer box-border" value={data.itemData.amountValue||'1'} onChange={e=>data.setItemData({...data.itemData,amountValue:e.target.value})}>
                   {[1,2,3,4,5,6,7,8,9,10,12,15,20,25,50].map(n=><option key={n} value={n}>{n}</option>)}
                 </select>
@@ -553,7 +553,7 @@ function App(){
     if(aT.length===0)return showAlert("Hinweis","Keine aktiven Mitglieder.");
     setIsSending(true);if(navigator.vibrate)navigator.vibrate(10);
     const nI={id:Date.now().toString(),timestamp:new Date().toISOString(),sender:d.title.trim(),realSender:'Haupt-Admin',reason:d.message.trim(),targets:aT,acknowledgedBy:[],isExpense:false,isResend:false,isCustomPush:true,category:'other'};
-    try{await getFamilyDocRef(fam.id).update({history:[nI,...(fam.history||[])].slice(0,50)});setAdminPushData({...adminPushData,[fam.id]:{title:'',message:''}});showAlert("Erfolg","Gesendet!");}catch(e){showAlert("Fehler","Senden fehlgeschlagen.");}
+    try{await getFamilyDocRef(fam.id).update({history:[nI,...getCleanHistory(fam.history)]});setAdminPushData({...adminPushData,[fam.id]:{title:'',message:''}});showAlert("Erfolg","Gesendet!");}catch(e){showAlert("Fehler","Senden fehlgeschlagen.");}
     setIsSending(false);
   };
 
@@ -736,7 +736,7 @@ function App(){
   const toggleShoppingMode=async()=>{
     if(isShoppingMode){
       if(activeShoppingItems.length===0&&checkedShoppingItems.length>0){
-        showConfirm("Abgeschlossen!","Möchtest du diese Einkaufsliste nun löschen?",async()=>{setIsShoppingMode(false);await performDeleteList(activeList.id);},false);
+        showConfirm("Abgeschlossen!","Du hast alle Artikel besorgt. Möchtest du diese Einkaufsliste nun löschen?",async()=>{setIsShoppingMode(false);await performDeleteList(activeList.id);},false);
       }else{
         setIsShoppingMode(false);try{if(activeList.shoppingActiveBy===currentUser.name)getFamilyDocRef(currentFamily.id).update({shoppingLists:safeShoppingLists.map(l=>l.id===activeList.id?{...l,shoppingActiveBy:null}:l)}).catch(e=>{});}catch(e){}
       }
@@ -852,9 +852,9 @@ function App(){
                           <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] border border-[#007AFF]/30">
                               <div className="flex justify-between items-center mb-2">
                                   <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Listen Scanner</span>
-                                  <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${fam.id}&cfg=${c}&listName=&user=&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Link kopiert. Bitte im Apple Kurzbefehl einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
+                                  <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${fam.id}&cfg=${c}&listName=&user=&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Spezial-Link für den KI Scanner kopiert. Bitte im Kurzbefehl am Ende einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
                               </div>
-                              <div className="text-[11px] text-[#8E8E93]">Nimmt Listen von ChatGPT entgegen.</div>
+                              <div className="text-[11px] text-[#8E8E93]">Dieser Link nimmt Listen von ChatGPT entgegen.</div>
                           </div>
                           {[{id:'general_meal',label:'Essen rufen',icon:'Utensils'},{id:'message',label:'Ins Wohnzimmer rufen',icon:'MessageCircle'}].map(r=>{
                             let c=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const cb=c?encodeURIComponent(btoa(unescape(encodeURIComponent(c)))):'';const u=`${window.location.origin}${window.location.pathname}?action=shortcut&reason=${r.id}&fid=${fam.id}&cfg=${cb}`;
@@ -1009,6 +1009,7 @@ function App(){
                             return(<div key={c} className="space-y-2"><h3 className="font-bold text-[18px] text-[#8E8E93] ml-2">{c}</h3>{items.map(i=>(<label key={i.id} className="flex items-center bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] active:scale-[0.98] transition-transform cursor-pointer border border-transparent"><div className="flex-1 min-w-0 pr-4"><div className="flex items-center gap-1"><span className="font-bold text-[18px] truncate">{i.name}</span>{i.amount&&<span className="text-[13px] font-bold text-[#007AFF] bg-[#007AFF]/10 border border-[#007AFF]/20 px-2.5 py-1 rounded-full shrink-0 ml-2">{i.amount}</span>}</div>{i.notes&&<p className="text-[14px] text-[#8E8E93] mt-1 truncate">{i.notes}</p>}</div><div className="relative"><input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={i.checked} onChange={(e)=>handleToggleShoppingItem(i.id,e.target.checked)} /><div className="w-8 h-8 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center"><Icon name="Check" size={18} className="text-white opacity-0" /></div></div></label>))}</div>);
                           })}
                           {activeShoppingItems.length===0&&<div className="text-center text-[#8E8E93] mt-10"><Icon name="CheckCircle2" size={48} className="mx-auto mb-4 text-[#34C759] opacity-50" /><p className="font-medium text-[18px]">Alles erledigt!</p></div>}
+                          
                           {checkedShoppingItems.length>0&&(
                             <div className="pt-8 opacity-60"><h3 className="font-bold text-[15px] text-[#8E8E93] uppercase tracking-wider ml-2 mb-3">Abgehakt</h3><div className="space-y-2">{checkedShoppingItems.map(i=>(<label key={i.id} className="flex items-center p-2 cursor-pointer"><span className="flex-1 font-medium text-[16px] text-gray-500 line-through truncate">{i.name} {i.amount&&`(${i.amount})`}</span><input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={i.checked} onChange={(e)=>handleToggleShoppingItem(i.id,e.target.checked)} /><div className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center"><Icon name="Check" size={14} className="text-gray-400" /></div></label>))}</div></div>
                           )}
@@ -1307,7 +1308,7 @@ function App(){
               {isAdmin&&(
                 <section className="md:col-span-2">
                   <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Key" size={14}/> Admin-Bereich</h2>
-                  <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A]">
+                  <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A]">
                     <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A] flex items-center justify-between bg-[#F9F9F9] dark:bg-[#2C2C2E]"><p className="font-semibold text-[15px]">Familien ID:</p><p className="font-mono font-semibold text-[#007AFF]">{currentFamily.id}</p></div>
                     <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A]">
                       <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Haushalts-Admins (Zusätzlich)</p>
@@ -1316,26 +1317,10 @@ function App(){
                       </div>
                     </div>
                     <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A]">
-                      <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Apple Kurzbefehle generieren</p>
-                      <div className="space-y-3">
-                        <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] border border-[#007AFF]/30">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Listen Scanner</span>
-                                <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${currentFamily.id}&cfg=${c}&listName=&user=&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Spezial-Link für den KI Scanner kopiert. Bitte im Kurzbefehl am Ende einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
-                            </div>
-                            <div className="text-[11px] text-[#8E8E93]">Dieser Link nimmt Listen von ChatGPT entgegen.</div>
-                        </div>
-                        {[{id:'general_meal',label:'Essen rufen',icon:'Utensils'},{id:'message',label:'Ins Wohnzimmer rufen',icon:'MessageCircle'}].map(r=>{
-                          let c=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const cb=c?encodeURIComponent(btoa(unescape(encodeURIComponent(c)))):'';const u=`${window.location.origin}${window.location.pathname}?action=shortcut&reason=${r.id}&fid=${currentFamily.id}&cfg=${cb}`;
-                          return(<div key={r.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]"><div className="flex justify-between items-center mb-2"><span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={r.icon} size={16} /> {r.label}</span><button onClick={()=>{try{const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button></div><div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{u}</div></div>);
-                        })}
-                      </div>
-                    </div>
-                    <div className="p-4">
                       <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Mitglieder verwalten</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {safeMembers.map(m=>(
-                          <div key={m.name} className={`flex items-center justify-between p-3.5 rounded-[14px] ${m.name===currentUser.name?'bg-[var(--app-bg)] dark:bg-[#2C2C2E]':'bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A]'}`}>
+                          <div key={m.name} className={`flex items-center justify-between p-3.5 rounded-[14px] ${m.name===currentUser.name?'bg-[var(--app-bg)] dark:bg-[#2C2C2E]':'bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-sm'}`}>
                             <span className="font-medium text-[16px]">{m.name} {m.name===currentUser.name&&"(Du)"}</span>
                             {m.name!==currentUser.name&&<button onClick={()=>handleDeleteMember(m.name)} className="w-9 h-9 flex items-center justify-center bg-[#FF3B30]/10 text-[#FF3B30] rounded-full"><Icon name="Trash2" size={16} /></button>}
                           </div>
@@ -1349,15 +1334,15 @@ function App(){
               
               <section className="md:col-span-2">
                 <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Apple Kurzbefehle & Watch</h2>
-                <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A] p-5">
+                <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] p-5">
                     <p className="text-[14px] text-[#3C3C43] mb-5 leading-relaxed">
                         Lade dir hier die fertigen Apple Kurzbefehle herunter, um FamilyConnect auf dem iPhone und der Apple Watch ganz einfach nutzen zu können!
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3">
-                        <button onClick={() => window.open('https://www.icloud.com/shortcuts/60209311a38e4195a6165797010f9a6a', '_blank')} className="w-full sm:flex-1 bg-[#007AFF]/10 text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] flex justify-center items-center gap-2">
+                        <button onClick={() => window.open('https://www.icloud.com/shortcuts/8cb9c9df77ad4767955b0ffdd167c673', '_blank')} className="w-full sm:flex-1 bg-[#007AFF]/10 text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] flex justify-center items-center gap-2 active:opacity-70 transition-opacity">
                             <Icon name="Bell" size={18} /> Ruf-Kurzbefehle
                         </button>
-                        <button onClick={() => window.open('https://www.icloud.com/shortcuts/ad024d5cc4df46bbaa38449895ea4bb0', '_blank')} className="w-full sm:flex-1 bg-[#AF52DE]/10 text-[#AF52DE] py-3.5 rounded-[14px] font-semibold text-[15px] flex justify-center items-center gap-2">
+                        <button onClick={() => window.open('https://www.icloud.com/shortcuts/455d20eddef14cb8bfcc9ff10d1c2ae7', '_blank')} className="w-full sm:flex-1 bg-[#AF52DE]/10 text-[#AF52DE] py-3.5 rounded-[14px] font-semibold text-[15px] flex justify-center items-center gap-2 active:opacity-70 transition-opacity">
                             <Icon name="Sparkles" size={18} /> KI Einkaufs-Scanner
                         </button>
                     </div>
@@ -1389,7 +1374,7 @@ function ShortcutTrigger({action,reason,fid,itemsParam,listNameParam,userParam})
               const rO=REASONS.find(x=>x.id===reason)||{id:'shortcut',category:'other',sentence:'Ruf über Kurzbefehl!'};
               const n=new Date();const iN=n.getHours()>=22||n.getHours()<7;const aT=[];
               aM.forEach(m=>{if(!(m.dndUntil&&new Date(m.dndUntil)>n)){aT.push(m.name);if(!iN&&rO.category!=='push_only'){const u=rO.category==='meal'?m.voiceMonkeyMeal:m.voiceMonkeyOther;if(u&&u.trim()!=='')fetch(u).catch(e=>{});}}});
-              if(aT.length>0){await r.update({history:[{id:Date.now().toString(),timestamp:n.toISOString(),sender:'Extern',reason:rO.sentence,targets:aT,acknowledgedBy:[],isExpense:false,isResend:false,category:rO.category},...(d.history||[])].slice(0,50)});setST('Erfolgreich gesendet! ✅');if(navigator.vibrate)navigator.vibrate([30,50,30]);}else{setST('Alle im Nicht-Stören Modus 🔕');}
+              if(aT.length>0){await r.update({history:[{id:Date.now().toString(),timestamp:n.toISOString(),sender:'Extern',reason:rO.sentence,targets:aT,acknowledgedBy:[],isExpense:false,isResend:false,category:rO.category},...getCleanHistory(d.history)]});setST('Erfolgreich gesendet! ✅');if(navigator.vibrate)navigator.vibrate([30,50,30]);}else{setST('Alle im Nicht-Stören Modus 🔕');}
               setTimeout(()=>window.close(), 2500);
           }else if(action==='add_shopping'){
               if(!itemsParam){setST('Keine Daten erhalten ❌');return;}
