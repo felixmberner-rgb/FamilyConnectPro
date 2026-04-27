@@ -54,6 +54,9 @@ const formatTime=(ts)=>{if(!ts)return'';const d=new Date(ts);return isNaN(d.getT
 const formatDate=(ts)=>{if(!ts)return'';const d=new Date(ts);return isNaN(d.getTime())?'':d.toLocaleDateString('de-DE',{weekday:'short',year:'numeric',month:'2-digit',day:'2-digit'});};
 const getStatusColor=(a)=>{if(!a)return 'text-[#8E8E93] dark:text-[#EBEBF5]/60';if(a.includes('sofort')||a.includes('Übernommen')||a.includes('Gelesen'))return 'text-[#34C759]';if(a.includes('5 Minuten'))return 'text-[#FF9500]';if(a.includes('Fangt')||a.includes('Abgelehnt'))return 'text-[#FF3B30]';return 'text-[#34C759]';};
 
+const isExpired=(ts,mx=5)=>{if(!ts)return true;const t=new Date(ts).getTime();if(isNaN(t))return true;return(Date.now()-t)>mx*60*1000;};
+const getCleanHistory=(hist)=>{return(hist||[]).filter(h=>{if(h.isExpense||h.isHousehold||h.isSystemReminder||h.isCustomPush||h.isSwapRequest||h.isSuccessfulSwap||h.isRejectedSwap)return true;return !isExpired(h.timestamp,5);}).slice(0,50);};
+
 const SHOPPING_CATEGORIES=['Obst & Gemüse','Eier & Backwaren','Kühlregal & Käse','Fleisch & Fisch','Vorrat & Nährmittel','Snacks & Süßes','Haushalt & Drogerie','Getränke','Sonstiges'];
 const getAutoCategory=(i)=>{
   const l=i.toLowerCase();
@@ -196,7 +199,7 @@ function Modal({data,onClose}){
           <div className="space-y-3">
             <input type="text" placeholder="Produktname" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.itemData.name} onChange={e=>data.setItemData({...data.itemData,name:e.target.value})} />
             <div className="flex flex-row gap-3">
-              <div className="relative w-1/3 min-w-[100px]">
+              <div className="relative w-1/3">
                 <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none cursor-pointer box-border" value={data.itemData.amountValue||'1'} onChange={e=>data.setItemData({...data.itemData,amountValue:e.target.value})}>
                   {[1,2,3,4,5,6,7,8,9,10,12,15,20,25,50].map(n=><option key={n} value={n}>{n}</option>)}
                 </select>
@@ -446,7 +449,6 @@ function App(){
 
   const showConfirm=(t,m,oC,d=false)=>setModal({type:'confirm',title:t,message:m,danger:d,onConfirm:()=>{oC();setModal(null);},onCancel:()=>setModal(null)});
   const showAlert=(t,m)=>setModal({type:'alert',title:t,message:m,onConfirm:()=>setModal(null)});
-  const isExpired=(ts,mx=5)=>{if(!ts)return true;const t=new Date(ts).getTime();if(isNaN(t))return true;return(Date.now()-t)>mx*60*1000;};
 
   useEffect(()=>{
     const hFI=(e)=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')setIsKeyboardOpen(true);};
@@ -624,9 +626,9 @@ function App(){
       if(act==='complete'){t[i].status='completed';t[i].completedAt=new Date().toISOString();t[i].completedBy=currentUser.name;}
       else if(act==='absent'){t[i].status='open';t[i].assignedTo=null;}
       else if(act==='takeover'){t[i].status='pending';t[i].assignedTo=currentUser.name;t[i].swapRequestedWith=null;}
-      else if(act==='request_swap'){t[i].swapRequestedWith=data;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:currentUser.name,reason:`Vertretung gesucht für: ${t[i].choreName}`,targets:[data],acknowledgedBy:[],isHousehold:true,isSwapRequest:true,taskId:taskId,choreName:t[i].choreName},...(d.history||[])].slice(0,50)});}
-      else if(act==='accept_swap'){const rq=t[i].assignedTo;t[i].assignedTo=currentUser.name;t[i].swapRequestedWith=null;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:'System',reason:`${currentUser.name} hat deine Vertretungsanfrage übernommen!`,targets:[rq],acknowledgedBy:[],isHousehold:true,isSuccessfulSwap:true},...(d.history||[])].slice(0,50)});}
-      else if(act==='reject_swap'){const rq=t[i].assignedTo;t[i].swapRequestedWith=null;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:'System',reason:`${currentUser.name} hat deine Vertretungsanfrage abgelehnt.`,targets:[rq],acknowledgedBy:[],isHousehold:true,isRejectedSwap:true},...(d.history||[])].slice(0,50)});}
+      else if(act==='request_swap'){t[i].swapRequestedWith=data;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:currentUser.name,reason:`Vertretung gesucht für: ${t[i].choreName}`,targets:[data],acknowledgedBy:[],isHousehold:true,isSwapRequest:true,taskId:taskId,choreName:t[i].choreName},...getCleanHistory(d.history)]});}
+      else if(act==='accept_swap'){const rq=t[i].assignedTo;t[i].assignedTo=currentUser.name;t[i].swapRequestedWith=null;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:'System',reason:`${currentUser.name} hat deine Vertretungsanfrage übernommen!`,targets:[rq],acknowledgedBy:[],isHousehold:true,isSuccessfulSwap:true},...getCleanHistory(d.history)]});}
+      else if(act==='reject_swap'){const rq=t[i].assignedTo;t[i].swapRequestedWith=null;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:'System',reason:`${currentUser.name} hat deine Vertretungsanfrage abgelehnt.`,targets:[rq],acknowledgedBy:[],isHousehold:true,isRejectedSwap:true},...getCleanHistory(d.history)]});}
       else if(act==='admin_reassign'){t[i].assignedTo=data;t[i].status='pending';t[i].swapRequestedWith=null;}
       await r.update({householdTasks:t});if(navigator.vibrate)navigator.vibrate(10);
     }catch(e){showAlert("Fehler","Aktion fehlgeschlagen.");}
@@ -644,12 +646,13 @@ function App(){
       const v=currentFamily?.vapidKey||s.vapidKey;if(!v)return!slnt&&showAlert("Fehler","Kein VAPID-Key!");
       let w=await navigator.serviceWorker.getRegistration();
       if(!w){w=await navigator.serviceWorker.register(`./firebase-messaging-sw.js?apiKey=${f.apiKey||''}&projectId=${f.projectId||''}&senderId=${f.messagingSenderId||''}&appId=${f.appId||''}`);}else{await w.update();}
+      if(slnt&&Notification.permission!=='granted')return;
       if(!slnt)setPushStatus('Wird angefragt...');
-      const p=await Notification.requestPermission();if(p!=='granted'){setPushStatus('Abgelehnt ❌');return;}
-      const t=await messaging.getToken({vapidKey:v.trim(),serviceWorkerRegistration:w});if(!t)return!slnt&&showAlert("Fehler","Kein Token.");
+      const p=slnt?Notification.permission:await Notification.requestPermission();if(p!=='granted'){if(!slnt)setPushStatus('Abgelehnt ❌');return;}
+      const t=await messaging.getToken({vapidKey:v.trim(),serviceWorkerRegistration:w});if(!t){if(!slnt){setPushStatus('Fehler');showAlert("Fehler","Kein Token.");}return;}
       if(currentUser?.fcmToken!==t)await getFamilyDocRef(currentFamily.id).update({members:safeMembers.map(m=>m.name===currentUser?.name?{...m,fcmToken:t}:m)});
       setPushStatus('Aktiviert ✅');if(!slnt)showAlert("Erfolg","Push aktiviert!");
-    }catch(e){setPushStatus('Fehler');}
+    }catch(e){if(!slnt){setPushStatus('Fehler');showAlert("Fehler","Kritischer Fehler beim Token.");}}
   };
 
   const handleSendNotification=async(cRO=null,cT=null,iR=false)=>{
@@ -667,7 +670,7 @@ function App(){
     });
     if(aT.length===0){setIsSending(false);return showAlert("Hinweis","Alle auf DND.");}
     const nH={id:Date.now().toString(),timestamp:n.toISOString(),sender:currentUser.name,reason:rO.sentence,targets:aT,acknowledgedBy:[],isExpense:false,isResend:iR,category:rO.category};
-    try{await getFamilyDocRef(currentFamily.id).update({history:[nH,...safeHistory].slice(0,50)});if(navigator.vibrate)navigator.vibrate([30,50,30]);if(!cRO&&rO.category!=='push_only'&&!iR)setTrackingEventId(nH.id);setSelectedReason(null);setSelectedMembers([]);}catch(e){}
+    try{await getFamilyDocRef(currentFamily.id).update({history:[nH,...getCleanHistory(safeHistory)]});if(navigator.vibrate)navigator.vibrate([30,50,30]);if(!cRO&&rO.category!=='push_only'&&!iR)setTrackingEventId(nH.id);setSelectedReason(null);setSelectedMembers([]);}catch(e){}
     setTimeout(()=>setIsSending(false),800);
   };
 
@@ -678,7 +681,7 @@ function App(){
       let c=false;const u=(s.data().history||[]).map(i=>{
         if(i.id===hId){const a=Array.isArray(i.acknowledgedBy)?i.acknowledgedBy:[];if(!a.some(x=>x===currentUser.name||x.startsWith(currentUser.name+':'))){c=true;return{...i,acknowledgedBy:[...a,rS]};}}return i;
       });
-      if(c)await r.update({history:u});
+      if(c)await r.update({history:getCleanHistory(u)});
     }catch(e){}
   };
 
@@ -733,7 +736,7 @@ function App(){
   const toggleShoppingMode=async()=>{
     if(isShoppingMode){
       if(activeShoppingItems.length===0&&checkedShoppingItems.length>0){
-        showConfirm("Abgeschlossen!","Du hast alle Artikel besorgt. Möchtest du diese Einkaufsliste nun löschen?",async()=>{setIsShoppingMode(false);await performDeleteList(activeList.id);},false);
+        showConfirm("Abgeschlossen!","Möchtest du diese Einkaufsliste nun löschen?",async()=>{setIsShoppingMode(false);await performDeleteList(activeList.id);},false);
       }else{
         setIsShoppingMode(false);try{if(activeList.shoppingActiveBy===currentUser.name)getFamilyDocRef(currentFamily.id).update({shoppingLists:safeShoppingLists.map(l=>l.id===activeList.id?{...l,shoppingActiveBy:null}:l)}).catch(e=>{});}catch(e){}
       }
@@ -788,7 +791,7 @@ function App(){
       const pP=(aN/sC).toFixed(2);
       expenseForm.splitTargets.forEach(t=>{nE.unshift({id:generateId(),creditor:currentUser.name,debtor:t,amount:pP,reason:`${expenseForm.reason} (Anteilig)`,date:expenseForm.date,timestamp:new Date().toISOString(),isPaid:false});hP.push({id:generateId(),timestamp:new Date().toISOString(),sender:currentUser.name,reason:`Neue geteilte Auslage: ${expenseForm.reason} (${pP}€)`,targets:[t],acknowledgedBy:[],isExpense:true});});
     }
-    try{await getFamilyDocRef(currentFamily.id).update({expenses:nE});if(hP.length>0)await getFamilyDocRef(currentFamily.id).update({history:[...hP,...safeHistory].slice(0,50)});setExpenseModal(null);}catch(e){}
+    try{await getFamilyDocRef(currentFamily.id).update({expenses:nE});if(hP.length>0)await getFamilyDocRef(currentFamily.id).update({history:[...hP,...getCleanHistory(safeHistory)]});setExpenseModal(null);}catch(e){}
   };
 
   const handleMarkExpensePaid=async(id)=>await getFamilyDocRef(currentFamily.id).update({expenses:safeExpenses.map(e=>e?.id===id?{...e,isPaid:true}:e)});
@@ -823,7 +826,7 @@ function App(){
                     if(!pD.title?.trim()||!pD.message?.trim())return showAlert("Fehler","Überschrift und Nachricht eingeben.");
                     const aT=lSM.filter(m=>m.status!=='pending').map(m=>m.name);if(aT.length===0)return showAlert("Hinweis","Keine aktiven Mitglieder.");
                     setIsSending(true);const nI={id:Date.now().toString(),timestamp:new Date().toISOString(),sender:pD.title.trim(),realSender:'Haupt-Admin',reason:pD.message.trim(),targets:aT,acknowledgedBy:[],isExpense:false,isResend:false,isCustomPush:true,category:'other'};
-                    try{await getFamilyDocRef(fam.id).update({history:[nI,...(fam.history||[])].slice(0,50)});setAdminPushData({...adminPushData,[fam.id]:{title:'',message:''}});showAlert("Erfolg","Gesendet!");}catch(e){showAlert("Fehler","Senden fehlgeschlagen.");}
+                    try{await getFamilyDocRef(fam.id).update({history:[nI,...getCleanHistory(fam.history)]});setAdminPushData({...adminPushData,[fam.id]:{title:'',message:''}});showAlert("Erfolg","Gesendet!");}catch(e){showAlert("Fehler","Senden fehlgeschlagen.");}
                     setIsSending(false);
                   };
                   return(
@@ -839,37 +842,32 @@ function App(){
                         <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Rundruf senden</h4>
                         <div className="space-y-3">
                           <input type="text" placeholder="Überschrift" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium focus:ring-2 text-black dark:text-white" value={pD.title} onChange={e=>setAdminPushData({...adminPushData,[fam.id]:{...pD,title:e.target.value}})} />
-                          <textarea placeholder="Nachricht" rows="2" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium focus:ring-2 text-black dark:text-white resize-none" value={pD.message} onChange={e=>setAdminPushData({...adminPushData,[fam.id]:{...pD,message:e.target.value}})}></textarea>
+                          <textarea placeholder="Nachricht" rows="2" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium text-black dark:text-white resize-none" value={pD.message} onChange={e=>setAdminPushData({...adminPushData,[fam.id]:{...pD,message:e.target.value}})}></textarea>
                           <button disabled={isSending} onClick={hSAPL} className="w-full bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Als Push senden</button>
                         </div>
                       </div>
                       <div className="p-5 border-b border-[#E5E5EA] dark:border-[#38383A]">
                         <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Kurzbefehl Links generieren</h4>
                         <div className="space-y-3">
-                          {[
-                            { id: 'general_meal', label: 'Essen rufen', icon: 'Utensils' },
-                            { id: 'message', label: 'Ins Wohnzimmer rufen', icon: 'MessageCircle' }
-                          ].map(reason => {
-                            let rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
-                            const cfgBase64 = rawConfig ? encodeURIComponent(btoa(unescape(encodeURIComponent(rawConfig)))) : '';
-                            const url = `${window.location.origin}${window.location.pathname}?action=shortcut&reason=${reason.id}&fid=${fam.id}&cfg=${cfgBase64}`;
-                            return (
-                                <div key={reason.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={reason.icon} size={16} /> {reason.label}</span>
-                                        <button onClick={()=>{try{const el=document.createElement('textarea');el.value=url;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
-                                    </div>
-                                    <div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{url}</div>
-                                </div>
-                            );
-                          })}
                           <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] border border-[#007AFF]/30">
                               <div className="flex justify-between items-center mb-2">
-                                  <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Einkaufs-Scanner</span>
+                                  <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Listen Scanner</span>
                                   <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${fam.id}&cfg=${c}&listName=&user=&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Link kopiert. Bitte im Apple Kurzbefehl einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
                               </div>
                               <div className="text-[11px] text-[#8E8E93]">Nimmt Listen von ChatGPT entgegen.</div>
                           </div>
+                          {[{id:'general_meal',label:'Essen rufen',icon:'Utensils'},{id:'message',label:'Ins Wohnzimmer rufen',icon:'MessageCircle'}].map(r=>{
+                            let c=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const cb=c?encodeURIComponent(btoa(unescape(encodeURIComponent(c)))):'';const u=`${window.location.origin}${window.location.pathname}?action=shortcut&reason=${r.id}&fid=${fam.id}&cfg=${cb}`;
+                            return(
+                                <div key={r.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={r.icon} size={16} /> {r.label}</span>
+                                        <button onClick={()=>{try{const el=document.createElement('textarea');el.value=url;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
+                                    </div>
+                                    <div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{u}</div>
+                                </div>
+                            );
+                          })}
                         </div>
                       </div>
                       <div className="p-5">
@@ -901,7 +899,7 @@ function App(){
   if(!currentFamily||!currentUser){
     if(localFamilyId){
       return(
-        <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 relative z-40"><div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center"><Icon name="ShieldCheck" size={56} className="text-[#FF9500] mx-auto mb-5 animate-pulse" /><h2 className="text-[22px] font-bold mb-3">Verbinde...</h2><button onClick={handleLogout} className="text-[#FF3B30] font-semibold active:opacity-70 mt-2">Abmelden</button></div></div>
+        <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-6 relative z-40"><div className="bg-white dark:bg-[#1C1C1E] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center"><Icon name="ShieldCheck" size={56} className="text-[#FF9500] mx-auto mb-5 animate-pulse" /><h2 className="text-[22px] font-bold mb-3">Verbinde...</h2><p className="text-[15px] text-gray-500 mb-6">Lade aktuelle Daten... <br/><span className="text-[13px] opacity-80">Prüfe ggf. das Internet.</span></p><button onClick={handleLogout} className="text-[#FF3B30] font-semibold active:opacity-70 mt-2">Abmelden</button></div></div>
       );
     }
     return(
@@ -1201,7 +1199,7 @@ function App(){
                     const eWT=safeExpenses.filter(e=>!e.isPaid&&((e.creditor===currentUser?.name&&e.debtor===m.name)||(e.creditor===m.name&&e.debtor===currentUser?.name)));
                     let iO=0;let tO=0;eWT.forEach(e=>{const a=parseFloat(e.amount)||0;if(e.creditor===currentUser?.name)tO+=a;else iO+=a;});const net=tO-iO;
                     return(
-                      <div key={m.name} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] overflow-hidden shadow-sm border border-[#E5E5EA] dark:border-[#38383A] flex flex-col h-full">
+                      <div key={m.name} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col h-full">
                         <div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]"><div className="min-w-0 pr-2"><p className="font-bold text-[18px] truncate">{m.name}</p><p className={`text-[14px] font-semibold mt-0.5 truncate ${net>0?'text-[#34C759]':net<0?'text-[#FF3B30]':'text-[#8E8E93]'}`}>{net>0?`Schuldet dir: ${net.toFixed(2)}€`:net<0?`Noch fällig: ${Math.abs(net).toFixed(2)}€`:'Alles beglichen'}</p></div><button onClick={()=>openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Plus" size={20}/></button></div>
                         {eWT.length>0&&(
                           <div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">
@@ -1315,6 +1313,22 @@ function App(){
                       <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Haushalts-Admins (Zusätzlich)</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {activeMembersList.map(m=>{if(m.name===currentUser.name)return null;const iC=safeHouseholdAdmins.includes(m.name);return(<div key={`ca-${m.name}`} onClick={()=>toggleCoAdmin(m.name)} className={`flex items-center justify-between p-3.5 rounded-[14px] cursor-pointer ${iC?'bg-[#007AFF]/10 border border-[#007AFF]/30':'bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}><span className={`font-semibold text-[15px] ${iC?'text-[#007AFF]':''}`}>{m.name}</span>{iC&&<Icon name="CheckCircle2" size={18} className="text-[#007AFF]" />}</div>)})}
+                      </div>
+                    </div>
+                    <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A]">
+                      <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Apple Kurzbefehle generieren</p>
+                      <div className="space-y-3">
+                        <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] border border-[#007AFF]/30">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Listen Scanner</span>
+                                <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${currentFamily.id}&cfg=${c}&listName=&user=&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Spezial-Link für den KI Scanner kopiert. Bitte im Kurzbefehl am Ende einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
+                            </div>
+                            <div className="text-[11px] text-[#8E8E93]">Dieser Link nimmt Listen von ChatGPT entgegen.</div>
+                        </div>
+                        {[{id:'general_meal',label:'Essen rufen',icon:'Utensils'},{id:'message',label:'Ins Wohnzimmer rufen',icon:'MessageCircle'}].map(r=>{
+                          let c=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const cb=c?encodeURIComponent(btoa(unescape(encodeURIComponent(c)))):'';const u=`${window.location.origin}${window.location.pathname}?action=shortcut&reason=${r.id}&fid=${currentFamily.id}&cfg=${cb}`;
+                          return(<div key={r.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]"><div className="flex justify-between items-center mb-2"><span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={r.icon} size={16} /> {r.label}</span><button onClick={()=>{try{const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button></div><div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{u}</div></div>);
+                        })}
                       </div>
                     </div>
                     <div className="p-4">
