@@ -22,8 +22,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
-:root{--app-bg:#F2F2F7;}
-@media(prefers-color-scheme:dark){:root{--app-bg:#000000;}}
+:root{--app-bg:#F2F2F7;} @media(prefers-color-scheme:dark){:root{--app-bg:#000000;}}
 html{background-color:var(--app-bg);height:100vh;width:100vw;overflow:hidden;}
 body{margin:0;padding:0;background-color:var(--app-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;overflow:hidden;overscroll-behavior-y:none;height:100%;width:100%;}
 .scrollable-area{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(120px + env(safe-area-inset-bottom,20px));}
@@ -43,92 +42,34 @@ input[type="datetime-local"]{max-width:100%;box-sizing:border-box;display:block;
 <body class="text-black dark:text-white antialiased flex justify-center w-full">
 <div id="root" class="w-full h-full relative flex flex-col"></div>
 <script type="text/babel">
-try{
-  const params=new URLSearchParams(window.location.search);
-  const urlCfg=params.get('cfg');
-  if(urlCfg){
-    const decodedCfg=JSON.parse(decodeURIComponent(escape(atob(urlCfg))));
-    localStorage.setItem('familyConnectAppConfig',JSON.stringify(decodedCfg));
-    localStorage.setItem('firebaseConfig',JSON.stringify(decodedCfg));
-  }
-}catch(e){console.warn("URL Config Error:",e);}
-
-const originalConsoleError=console.error;
-console.error=function(...args){originalConsoleError.apply(console,args);};
-window.addEventListener('error',(event)=>{console.warn('Ignore Global Error:',event.error||event.message);});
-window.addEventListener('unhandledrejection',(event)=>{console.warn('Ignore Unhandled rejection:',event.reason);});
-
-const {useState,useEffect,useRef}=React;
-const {createRoot}=ReactDOM;
-
-const CONFIG_STORAGE_KEY="familyConnectAppConfig";
-let app,db,auth,messaging;
+try{const p=new URLSearchParams(window.location.search);const c=p.get('cfg');if(c){const d=JSON.parse(decodeURIComponent(escape(atob(c))));localStorage.setItem('familyConnectAppConfig',JSON.stringify(d));localStorage.setItem('firebaseConfig',JSON.stringify(d));}}catch(e){}
+const origErr=console.error;console.error=function(...a){origErr.apply(console,a);};window.addEventListener('error',(e)=>{});window.addEventListener('unhandledrejection',(e)=>{});
+const {useState,useEffect,useRef}=React;const {createRoot}=ReactDOM;
+const CONFIG_STORAGE_KEY="familyConnectAppConfig";let app,db,auth,messaging;
 const appId=typeof __app_id!=='undefined'?__app_id:'family-connect-pro';
-
 const generateId=()=>Math.floor(100000+Math.random()*900000).toString();
-const getFamilyDocRef=(familyId)=>db.doc(`artifacts/${appId}/public/data/families/${familyId}`);
+const getFamilyDocRef=(fId)=>db.doc(`artifacts/${appId}/public/data/families/${fId}`);
 const getLocalTodayString=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10);};
 const formatTime=(ts)=>{if(!ts)return'';const d=new Date(ts);return isNaN(d.getTime())?'':d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});};
 const formatDate=(ts)=>{if(!ts)return'';const d=new Date(ts);return isNaN(d.getTime())?'':d.toLocaleDateString('de-DE',{weekday:'short',year:'numeric',month:'2-digit',day:'2-digit'});};
-
-const getStatusColor=(ackString)=>{
-  if(!ackString)return 'text-[#8E8E93] dark:text-[#EBEBF5]/60';
-  if(ackString.includes('Komme sofort')||ackString.includes('Übernommen')||ackString.includes('Gelesen'))return 'text-[#34C759]';
-  if(ackString.includes('In 5 Minuten'))return 'text-[#FF9500]';
-  if(ackString.includes('Fangt')||ackString.includes('Abgelehnt'))return 'text-[#FF3B30]';
-  return 'text-[#34C759]';
-};
+const getStatusColor=(a)=>{if(!a)return 'text-[#8E8E93] dark:text-[#EBEBF5]/60';if(a.includes('sofort')||a.includes('Übernommen')||a.includes('Gelesen'))return 'text-[#34C759]';if(a.includes('5 Minuten'))return 'text-[#FF9500]';if(a.includes('Fangt')||a.includes('Abgelehnt'))return 'text-[#FF3B30]';return 'text-[#34C759]';};
 
 const SHOPPING_CATEGORIES=['Obst & Gemüse','Eier & Backwaren','Kühlregal & Käse','Fleisch & Fisch','Vorrat & Nährmittel','Snacks & Süßes','Haushalt & Drogerie','Getränke','Sonstiges'];
-const getAutoCategory=(itemName)=>{
-  const l=itemName.toLowerCase();
-  const c={
-    'Obst & Gemüse':['apfel','äpfel','banan','tomate','gurke','obst','gemüse','salat','zwiebel','kartoffel','knoblauch','beere','traube','paprika','möhre','karotte','pilz','zitrone','orange','birne','birnen','pflaume','melone','kiwi','kürbis','lauch','sellerie','brokkoli','zucchini','apfelsine','mandarine','pfirsich','nektarine','kirsche','avocado','aubergine','spinat','kohl','linsen','bohne','erbse','mais','ananas','mango','spargel','ingwer','kräuter','petersilie','basilikum'],
-    'Eier & Backwaren':['brot','brötchen','eier','kuchen','mehl','zucker','hefe','toast','croissant','brezel','baguette','backpulver','torte','teig','vanillezucker','pfannkuchen','waffel','breze'],
-    'Kühlregal & Käse':['milch','käse','quark','joghurt','butter','sahne','frischkäse','mozzarella','feta','gouda','pudding','margarine','parmesan','creme fraiche','emmentaler','camembert','mascarpone','ricotta','schmand','eiweiß'],
-    'Fleisch & Fisch':['wurst','fleisch','schinken','salami','hack','hähnchen','speck','schnitzel','steak','aufschnitt','pute','rind','schwein','lamm','bratwurst','würstchen','fisch','lachs','thunfisch','garnele','cevapcici','kaviar','sushi','forelle'],
-    'Vorrat & Nährmittel':['nudel','reis','ketchup','senf','soße','sosse','dose','müsli','haferflocken','öl','oel','essig','gewürz','salz','pfeffer','konserve','pesto','tomaten','suppe','brühe','honig','marmelade','nutella','aufstrich','mayo','sirup','mehl','chia','samen','kerne','maggi'],
-    'Snacks & Süßes':['chips','schoko','keks','eis','süß','gummibär','nuss','riegel','popcorn','flips','nachos','praline','bonbon','kaugummi','mandel','cashew','pistazie','haribo','snickers','twix','mars'],
-    'Haushalt & Drogerie':['spül','wasch','seife','klo','papier','tuch','shampoo','deo','zahnpasta','müll','putz','creme','dusch','rasier','bürste','schwamm','reiniger','watte','windel','slipeinlage','tampon','binde','rolle','wc','lotion','pflegetücher','waschmittel','klobürste','zahnseide'],
-    'Getränke':['wasser','bier','wein','cola','saft','limo','kaffee','tee','sprudel','schorle','getränk','energy','sekt','sprit','fanta','sprite']
-  };
-  for(const[cat,keywords]of Object.entries(c)){if(keywords.some(k=>l.includes(k)))return cat;}
-  if(/\bei\b/i.test(l))return 'Eier & Backwaren';
+const getAutoCategory=(i)=>{
+  const l=i.toLowerCase();
+  if(/scheuer|spül|wasch|seife|klo|papier|tuch|shampoo|deo|zahnpasta|müll|putz|creme|dusch|rasier|bürste|schwamm|reiniger|watte|windel|slipeinlage|tampon|binde|rolle|wc|lotion|pflegetücher|waschmittel|klobürste|zahnseide|hygiene/i.test(l))return 'Haushalt & Drogerie';
+  if(/apfel|äpfel|banan|tomate|gurke|obst|gemüse|salat|zwiebel|kartoffel|knoblauch|beere|traube|paprika|möhre|karotte|pilz|zitrone|orange|birne|birnen|pflaume|melone|kiwi|kürbis|lauch|sellerie|brokkoli|zucchini|apfelsine|mandarine|pfirsich|nektarine|kirsche|avocado|aubergine|spinat|kohl|linsen|bohne|erbse|mais|ananas|mango|spargel|ingwer|kräuter|petersilie|basilikum/i.test(l))return 'Obst & Gemüse';
+  if(/brot|brötchen|eier|kuchen|mehl|zucker|hefe|toast|croissant|brezel|baguette|backpulver|torte|teig|vanillezucker|pfannkuchen|waffel|breze|\bei\b/i.test(l))return 'Eier & Backwaren';
+  if(/milch|käse|quark|joghurt|butter|sahne|frischkäse|mozzarella|feta|gouda|pudding|margarine|parmesan|creme fraiche|emmentaler|camembert|mascarpone|ricotta|schmand|eiweiß/i.test(l))return 'Kühlregal & Käse';
+  if(/wurst|fleisch|schinken|salami|hack|hähnchen|speck|schnitzel|steak|aufschnitt|pute|rind|schwein|lamm|bratwurst|würstchen|fisch|lachs|thunfisch|garnele|cevapcici|kaviar|sushi|forelle/i.test(l))return 'Fleisch & Fisch';
+  if(/nudel|reis|ketchup|senf|soße|sosse|dose|müsli|haferflocken|öl|oel|essig|gewürz|salz|pfeffer|konserve|pesto|tomaten|suppe|brühe|honig|marmelade|nutella|aufstrich|mayo|sirup|chia|samen|kerne|maggi/i.test(l))return 'Vorrat & Nährmittel';
+  if(/chips|schoko|keks|eis|süß|gummibär|nuss|riegel|popcorn|flips|nachos|praline|bonbon|kaugummi|mandel|cashew|pistazie|haribo|snickers|twix|mars/i.test(l))return 'Snacks & Süßes';
+  if(/wasser|bier|wein|cola|saft|limo|kaffee|tee|sprudel|schorle|getränk|energy|sekt|sprit|fanta|sprite/i.test(l))return 'Getränke';
   return 'Sonstiges';
 };
 
 const ICONS={
-  Bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
-  BellOff:'<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
-  Settings:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
-  Coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
-  Utensils:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
-  UtensilsCrossed:'<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',
-  Moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
-  MessageCircle:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
-  Film:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
-  Gamepad2:'<line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>',
-  Check:'<polyline points="20 6 9 17 4 12"/>',
-  LogOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
-  ShieldCheck:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
-  Smartphone:'<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
-  Speaker:'<rect width="16" height="20" x="4" y="2" rx="2"/><circle cx="12" cy="14" r="4"/><line x1="12" x2="12.01" y1="6" y2="6"/>',
-  CheckCircle2:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
-  Key:'<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',
-  Trash2:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
-  Euro:'<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
-  Plus:'<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',
-  X:'<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',
-  Pencil:'<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
-  Users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-  Home:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
-  Send:'<line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
-  ChevronRight:'<polyline points="9 18 15 12 9 6"/>',
-  ShoppingCart:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
-  PieChart:'<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
-  Trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
-  Timer:'<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
-  Sparkles:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>'
+  Bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',BellOff:'<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',Settings:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',Coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',Utensils:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',UtensilsCrossed:'<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',Moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',MessageCircle:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',Film:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',Gamepad2:'<line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>',Check:'<polyline points="20 6 9 17 4 12"/>',LogOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',ShieldCheck:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',Smartphone:'<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',Speaker:'<rect width="16" height="20" x="4" y="2" rx="2"/><circle cx="12" cy="14" r="4"/><line x1="12" x2="12.01" y1="6" y2="6"/>',CheckCircle2:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',Key:'<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',Trash2:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',Euro:'<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',Plus:'<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>',X:'<line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>',Pencil:'<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',Users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',Home:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',Send:'<line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',ChevronRight:'<polyline points="9 18 15 12 9 6"/>',ShoppingCart:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',PieChart:'<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',Trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',Timer:'<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',Sparkles:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>'
 };
 
 const REASONS=[
@@ -197,21 +138,24 @@ function Modal({data,onClose}){
       </div>
     );
   }
-  if(data.type==='shopping_list_create'){
+
+  if(data.type==='shopping_list_create' || data.type==='shopping_list_edit_share'){
     const shareType=data.listData.shareType||'Alle';
     return(
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
         <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden animate-action-sheet">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-[20px] text-black dark:text-white">Neue Liste</h3>
+            <h3 className="font-bold text-[20px] text-black dark:text-white">{data.type==='shopping_list_create'?'Neue Liste':'Teilen bearbeiten'}</h3>
             <button onClick={data.onClose} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center"><Icon name="X" size={16}/></button>
           </div>
           <div className="space-y-4">
-            <input type="text" placeholder="Name der Liste (z.B. Rewe)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[17px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.listData.name} onChange={e=>data.setListData({...data.listData,name:e.target.value})} />
+            {data.type==='shopping_list_create' && (
+               <input type="text" placeholder="Name der Liste (z.B. Rewe)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[17px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.listData.name} onChange={e=>data.setListData({...data.listData,name:e.target.value})} />
+            )}
             <div>
               <p className="text-[14px] font-semibold text-[#8E8E93] uppercase tracking-wider mb-2 mt-2">Wer darf die Liste sehen?</p>
               <div className="relative">
-                <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white appearance-none cursor-pointer" value={shareType} onChange={e=>{const val=e.target.value;data.setListData({...data.listData,shareType:val,sharedWith:val==='Alle'?['Alle']:[]});}}>
+                <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white appearance-none cursor-pointer" value={shareType} onChange={e=>{const val=e.target.value;data.setListData({...data.listData,shareType:val,sharedWith:val==='Alle'?['Alle']:val==='Privat'?[data.currentUser.name]:[]});}}>
                   <option value="Alle">Familie (Alle)</option>
                   <option value="Privat">Nur für mich (Privat)</option>
                   <option value="Custom">Einzelne Personen auswählen...</option>
@@ -226,7 +170,7 @@ function Modal({data,onClose}){
                     return(
                       <label key={m.name} className="flex items-center justify-between bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[12px] cursor-pointer border border-transparent active:scale-[0.98] transition-transform">
                         <span className="font-medium text-[16px]">{m.name}</span>
-                        <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e)=>{let n=[...data.listData.sharedWith].filter(x=>x!=='Alle');if(e.target.checked)n.push(m.name);else n=n.filter(x=>x!==m.name);data.setListData({...data.listData,sharedWith:n});}} />
+                        <input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e)=>{let n=[...data.listData.sharedWith].filter(x=>x!=='Alle'&&x!==data.currentUser.name);if(e.target.checked)n.push(m.name);else n=n.filter(x=>x!==m.name);if(n.length===0)n.push(data.currentUser.name);data.setListData({...data.listData,sharedWith:n});}} />
                         <div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center transition-colors"><Icon name="Check" size={14} className="text-white opacity-0" /></div>
                       </label>
                     );
@@ -234,12 +178,13 @@ function Modal({data,onClose}){
                 </div>
               )}
             </div>
-            <button onClick={()=>data.onSave(data.listData)} disabled={!data.listData.name.trim()} className="w-full py-3.5 rounded-[16px] bg-[#007AFF] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50 mt-2">Liste erstellen</button>
+            <button onClick={()=>data.onSave(data.listData)} disabled={data.type==='shopping_list_create'&&!data.listData.name.trim()} className="w-full py-3.5 rounded-[16px] bg-[#007AFF] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50 mt-2">{data.type==='shopping_list_create'?'Liste erstellen':'Speichern'}</button>
           </div>
         </div>
       </div>
     );
   }
+
   if(data.type==='shopping_item_edit'){
     return(
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
@@ -250,15 +195,14 @@ function Modal({data,onClose}){
           </div>
           <div className="space-y-3">
             <input type="text" placeholder="Produktname" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-bold text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.itemData.name} onChange={e=>data.setItemData({...data.itemData,name:e.target.value})} />
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1 min-w-0">
-                <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none cursor-pointer box-border" value={data.itemData.amountValue||''} onChange={e=>data.setItemData({...data.itemData,amountValue:e.target.value})}>
-                  <option value="">Anzahl...</option>
+            <div className="flex flex-row gap-3">
+              <div className="relative w-1/3">
+                <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 text-black dark:text-white appearance-none cursor-pointer box-border" value={data.itemData.amountValue||'1'} onChange={e=>data.setItemData({...data.itemData,amountValue:e.target.value})}>
                   {[1,2,3,4,5,6,7,8,9,10,12,15,20,25,50].map(n=><option key={n} value={n}>{n}</option>)}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#8E8E93]"><Icon name="ChevronRight" size={16} className="transform rotate-90" /></div>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#8E8E93]"><Icon name="ChevronRight" size={14} className="transform rotate-90" /></div>
               </div>
-              <input type="text" placeholder="Einheit (Pkg, Liter...)" className="flex-1 min-w-0 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={data.itemData.amountUnit||''} onChange={e=>data.setItemData({...data.itemData,amountUnit:e.target.value})} />
+              <input type="text" placeholder="Einheit (Pkg...)" className="flex-1 w-2/3 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white placeholder-[#8E8E93]" value={data.itemData.amountUnit||''} onChange={e=>data.setItemData({...data.itemData,amountUnit:e.target.value})} />
             </div>
             <input type="text" placeholder="Notiz" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium text-[16px] focus:ring-2 ring-[#007AFF]/20 box-border text-black dark:text-white" value={data.itemData.notes||''} onChange={e=>data.setItemData({...data.itemData,notes:e.target.value})} />
             <button onClick={()=>data.onSave(data.itemData)} disabled={!data.itemData.name.trim()} className="w-full py-3.5 rounded-[16px] bg-[#007AFF] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm disabled:opacity-50 mt-2">Speichern</button>
@@ -267,20 +211,7 @@ function Modal({data,onClose}){
       </div>
     );
   }
-  if(data.type==='info_only'){
-    return(
-      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
-        <div className="bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-sm shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-white/40 dark:border-[#38383A]/50 overflow-hidden animate-action-sheet">
-          <div className="flex flex-col items-center mb-6 mt-1 text-center">
-            <div className={`w-14 h-14 ${data.icon==='Users'?'bg-[#FF9500]/10 text-[#FF9500]':'bg-[#007AFF]/10 text-[#007AFF]'} rounded-[22px] flex items-center justify-center mb-5 shadow-sm transform rotate-3`}><Icon name={data.icon||'Bell'} size={28} strokeWidth={2.5}/></div>
-            <h3 className="font-bold text-[20px] tracking-tight text-black dark:text-white mb-1.5">{data.title}</h3>
-            <p className="text-[#3C3C43] dark:text-[#EBEBF5]/70 text-[15px] leading-relaxed px-2 font-medium whitespace-pre-wrap">{data.message}</p>
-          </div>
-          <button onClick={data.onClose} className="w-full py-3.5 rounded-[16px] bg-[#007AFF] hover:bg-[#0066CC] text-white font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm">Schließen</button>
-        </div>
-      </div>
-    );
-  }
+
   if(data.type==='swap_request_ack'){
     return(
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
@@ -299,6 +230,7 @@ function Modal({data,onClose}){
       </div>
     );
   }
+
   if(data.type==='custom_ack'){
     return(
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300">
@@ -473,7 +405,7 @@ function App(){
   const [isShoppingMode,setIsShoppingMode]=useState(false);
   const [selectedShoppingListId,setSelectedShoppingListId]=useState(null);
   const getLocalIsoString=(addHours)=>{const d=new Date();d.setHours(d.getHours()+addHours);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);};
-  const [newShoppingItem,setNewShoppingItem]=useState({name:'',amountValue:'',amountUnit:'',notes:''});
+  const [newShoppingItem,setNewShoppingItem]=useState({name:'',amountValue:'1',amountUnit:'',notes:''});
   const [newPoll,setNewPoll]=useState({type:'direct',question:'',options:['',''],collectionDeadline:getLocalIsoString(12),votingDeadline:getLocalIsoString(48),sharedWith:['Alle']});
   const [isCreatingPoll,setIsCreatingPoll]=useState(false);
   const [pollNewOptions,setPollNewOptions]=useState({});
@@ -484,6 +416,7 @@ function App(){
   const safeHistory=Array.isArray(currentFamily?.history)?currentFamily.history.filter(h=>h&&typeof h==='object'&&h.id):[];
   const safeShoppingLists=Array.isArray(currentFamily?.shoppingLists)?currentFamily.shoppingLists:[];
   const safePolls=Array.isArray(currentFamily?.polls)?currentFamily.polls:[];
+  
   const myPolls=safePolls.filter(p=>{if(!p.sharedWith)return true;if(p.sharedWith.includes('Alle'))return true;if(p.createdBy===currentUser?.name)return true;if(p.sharedWith.includes(currentUser?.name))return true;return false;});
 
   const householdConfig=currentFamily?.householdConfig||{};
@@ -510,7 +443,7 @@ function App(){
   useEffect(()=>{
     const initAuth=async()=>{
       try{if(typeof __initial_auth_token!=='undefined'&&__initial_auth_token)await auth.signInWithCustomToken(__initial_auth_token);else await auth.signInAnonymously();}
-      catch(e){console.warn("Auth error (offline?):",e);}
+      catch(e){console.warn("Auth error:",e);}
     };
     initAuth();
     const unsub=auth.onAuthStateChanged(u=>{setFirebaseUser(u);if(!u&&!localFamilyId)setAppLoaded(true);});
@@ -545,7 +478,7 @@ function App(){
               chg=true;
             }
           });
-          if(chg)getFamilyDocRef(currentFamily.id).update({householdTasks:nT.slice(-150)}).catch(e=>console.warn(e));
+          if(chg)getFamilyDocRef(currentFamily.id).update({householdTasks:nT.slice(-150)}).catch(e=>{});
         }
       };chk();
     }
@@ -622,7 +555,7 @@ function App(){
   const handleLogin=async()=>{
     setAuthError('');if(!formInput.familyId||!formInput.name||!formInput.password)return setAuthError('Alle Felder ausfüllen.');
     try{
-      const cI=formInput.familyId.trim();const cN=formInput.name.trim().toLowerCase();const s=await getFamilyDocRef(cI).get();if(!s.exists)return setAuthError('Familie nicht gefunden. Überprüfe die ID.');
+      const cI=formInput.familyId.trim();const cN=formInput.name.trim().toLowerCase();const s=await getFamilyDocRef(cI).get();if(!s.exists)return setAuthError('Familie nicht gefunden.');
       const d=s.data();const m=(Array.isArray(d.members)?d.members:[]).find(m=>m&&typeof m==='object'&&m.name.toLowerCase()===cN&&m.password===formInput.password.trim());
       if(!m||m.status==='pending')return setAuthError('Falsches Passwort.');
       let sC={};try{sC=JSON.parse(localStorage.getItem('firebaseConfig')||'{}');}catch(e){}if(!d.vapidKey&&sC.vapidKey)getFamilyDocRef(cI).update({vapidKey:sC.vapidKey}).catch(e=>{});
@@ -670,16 +603,16 @@ function App(){
     }catch(e){}
   };
 
-  const handleHouseholdAction=async(id,act,dt=null)=>{
+  const handleHouseholdAction=async(taskId,act,data=null)=>{
     try{
-      const r=getFamilyDocRef(currentFamily.id);const s=await r.get();if(!s.exists)return;const d=s.data();const t=d.householdTasks||[];const i=t.findIndex(x=>x.id===id);if(i===-1)return;
+      const r=getFamilyDocRef(currentFamily.id);const s=await r.get();if(!s.exists)return;const d=s.data();const t=d.householdTasks||[];const i=t.findIndex(x=>x.id===taskId);if(i===-1)return;
       if(act==='complete'){t[i].status='completed';t[i].completedAt=new Date().toISOString();t[i].completedBy=currentUser.name;}
       else if(act==='absent'){t[i].status='open';t[i].assignedTo=null;}
       else if(act==='takeover'){t[i].status='pending';t[i].assignedTo=currentUser.name;t[i].swapRequestedWith=null;}
-      else if(act==='request_swap'){t[i].swapRequestedWith=dt;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:currentUser.name,reason:`Vertretung gesucht für: ${t[i].choreName}`,targets:[dt],acknowledgedBy:[],isHousehold:true,isSwapRequest:true,taskId:id,choreName:t[i].choreName},...(d.history||[])].slice(0,50)});}
+      else if(act==='request_swap'){t[i].swapRequestedWith=data;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:currentUser.name,reason:`Vertretung gesucht für: ${t[i].choreName}`,targets:[data],acknowledgedBy:[],isHousehold:true,isSwapRequest:true,taskId:taskId,choreName:t[i].choreName},...(d.history||[])].slice(0,50)});}
       else if(act==='accept_swap'){const rq=t[i].assignedTo;t[i].assignedTo=currentUser.name;t[i].swapRequestedWith=null;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:'System',reason:`${currentUser.name} hat deine Vertretungsanfrage übernommen!`,targets:[rq],acknowledgedBy:[],isHousehold:true,isSuccessfulSwap:true},...(d.history||[])].slice(0,50)});}
       else if(act==='reject_swap'){const rq=t[i].assignedTo;t[i].swapRequestedWith=null;await r.update({history:[{id:Date.now().toString(),timestamp:new Date().toISOString(),sender:'System',reason:`${currentUser.name} hat deine Vertretungsanfrage abgelehnt.`,targets:[rq],acknowledgedBy:[],isHousehold:true,isRejectedSwap:true},...(d.history||[])].slice(0,50)});}
-      else if(act==='admin_reassign'){t[i].assignedTo=dt;t[i].status='pending';t[i].swapRequestedWith=null;}
+      else if(act==='admin_reassign'){t[i].assignedTo=data;t[i].status='pending';t[i].swapRequestedWith=null;}
       await r.update({householdTasks:t});if(navigator.vibrate)navigator.vibrate(10);
     }catch(e){showAlert("Fehler","Aktion fehlgeschlagen.");}
   };
@@ -745,6 +678,16 @@ function App(){
     try{await getFamilyDocRef(currentFamily.id).update({shoppingLists:[...safeShoppingLists,nL]});setSelectedShoppingListId(nL.id);if(navigator.vibrate)navigator.vibrate(10);setModal(null);}catch(e){}
   };
 
+  const handleUpdateListShare=async(lD)=>{
+    try{await getFamilyDocRef(currentFamily.id).update({shoppingLists:safeShoppingLists.map(l=>l.id===lD.id?{...l,sharedWith:lD.sharedWith}:l)});setModal(null);}catch(e){}
+  };
+
+  const openShareSettings=(list)=>{
+    const isAll=list.sharedWith.includes('Alle');
+    const shareType=isAll?'Alle':(list.sharedWith.length===0||(list.sharedWith.length===1&&list.sharedWith[0]===currentUser.name)?'Privat':'Custom');
+    setModal({type:'shopping_list_edit_share',listData:{...list,shareType},setListData:(d)=>setModal(p=>({...p,listData:d})),activeMembersList,currentUser,onSave:(f)=>handleUpdateListShare(f),onClose:()=>setModal(null)});
+  };
+
   const performDeleteList=async(id)=>{if(selectedShoppingListId===id)setSelectedShoppingListId(null);try{await getFamilyDocRef(currentFamily.id).update({shoppingLists:safeShoppingLists.filter(l=>l.id!==id)});}catch(e){}};
   const handleDeleteList=async(id)=>showConfirm("Löschen","Liste wirklich löschen?",async()=>await performDeleteList(id),true);
 
@@ -752,7 +695,7 @@ function App(){
     if(!newShoppingItem.name.trim()||!activeList)return;
     const c=`${newShoppingItem.amountValue} ${newShoppingItem.amountUnit}`.trim();
     const nI={id:generateId(),name:newShoppingItem.name.trim(),amount:c,notes:newShoppingItem.notes.trim(),category:getAutoCategory(newShoppingItem.name),addedBy:currentUser.name,checked:false,timestamp:new Date().toISOString()};
-    try{getFamilyDocRef(currentFamily.id).update({shoppingLists:safeShoppingLists.map(l=>l.id===activeList.id?{...l,items:[...(l.items||[]),nI]}:l)}).catch(e=>{});setNewShoppingItem({name:'',amountValue:'',amountUnit:'',notes:''});if(navigator.vibrate)navigator.vibrate(10);}catch(e){}
+    try{getFamilyDocRef(currentFamily.id).update({shoppingLists:safeShoppingLists.map(l=>l.id===activeList.id?{...l,items:[...(l.items||[]),nI]}:l)}).catch(e=>{});setNewShoppingItem({name:'',amountValue:'1',amountUnit:'',notes:''});if(navigator.vibrate)navigator.vibrate(10);}catch(e){}
   };
 
   const handleToggleShoppingItem=async(id,c)=>{
@@ -775,7 +718,7 @@ function App(){
   const toggleShoppingMode=async()=>{
     if(isShoppingMode){
       if(activeShoppingItems.length===0&&checkedShoppingItems.length>0){
-        showConfirm("Abgeschlossen!","Liste löschen?",async()=>{setIsShoppingMode(false);await performDeleteList(activeList.id);},false);
+        showConfirm("Abgeschlossen!","Du hast alle Artikel besorgt. Möchtest du diese Einkaufsliste nun löschen?",async()=>{setIsShoppingMode(false);await performDeleteList(activeList.id);},false);
       }else{
         setIsShoppingMode(false);try{if(activeList.shoppingActiveBy===currentUser.name)getFamilyDocRef(currentFamily.id).update({shoppingLists:safeShoppingLists.map(l=>l.id===activeList.id?{...l,shoppingActiveBy:null}:l)}).catch(e=>{});}catch(e){}
       }
@@ -880,8 +823,8 @@ function App(){
                       <div className="p-5 border-b border-[#E5E5EA] dark:border-[#38383A]">
                         <h4 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-3">Rundruf senden</h4>
                         <div className="space-y-3">
-                          <input type="text" placeholder="Überschrift" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium text-black dark:text-white" value={pD.title} onChange={e=>setAdminPushData({...adminPushData,[fam.id]:{...pD,title:e.target.value}})} />
-                          <textarea placeholder="Nachricht" rows="2" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium text-black dark:text-white resize-none" value={pD.message} onChange={e=>setAdminPushData({...adminPushData,[fam.id]:{...pD,message:e.target.value}})}></textarea>
+                          <input type="text" placeholder="Überschrift" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium focus:ring-2 text-black dark:text-white" value={pD.title} onChange={e=>setAdminPushData({...adminPushData,[fam.id]:{...pD,title:e.target.value}})} />
+                          <textarea placeholder="Nachricht" rows="2" className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3 rounded-[12px] outline-none font-medium focus:ring-2 text-black dark:text-white resize-none" value={pD.message} onChange={e=>setAdminPushData({...adminPushData,[fam.id]:{...pD,message:e.target.value}})}></textarea>
                           <button disabled={isSending} onClick={hSAPL} className="w-full bg-[#007AFF] text-white px-6 py-3.5 rounded-[12px] font-semibold active:opacity-80 transition-opacity">Als Push senden</button>
                         </div>
                       </div>
@@ -898,36 +841,19 @@ function App(){
                             return (
                                 <div key={reason.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]">
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="font-semibold text-[15px] text-black dark:text-white flex items-center gap-2">
-                                            <Icon name={reason.icon} size={16} /> {reason.label}
-                                        </span>
-                                        <button onClick={() => { 
-                                            try {
-                                                const el = document.createElement('textarea'); el.value = url; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showAlert('Kopiert!', 'Link kopiert.');
-                                            } catch(e) {}
-                                        }} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold active:opacity-70 transition-opacity">Kopieren</button>
+                                        <span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={reason.icon} size={16} /> {reason.label}</span>
+                                        <button onClick={()=>{try{const el=document.createElement('textarea');el.value=url;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
                                     </div>
-                                    <div className="text-[11px] text-[#8E8E93] dark:text-[#EBEBF5]/50 font-mono break-all line-clamp-2 overflow-hidden select-all">{url}</div>
+                                    <div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{url}</div>
                                 </div>
                             );
                           })}
-                          
-                          <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] mt-4 border border-[#007AFF]/20">
+                          <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] border border-[#007AFF]/30">
                               <div className="flex justify-between items-center mb-2">
-                                  <span className="font-semibold text-[15px] text-black dark:text-white flex items-center gap-2">
-                                      <Icon name="Sparkles" size={16} className="text-[#007AFF]" /> KI Einkaufs-Scanner
-                                  </span>
-                                  <button onClick={() => { 
-                                      try {
-                                          let rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
-                                          const cfgBase64 = rawConfig ? encodeURIComponent(btoa(unescape(encodeURIComponent(rawConfig)))) : '';
-                                          const url = `${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${fam.id}&cfg=${cfgBase64}&items=`;
-                                          const el = document.createElement('textarea'); el.value = url; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); 
-                                          showAlert('Kopiert!', 'Link kopiert! Nutze diesen am Ende im Kurzbefehl.');
-                                      } catch(e) {}
-                                  }} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold active:opacity-70 transition-opacity">Kopieren</button>
+                                  <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Listen Scanner</span>
+                                  <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${fam.id}&cfg=${c}&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Link kopiert. Bitte im Apple Kurzbefehl einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
                               </div>
-                              <p className="text-[12px] text-[#8E8E93]">Dieser Basis-Link nimmt Listen von ChatGPT an.</p>
+                              <div className="text-[11px] text-[#8E8E93]">Nimmt Listen von ChatGPT entgegen.</div>
                           </div>
                         </div>
                       </div>
@@ -1045,8 +971,6 @@ function App(){
           {/* SHOPPING TAB */}
           {activeTab==='shopping'&&(
             <div className={`animate-in fade-in duration-500 ${isShoppingMode?'pb-0 h-full flex flex-col':'pb-10 space-y-6'}`}>
-              
-              {/* LIST VIEW */}
               {shoppingSubTab==='list'&&(
                 <>
                   {!isShoppingMode&&(
@@ -1084,15 +1008,21 @@ function App(){
                           <div className="bg-[#34C759]/10 border border-[#34C759]/30 p-4 rounded-[16px] mb-4 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><Icon name="ShoppingCart" size={24} className="text-[#34C759] shrink-0" /><p className="text-[14px] text-[#34C759] font-medium leading-snug">Der Einkauf läuft gerade! Gesperrt.</p></div><button onClick={toggleShoppingMode} className="bg-[#34C759] text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-sm shrink-0">Beitreten</button></div>
                         ):(
                           <section className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-sm border border-[#E5E5EA] dark:border-[#38383A]">
-                            <div className="flex justify-between items-center mb-4"><h2 className="font-bold text-[18px]">Auf die Liste</h2><button onClick={()=>handleDeleteList(activeList.id)} className="text-[13px] text-[#FF3B30] font-bold bg-[#FF3B30]/10 px-3 py-1.5 rounded-full">Liste löschen</button></div>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="font-bold text-[18px]">Auf die Liste</h2>
+                                <div className="flex gap-2">
+                                  {activeList.createdBy===currentUser.name&&<button onClick={()=>openShareSettings(activeList)} className="text-[13px] text-[#007AFF] font-bold bg-[#007AFF]/10 px-3 py-1.5 rounded-full flex items-center gap-1"><Icon name="Users" size={14}/> Teilen</button>}
+                                  <button onClick={()=>handleDeleteList(activeList.id)} className="text-[13px] text-[#FF3B30] font-bold bg-[#FF3B30]/10 px-3 py-1.5 rounded-full">Löschen</button>
+                                </div>
+                            </div>
                             <div className="space-y-3">
                               <input type="text" placeholder="Produkt (z.B. Äpfel)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium box-border" value={newShoppingItem.name} onChange={e=>setNewShoppingItem({...newShoppingItem,name:e.target.value})} />
-                              <div className="flex flex-col sm:flex-row gap-3">
-                                <div className="relative flex-1 min-w-0">
-                                  <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium appearance-none cursor-pointer box-border" value={newShoppingItem.amountValue} onChange={e=>setNewShoppingItem({...newShoppingItem,amountValue:e.target.value})}><option value="">Anzahl...</option>{[1,2,3,4,5,6,7,8,9,10,12,15,20,25,50].map(n=><option key={n} value={n}>{n}</option>)}</select>
-                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#8E8E93]"><Icon name="ChevronRight" size={16} className="transform rotate-90" /></div>
+                              <div className="flex flex-row gap-3">
+                                <div className="relative w-1/3 min-w-[100px]">
+                                  <select className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-3 py-3.5 rounded-[12px] outline-none font-medium appearance-none cursor-pointer box-border" value={newShoppingItem.amountValue} onChange={e=>setNewShoppingItem({...newShoppingItem,amountValue:e.target.value})}>{[1,2,3,4,5,6,7,8,9,10,12,15,20,25,50].map(n=><option key={n} value={n}>{n}</option>)}</select>
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#8E8E93]"><Icon name="ChevronRight" size={14} className="transform rotate-90" /></div>
                                 </div>
-                                <input type="text" placeholder="Einheit (Pkg, Liter...)" className="flex-1 min-w-0 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium box-border" value={newShoppingItem.amountUnit} onChange={e=>setNewShoppingItem({...newShoppingItem,amountUnit:e.target.value})} />
+                                <input type="text" placeholder="Einheit (Pkg...)" className="flex-1 w-2/3 bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium box-border" value={newShoppingItem.amountUnit} onChange={e=>setNewShoppingItem({...newShoppingItem,amountUnit:e.target.value})} />
                               </div>
                               <input type="text" placeholder="Notiz (Optional)" className="w-full bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] outline-none font-medium box-border" value={newShoppingItem.notes} onChange={e=>setNewShoppingItem({...newShoppingItem,notes:e.target.value})} />
                               <button onClick={handleAddShoppingItem} disabled={!newShoppingItem.name.trim()} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[12px] font-bold active:opacity-80 disabled:opacity-50">Hinzufügen</button>
@@ -1105,7 +1035,7 @@ function App(){
                             <div className="p-4 space-y-6">
                               {SHOPPING_CATEGORIES.map(c=>{
                                 const items=groupedShoppingItems[c];if(!items||items.length===0)return null;
-                                return(<div key={c} className="space-y-2"><h3 className="font-bold text-[15px] text-[#8E8E93] uppercase tracking-wider ml-1">{c}</h3><div className="space-y-1">{items.map(i=>(<div key={i.id} className={`flex justify-between items-center py-2 border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0 ${isLockedByOther?'opacity-50':''}`}><div className="flex-1 min-w-0 pr-3"><p className="font-semibold text-[16px] truncate flex items-center">{i.name}{i.amount&&<span className="text-[13px] font-bold text-[#007AFF] bg-[#007AFF]/10 px-2.5 py-1 rounded-full ml-2">{i.amount}</span>}</p>{i.notes&&<p className="text-[13px] text-[#8E8E93] truncate mt-1">{i.notes}</p>}</div><div className="flex gap-1.5 shrink-0"><button disabled={isLockedByOther} onClick={()=>{let val='';let unit=i.amount||'';const m=(i.amount||'').match(/^(\d+)\s*(.*)$/);if(m){val=m[1];unit=m[2];}setModal({type:'shopping_item_edit',itemData:{...i,amountValue:val,amountUnit:unit},setItemData:(d)=>setModal(p=>({...p,itemData:d})),onSave:(f)=>handleSaveEditedShoppingItem(f),onClose:()=>setModal(null)});}} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14}/></button><button disabled={isLockedByOther} onClick={()=>handleDeleteShoppingItem(i.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14}/></button></div></div>))}</div></div>);
+                                return(<div key={c} className="space-y-2"><h3 className="font-bold text-[15px] text-[#8E8E93] uppercase tracking-wider ml-1">{c}</h3><div className="space-y-1">{items.map(i=>(<div key={i.id} className={`flex justify-between items-center py-2 border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0 ${isLockedByOther?'opacity-50':''}`}><div className="flex-1 min-w-0 pr-3"><p className="font-semibold text-[16px] truncate flex items-center">{i.name}{i.amount&&<span className="text-[13px] font-bold text-[#007AFF] bg-[#007AFF]/10 px-2.5 py-1 rounded-full ml-2">{i.amount}</span>}</p>{i.notes&&<p className="text-[13px] text-[#8E8E93] truncate mt-1">{i.notes}</p>}</div><div className="flex gap-1.5 shrink-0"><button disabled={isLockedByOther} onClick={()=>{let val='1';let unit='';const m=(i.amount||'').match(/^(\d+)\s*(.*)$/);if(m){val=m[1];unit=m[2];}setModal({type:'shopping_item_edit',itemData:{...i,amountValue:val,amountUnit:unit},setItemData:(d)=>setModal(p=>({...p,itemData:d})),onSave:(f)=>handleSaveEditedShoppingItem(f),onClose:()=>setModal(null)});}} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14}/></button><button disabled={isLockedByOther} onClick={()=>handleDeleteShoppingItem(i.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14}/></button></div></div>))}</div></div>);
                               })}
                             </div>
                           </section>
@@ -1373,30 +1303,17 @@ function App(){
                     <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A]">
                       <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Apple Kurzbefehle generieren</p>
                       <div className="space-y-3">
-                        {[
-                          { id: 'general_meal', label: 'Essen rufen', icon: 'Utensils' },
-                          { id: 'message', label: 'Ins Wohnzimmer rufen', icon: 'MessageCircle' }
-                        ].map(reason => {
-                          let rawConfig = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig');
-                          const cfgBase64 = rawConfig ? encodeURIComponent(btoa(unescape(encodeURIComponent(rawConfig)))) : '';
-                          const url = `${window.location.origin}${window.location.pathname}?action=shortcut&reason=${reason.id}&fid=${currentFamily.id}&cfg=${cfgBase64}`;
-                          return (
-                              <div key={reason.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]">
-                                  <div className="flex justify-between items-center mb-2">
-                                      <span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={reason.icon} size={16} /> {reason.label}</span>
-                                      <button onClick={()=>{try{const el=document.createElement('textarea');el.value=url;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
-                                  </div>
-                                  <div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{url}</div>
-                              </div>
-                          );
-                        })}
                         <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] border border-[#007AFF]/30">
                             <div className="flex justify-between items-center mb-2">
                                 <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Listen Scanner</span>
-                                <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${currentFamily.id}&cfg=${c}&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Basis-Link für ChatGPT-Scanner kopiert. Bitte im Apple Kurzbefehl einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
+                                <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${currentFamily.id}&cfg=${c}&listName=&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Spezial-Link kopiert. Bitte im Apple Kurzbefehl einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
                             </div>
-                            <div className="text-[11px] text-[#8E8E93]">Dieser Link nimmt Listen von ChatGPT entgegen.</div>
+                            <div className="text-[11px] text-[#8E8E93]">Diesen Link nutzen, um von ChatGPT übersetzte Einkaufslisten via Apple Shortcuts zu importieren.</div>
                         </div>
+                        {[{id:'general_meal',label:'Essen rufen',icon:'Utensils'},{id:'message',label:'Ins Wohnzimmer rufen',icon:'MessageCircle'}].map(r=>{
+                          let c=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const cb=c?encodeURIComponent(btoa(unescape(encodeURIComponent(c)))):'';const u=`${window.location.origin}${window.location.pathname}?action=shortcut&reason=${r.id}&fid=${currentFamily.id}&cfg=${cb}`;
+                          return(<div key={r.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]"><div className="flex justify-between items-center mb-2"><span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={r.icon} size={16} /> {r.label}</span><button onClick={()=>{try{const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button></div><div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{u}</div></div>);
+                        })}
                       </div>
                     </div>
                     <div className="p-4">
@@ -1415,6 +1332,23 @@ function App(){
                 </section>
               )}
               
+              <section className="md:col-span-2">
+                <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Smartphone" size={14}/> Apple Kurzbefehle & Watch</h2>
+                <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A] p-5">
+                    <p className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5]/70 mb-5 leading-relaxed">
+                        Lade dir hier die fertigen Apple Kurzbefehle herunter, um FamilyConnect auf dem iPhone und der Apple Watch ganz einfach nutzen zu können!
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <button onClick={() => window.open('https://www.icloud.com/shortcuts/60209311a38e4195a6165797010f9a6a', '_blank')} className="w-full sm:flex-1 bg-[#007AFF]/10 text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px] flex justify-center items-center gap-2 active:opacity-70 transition-opacity">
+                            <Icon name="Bell" size={18} /> Ruf-Kurzbefehle
+                        </button>
+                        <button onClick={() => window.open('https://www.icloud.com/shortcuts/ad024d5cc4df46bbaa38449895ea4bb0', '_blank')} className="w-full sm:flex-1 bg-[#AF52DE]/10 text-[#AF52DE] py-3.5 rounded-[14px] font-semibold text-[15px] flex justify-center items-center gap-2 active:opacity-70 transition-opacity">
+                            <Icon name="Sparkles" size={18} /> KI Einkaufs-Scanner
+                        </button>
+                    </div>
+                </div>
+              </section>
+
               <div className="md:col-span-2 pt-2"><button onClick={handleLogout} className="w-full md:max-w-xs mx-auto py-3.5 bg-white dark:bg-[#1C1C1E] text-[#FF3B30] font-semibold rounded-[14px] shadow-sm flex items-center justify-center space-x-2 border border-[#E5E5EA] dark:border-[#38383A]"><Icon name="LogOut" size={20} /><span className="text-[17px]">App & Gerät abmelden</span></button></div>
             </div>
           )}
@@ -1425,7 +1359,7 @@ function App(){
   );
 }
 
-function ShortcutTrigger({action,reason,fid,itemsParam}){
+function ShortcutTrigger({action,reason,fid,itemsParam,listNameParam}){
   const [sT,setST]=useState('Verarbeite...');
   useEffect(()=>{
     const eS=async()=>{
@@ -1446,22 +1380,31 @@ function ShortcutTrigger({action,reason,fid,itemsParam}){
               const rawLines=decodeURIComponent(itemsParam).split('\n');const newItems=[];
               rawLines.forEach(line=>{const t=line.replace(/^[-*•\d\.]+\s*/,'').trim();if(t){newItems.push({id:generateId(),name:t,amount:'',notes:'',category:getAutoCategory(t),addedBy:'KI Scanner',checked:false,timestamp:new Date().toISOString()});}});
               if(newItems.length===0){setST('Keine Artikel ❌');return;}
-              let lists=d.shoppingLists||[];if(lists.length===0){lists.push({id:generateId(),name:'Einkauf (KI)',sharedWith:['Alle'],createdBy:'System',items:[],isShoppingActive:false,timestamp:new Date().toISOString()});}
-              lists[0].items=[...(lists[0].items||[]),...newItems];await r.update({shoppingLists:lists});
+              
+              let lists=d.shoppingLists||[];
+              const tName = listNameParam ? decodeURIComponent(listNameParam).trim() : 'Einkauf (KI)';
+              let targetList = lists.find(l => l.name.toLowerCase() === tName.toLowerCase());
+              
+              if(!targetList){
+                  targetList = {id:generateId(),name:tName,sharedWith:listNameParam?['Privat']:['Alle'],createdBy:'System',items:[],isShoppingActive:false,timestamp:new Date().toISOString()};
+                  lists.push(targetList);
+              }
+              targetList.items=[...(targetList.items||[]),...newItems];
+              await r.update({shoppingLists:lists});
               setST(`${newItems.length} Artikel importiert! 🛒✅`);if(navigator.vibrate)navigator.vibrate([30,50,30]);
               setTimeout(()=>window.close(), 2500); 
           }
         }else{setST('Familie nicht gefunden ❌');}
       }catch(e){setST('Verbindungsfehler ❌');}
     };eS();
-  },[action,reason,fid,itemsParam]);
+  },[action,reason,fid,itemsParam,listNameParam]);
   return(<div className="h-full w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center p-8 text-center relative z-50"><div className="bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center"><div className="w-20 h-20 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex items-center justify-center mx-auto mb-5"><Icon name={action==='add_shopping'?'Sparkles':'Bell'} size={36} /></div><h2 className="text-[22px] font-bold mb-3">{sT}</h2><p className="text-[15px] text-gray-500 dark:text-[#EBEBF5]/60 mb-6">Fenster schließt automatisch.</p></div></div>);
 }
 
 function Root(){
   const p=new URLSearchParams(window.location.search);
   const act=p.get('action');const iS=act==='shortcut'||act==='add_shopping';
-  const sR=p.get('reason');const sF=p.get('fid');const itm=p.get('items');
+  const sR=p.get('reason');const sF=p.get('fid');const itm=p.get('items');const lN=p.get('listName');
   const [cfg,setCfg]=useState(()=>{
     try{
       const uC=p.get('cfg');if(uC){const d=JSON.parse(decodeURIComponent(escape(atob(uC))));localStorage.setItem(CONFIG_STORAGE_KEY,JSON.stringify(d));return d;}
@@ -1481,9 +1424,9 @@ function Root(){
   },[cfg]);
 
   if(s==="config-needed")return <ConfigLoader onConfigLoaded={setCfg} />;
-  if(s==="error")return(<div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50"><Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" /><h2 className="text-xl font-bold mb-2">Systemfehler</h2><p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px]">{eM}</p><button onClick={()=>{localStorage.removeItem(CONFIG_STORAGE_KEY);localStorage.removeItem('firebaseConfig');setCfg(null);setS("config-needed");}} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px]">Neue Config laden</button></div>);
+  if(s==="error")return(<div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50"><Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" /><h2 className="text-xl font-bold mb-2">Systemfehler</h2><p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{eM}</p><button onClick={()=>{localStorage.removeItem(CONFIG_STORAGE_KEY);localStorage.removeItem('firebaseConfig');setCfg(null);setS("config-needed");}} className="bg-[#007AFF] text-white px-6 py-3.5 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity">Neue Config laden</button></div>);
   if(s==="booting")return <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50"><Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" /></div>;
-  if(iS&&sF)return <ShortcutTrigger action={act} reason={sR} fid={sF} itemsParam={itm} />;
+  if(iS&&sF)return <ShortcutTrigger action={act} reason={sR} fid={sF} itemsParam={itm} listNameParam={lN} />;
   return <App />;
 }
 
