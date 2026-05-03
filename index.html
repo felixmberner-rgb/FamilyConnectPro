@@ -23,7 +23,6 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
 <script>
-    // --- TURBO-MODUS FÜR APPLE WATCH UND SHORTCUTS ---
     const urlParams = new URLSearchParams(window.location.search);
     const fastAction = urlParams.get('action');
     if (fastAction === 'shortcut' || fastAction === 'add_shopping') {
@@ -155,6 +154,7 @@
         });
     }
 </script>
+
 <style>
 :root{--app-bg:#F2F2F7;} @media(prefers-color-scheme:dark){:root{--app-bg:#000000;}}
 html{background-color:var(--app-bg);height:100vh;width:100vw;overflow:hidden;}
@@ -177,7 +177,8 @@ input[type="datetime-local"]{max-width:100%;box-sizing:border-box;display:block;
 <div id="root" class="w-full h-full relative flex flex-col"></div>
 <script type="text/babel">
 try{const p=new URLSearchParams(window.location.search);const c=p.get('cfg');if(c){const d=JSON.parse(decodeURIComponent(escape(atob(c))));localStorage.setItem('familyConnectAppConfig',JSON.stringify(d));localStorage.setItem('firebaseConfig',JSON.stringify(d));}}catch(e){}
-const origErr=console.error;console.error=function(...a){origErr.apply(console,a);};window.addEventListener('error',(e)=>{});window.addEventListener('unhandledrejection',(e)=>{if(e.reason&&e.reason.toString().includes('Database deleted')){e.preventDefault();}});
+const origErr=console.error;console.error=function(...a){origErr.apply(console,a);};window.addEventListener('error',(e)=>{});
+window.addEventListener('unhandledrejection',(e)=>{if(e.reason&&e.reason.toString().includes('Database deleted')){e.preventDefault();}});
 const {useState,useEffect,useRef}=React;const {createRoot}=ReactDOM;
 const CONFIG_STORAGE_KEY="familyConnectAppConfig";let app,db,auth,messaging;
 const appId=typeof __app_id!=='undefined'?__app_id:'family-connect-pro';
@@ -541,7 +542,8 @@ function App(){
   const [newMemberNames,setNewMemberNames]=useState({});
   const [formInput,setFormInput]=useState({familyId:'',familyName:'',name:'',password:''});
   const [authError,setAuthError]=useState('');
-  const [expenseModal,setExpenseModal]=useState(null); 
+  const [expenseModal,setExpenseModal]=useState(null);
+  const [expenseHistoryModal,setExpenseHistoryModal]=useState(null);
   const [expenseForm,setExpenseForm]=useState({amount:'',reason:'',date:getLocalTodayString(),splitCount:1,splitTargets:[]});
   const [householdAdminMode,setHouseholdAdminMode]=useState(false);
   const [householdHistoryModal,setHouseholdHistoryModal]=useState(null);
@@ -927,14 +929,14 @@ function App(){
     try{await getFamilyDocRef(currentFamily.id).update({expenses:nE});if(hP.length>0)await getFamilyDocRef(currentFamily.id).update({history:[...hP,...getCleanHistory(safeHistory)]});setExpenseModal(null);}catch(e){}
   };
 
-  const handleMarkExpensePaid=async(id)=>await getFamilyDocRef(currentFamily.id).update({expenses:safeExpenses.map(e=>e?.id===id?{...e,isPaid:true}:e)});
+  const handleMarkExpensePaid=async(id)=>await getFamilyDocRef(currentFamily.id).update({expenses:safeExpenses.map(e=>e?.id===id?{...e,isPaid:true,paidAt:new Date().toISOString()}:e)});
+  const handleSettleAll=async(tN)=>showConfirm("Alles begleichen",`Möchtest du alle offenen Auslagen mit ${tN} als beglichen markieren?`,async()=>{await getFamilyDocRef(currentFamily.id).update({expenses:safeExpenses.map(e=>!e.isPaid&&((e.creditor===currentUser?.name&&e.debtor===tN)||(e.creditor===tN&&e.debtor===currentUser?.name))?{...e,isPaid:true,paidAt:new Date().toISOString()}:e)});},false);
   const handleDeleteExpense=async(id)=>await getFamilyDocRef(currentFamily.id).update({expenses:safeExpenses.filter(e=>e?.id!==id)});
   const setDND=async(h)=>{let t=null;if(h>0){const d=new Date();d.setMinutes(d.getMinutes()+Math.round(h*60));t=d.toISOString();}await getFamilyDocRef(currentFamily.id).update({members:safeMembers.map(m=>m?.name===currentUser.name?{...m,dndUntil:t}:m)});};
   const handleDeleteMember=(n)=>{if(n===currentUser.name)return;showConfirm("Löschen",`${n} entfernen?`,async()=>await getFamilyDocRef(currentFamily.id).update({members:safeMembers.filter(m=>m?.name!==n)}),true);};
   const handleDeleteFamily=()=>showConfirm("Auflösen","Komplette Familie löschen?",async()=>await getFamilyDocRef(currentFamily.id).delete(),true);
   const saveSettings=async(k,v)=>await getFamilyDocRef(currentFamily.id).update({members:safeMembers.map(m=>m?.name===currentUser.name?{...m,[k]:v?String(v).trim():''}:m)});
 
-  // --- RENDER LOGIK ---
   if(!appLoaded)return <div className="h-full w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50"><Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" /></div>;
 
   if(isAdminMode){
@@ -995,7 +997,7 @@ function App(){
                                 <div key={r.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]">
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={r.icon} size={16} /> {r.label}</span>
-                                        <button onClick={()=>{try{const el=document.createElement('textarea');el.value=url;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
+                                        <button onClick={()=>{try{const el=document.createElement('textarea');el.value=u;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
                                     </div>
                                     <div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{u}</div>
                                 </div>
@@ -1061,7 +1063,11 @@ function App(){
       <Modal data={modal} onClose={()=>setModal(null)} />
       {trackingEvent&&<TrackingOverlay event={trackingEvent} currentFamily={currentFamily} currentUser={currentUser} safeMembers={safeMembers} onClose={()=>setTrackingEventId(null)} onResend={(n,r)=>{const o=REASONS.find(x=>x.sentence===r);if(o)handleSendNotification(o,[n],true);}} />}
       
-      {householdHistoryModal&&<div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"><div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-md shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden flex flex-col max-h-[85vh]"><div className="flex justify-between items-center mb-6"><h3 className="font-bold text-[20px] text-black dark:text-white truncate pr-2">Historie</h3><button onClick={()=>setHouseholdHistoryModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center flex-shrink-0"><Icon name="X" size={18}/></button></div><div className="flex-1 overflow-y-auto space-y-3 pr-1">{householdTasks.filter(t=>t.choreId===householdHistoryModal).sort((a,b)=>new Date(b.date||0).getTime()-new Date(a.date||0).getTime()).map(task=>{const isPast=new Date(task.date)<new Date(upcomingSatDate);const isMe=task.assignedTo===currentUser.name;return(<div key={task.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-4 rounded-[16px]"><div className="flex justify-between items-start mb-2"><span className="font-bold text-[15px] text-black dark:text-white">{formatDate(task.date)}</span><span className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded-full ${task.status==='completed'?'bg-[#34C759]/20 text-[#34C759]':task.status==='open'?'bg-[#FF9500]/20 text-[#FF9500]':'bg-[#007AFF]/20 text-[#007AFF]'}`}>{task.status==='completed'?'Erledigt':task.status==='open'?'Offen':'Eingeteilt'}</span></div><div className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5]/80">Eingeteilt: <span className="font-semibold">{task.assignedTo||'Niemand'}</span></div>{task.status==='completed'&&task.completedAt&&(<div className="text-[12px] text-[#8E8E93] mt-1">Erledigt {safeFormatDateTime(task.completedAt)} durch {task.completedBy}</div>)}{isPast&&task.status!=='completed'&&isMe&&(<button onClick={()=>{handleHouseholdAction(task.id,'complete');setHouseholdHistoryModal(null);}} className="mt-3 w-full py-2.5 bg-[#34C759]/10 text-[#34C759] font-bold text-[14px] rounded-[12px]">Nachträglich bestätigen</button>)}</div>)})}</div></div></div>}
+      {householdHistoryModal&&<div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"><div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-md shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden flex flex-col max-h-[85vh]"><div className="flex justify-between items-center mb-6"><h3 className="font-bold text-[20px] text-black dark:text-white truncate pr-2">Historie</h3><button onClick={()=>setHouseholdHistoryModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center flex-shrink-0"><Icon name="X" size={18}/></button></div><div className="flex-1 overflow-y-auto space-y-3 pr-1">{householdTasks.filter(t=>t.choreId===householdHistoryModal).sort((a,b)=>new Date(b.date||0).getTime()-new Date(a.date||0).getTime()).map(task=>{const isPast=new Date(task.date)<new Date(upcomingSatDate);const isMe=task.assignedTo===currentUser.name;const isExpiredTask=isPast&&(Date.now()-new Date(task.date).getTime()>7*24*60*60*1000);return(<div key={task.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-4 rounded-[16px]"><div className="flex justify-between items-start mb-2"><span className="font-bold text-[15px] text-black dark:text-white">{formatDate(task.date)}</span><span className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded-full ${task.status==='completed'?'bg-[#34C759]/20 text-[#34C759]':task.status==='open'?'bg-[#FF9500]/20 text-[#FF9500]':isExpiredTask?'bg-[#FF3B30]/20 text-[#FF3B30]':'bg-[#007AFF]/20 text-[#007AFF]'}`}>{task.status==='completed'?'Erledigt':task.status==='open'?'Offen':isExpiredTask?'Nicht erledigt':'Eingeteilt'}</span></div><div className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5]/80">Eingeteilt: <span className="font-semibold">{task.assignedTo||'Niemand'}</span></div>{task.status==='completed'&&task.completedAt&&(<div className="text-[12px] text-[#8E8E93] mt-1">Erledigt {safeFormatDateTime(task.completedAt)} durch {task.completedBy}</div>)}{isPast&&!isExpiredTask&&task.status!=='completed'&&isMe&&(<button onClick={()=>{handleHouseholdAction(task.id,'complete');setHouseholdHistoryModal(null);}} className="mt-3 w-full py-2.5 bg-[#34C759]/10 text-[#34C759] font-bold text-[14px] rounded-[12px]">Nachträglich bestätigen</button>)}</div>)})}</div></div></div>}
+      
+      {expenseHistoryModal&&<div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"><div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-3xl rounded-[32px] p-6 w-full max-w-md shadow-[0_20px_40px_rgba(0,0,0,0.25)] border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden flex flex-col max-h-[85vh]"><div className="flex justify-between items-center mb-6"><h3 className="font-bold text-[20px] text-black dark:text-white truncate pr-2">Verlauf: {expenseHistoryModal}</h3><button onClick={()=>setExpenseHistoryModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center flex-shrink-0"><Icon name="X" size={18}/></button></div><div className="flex-1 overflow-y-auto space-y-3 pr-1">{safeExpenses.filter(e=>e.isPaid&&((e.creditor===currentUser?.name&&e.debtor===expenseHistoryModal)||(e.creditor===expenseHistoryModal&&e.debtor===currentUser?.name))).sort((a,b)=>new Date(b.paidAt||b.timestamp).getTime()-new Date(a.paidAt||a.timestamp).getTime()).map(e=>{const iMC=e.creditor===currentUser?.name;return(<div key={e.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-4 rounded-[16px]"><div className="flex justify-between items-start mb-2"><span className="font-bold text-[15px] text-black dark:text-white">{formatDate(e.paidAt||e.timestamp)}</span><span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#34C759]/20 text-[#34C759]">Beglichen</span></div><div className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5]/80">{e.reason} ({parseFloat(e.amount).toFixed(2)}€)</div><div className="text-[12px] text-[#8E8E93] mt-1">{iMC?`${expenseHistoryModal} hat an dich gezahlt`:`Du hast an ${expenseHistoryModal} gezahlt`}</div></div>)})}
+      {safeExpenses.filter(e=>e.isPaid&&((e.creditor===currentUser?.name&&e.debtor===expenseHistoryModal)||(e.creditor===expenseHistoryModal&&e.debtor===currentUser?.name))).length===0&&<div className="text-center text-[#8E8E93] mt-4">Kein Verlauf vorhanden.</div>}</div></div></div>}
+
       {householdSwapModal&&<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xl transition-opacity"><div className="bg-white dark:bg-[#1C1C1E] backdrop-blur-2xl rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-scale-in border border-[#E5E5EA] dark:border-[#38383A]"><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[18px] text-black dark:text-white">Vertretung anfragen</h3><button onClick={()=>setHouseholdSwapModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex justify-center items-center"><Icon name="X" size={16}/></button></div><p className="text-[14px] text-[#8E8E93] mb-4">Wen möchtest du bitten?</p><div className="space-y-2 mb-4 max-h-[40vh] overflow-y-auto">{activeMembersList.filter(m=>m.name!==currentUser.name).map(m=>(<button key={m.name} onClick={()=>{handleHouseholdAction(householdSwapModal,'request_swap',m.name);setHouseholdSwapModal(null);showAlert("Erfolgreich",`Anfrage an ${m.name} gesendet!`);}} className="w-full p-3 text-left bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-black dark:text-white rounded-[12px] font-semibold active:opacity-70">{m.name}</button>))}</div></div></div>}
 
       <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
@@ -1334,7 +1340,16 @@ function App(){
                     let iO=0;let tO=0;eWT.forEach(e=>{const a=parseFloat(e.amount)||0;if(e.creditor===currentUser?.name)tO+=a;else iO+=a;});const net=tO-iO;
                     return(
                       <div key={m.name} className="bg-white dark:bg-[#1C1C1E] rounded-[24px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-[#E5E5EA] dark:border-[#38383A] flex flex-col h-full">
-                        <div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]"><div className="min-w-0 pr-2"><p className="font-bold text-[18px] truncate">{m.name}</p><p className={`text-[14px] font-semibold mt-0.5 truncate ${net>0?'text-[#34C759]':net<0?'text-[#FF3B30]':'text-[#8E8E93]'}`}>{net>0?`Schuldet dir: ${net.toFixed(2)}€`:net<0?`Noch fällig: ${Math.abs(net).toFixed(2)}€`:'Alles beglichen'}</p></div><button onClick={()=>openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Plus" size={20}/></button></div>
+                        <div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]">
+                          <div className="min-w-0 pr-2 cursor-pointer active:opacity-70" onClick={()=>setExpenseHistoryModal(m.name)}>
+                            <p className="font-bold text-[18px] truncate">{m.name}</p>
+                            <p className={`text-[14px] font-semibold mt-0.5 truncate ${net>0?'text-[#34C759]':net<0?'text-[#FF3B30]':'text-[#8E8E93]'}`}>{net>0?`Schuldet dir: ${net.toFixed(2)}€`:net<0?`Noch fällig: ${Math.abs(net).toFixed(2)}€`:'Alles beglichen'}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            {net>0&&<button onClick={()=>handleSettleAll(m.name)} className="w-9 h-9 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0" title="Alles begleichen"><Icon name="CheckCircle2" size={20}/></button>}
+                            <button onClick={()=>openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Plus" size={20}/></button>
+                          </div>
+                        </div>
                         {eWT.length>0&&(
                           <div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">
                             {eWT.map(e=>{
@@ -1440,29 +1455,13 @@ function App(){
 
               {isAdmin&&(
                 <section className="md:col-span-2">
-                  <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Key" size={14}/> Admin-Bereich</h2>
+                  <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-widest mb-2 ml-2 flex items-center gap-2"><Icon name="Key" size={14}/> Familien Admin-Bereich</h2>
                   <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] shadow-sm border border-[#E5E5EA] dark:border-[#38383A] overflow-hidden">
                     <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A] flex items-center justify-between bg-[#F9F9F9] dark:bg-[#2C2C2E]"><p className="font-semibold text-[15px]">Familien ID:</p><p className="font-mono font-semibold text-[#007AFF]">{currentFamily.id}</p></div>
                     <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A]">
                       <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Haushalts-Admins (Zusätzlich)</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {activeMembersList.map(m=>{if(m.name===currentUser.name)return null;const iC=safeHouseholdAdmins.includes(m.name);return(<div key={`ca-${m.name}`} onClick={()=>toggleCoAdmin(m.name)} className={`flex items-center justify-between p-3.5 rounded-[14px] cursor-pointer ${iC?'bg-[#007AFF]/10 border border-[#007AFF]/30':'bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}><span className={`font-semibold text-[15px] ${iC?'text-[#007AFF]':''}`}>{m.name}</span>{iC&&<Icon name="CheckCircle2" size={18} className="text-[#007AFF]" />}</div>)})}
-                      </div>
-                    </div>
-                    <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A]">
-                      <p className="text-[13px] font-medium text-[#8E8E93] uppercase tracking-wider mb-3">Apple Kurzbefehle generieren</p>
-                      <div className="space-y-3">
-                        <div className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px] border border-[#007AFF]/30">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="font-semibold text-[15px] flex items-center gap-2 text-[#007AFF]"><Icon name="Sparkles" size={16} /> KI Listen Scanner</span>
-                                <button onClick={()=>{try{let r=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const c=r?encodeURIComponent(btoa(unescape(encodeURIComponent(r)))):'';const u=`${window.location.origin}${window.location.pathname}?action=add_shopping&fid=${currentFamily.id}&cfg=${c}&listName=&user=&items=`;const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Spezial-Link für den KI Scanner kopiert. Bitte im Kurzbefehl am Ende einfügen.');}catch(e){}}} className="bg-[#007AFF] text-white px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button>
-                            </div>
-                            <div className="text-[11px] text-[#8E8E93]">Dieser Link nimmt Listen von ChatGPT entgegen.</div>
-                        </div>
-                        {[{id:'general_meal',label:'Essen rufen',icon:'Utensils'},{id:'message',label:'Ins Wohnzimmer rufen',icon:'MessageCircle'}].map(r=>{
-                          let c=localStorage.getItem(CONFIG_STORAGE_KEY)||localStorage.getItem('firebaseConfig');const cb=c?encodeURIComponent(btoa(unescape(encodeURIComponent(c)))):'';const u=`${window.location.origin}${window.location.pathname}?action=shortcut&reason=${r.id}&fid=${currentFamily.id}&cfg=${cb}`;
-                          return(<div key={r.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-3.5 rounded-[16px]"><div className="flex justify-between items-center mb-2"><span className="font-semibold text-[15px] flex items-center gap-2"><Icon name={r.icon} size={16} /> {r.label}</span><button onClick={()=>{try{const e=document.createElement('textarea');e.value=u;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showAlert('Kopiert!','Link kopiert.');}catch(e){}}} className="bg-[#007AFF]/10 text-[#007AFF] px-3 py-1.5 rounded-full text-[13px] font-bold">Kopieren</button></div><div className="text-[11px] text-[#8E8E93] font-mono break-all line-clamp-2 overflow-hidden">{u}</div></div>);
-                        })}
                       </div>
                     </div>
                     <div className="p-4">
@@ -1573,7 +1572,7 @@ function Root(){
     try{
       const fC=cfg.firebaseConfig?cfg.firebaseConfig:cfg;
       if(!firebase.apps.length)app=firebase.initializeApp(fC);else app=firebase.app();
-      db=firebase.firestore();try{db.enablePersistence({synchronizeTabs:true}).catch(e=>{console.warn("Offline-Modus Warnung:",e);});}catch(e){}
+      db=firebase.firestore();try{db.enablePersistence({synchronizeTabs:true}).catch(e=>{});}catch(e){}
       auth=firebase.auth();setS("ready");
     }catch(e){setEM("Verbindungsfehler: "+e.message);setS("error");}
   },[cfg]);
@@ -1586,7 +1585,7 @@ function Root(){
 }
 
 if (!window.isFastMode) {
-    const root=createRoot(document.getElementById('root'));
+    const root = createRoot(document.getElementById('root'));
     root.render(<Root />);
 }
 </script>
