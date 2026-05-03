@@ -473,9 +473,20 @@
                 const unsub = getFamilyDocRef(localFamilyId).onSnapshot({ includeMetadataChanges: true }, (d) => {
                     if (d.exists) {
                         const dta = d.data(); const u = (Array.isArray(dta.members) ? dta.members : []).find(m => m && typeof m === 'object' && m.name.toLowerCase() === localUserName.toLowerCase());
-                        if (!u || u.status === 'pending' || u.password !== localUserPassword) { 
+                        
+                        if (!u || u.status === 'pending') { 
                             handleLogout(); setAppLoaded(true); return; 
                         }
+
+                        if (localUserPassword && u.password !== localUserPassword) {
+                            handleLogout(); setAppLoaded(true); return;
+                        }
+
+                        if (!localUserPassword && u.password) {
+                            localStorage.setItem('userPassword', u.password);
+                            setLocalUserPassword(u.password);
+                        }
+
                         setCurrentFamily(dta); setCurrentUser(u); if (u.fcmToken) setPushStatus('Aktiviert ✅'); setAppLoaded(true);
                     } else {
                         handleLogout(); setAppLoaded(true);
@@ -506,7 +517,13 @@
                     const nP = myPolls.filter(p => p.active).find(p => !p.options.some(o => o.votes.includes(currentUser.name)) && !isExpired(p.timestamp, 60));
                     if (nP && !sessionStorage.getItem(`prompted_poll_${nP.id}`)) { sessionStorage.setItem(`prompted_poll_${nP.id}`, 'true'); setModal({ type: 'poll_vote', title: nP.question, poll: nP, onVote: (o) => { handleVote(nP.id, o); setModal(null); }, onClose: () => setModal(null) }); return; }
 
-                    const paymentVerifEvent = safeHistory.find(h => h.isPaymentVerification && Array.isArray(h.targets) && h.targets.includes(currentUser.name) && !(Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []).some(a => a.startsWith(currentUser.name)));
+                    const paymentVerifEvent = safeHistory.find(h => {
+                        if (!h.isPaymentVerification) return false;
+                        if (!Array.isArray(h.targets) || !h.targets.includes(currentUser.name)) return false;
+                        const ackBy = Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : [];
+                        return !ackBy.some(a => a.startsWith(currentUser.name));
+                    });
+                    
                     if (paymentVerifEvent && !modal && !verifyPaymentModal && !debtorProofModal) { setVerifyPaymentModal(paymentVerifEvent); return; }
 
                     const lE = safeHistory.find(h => { if (h.isExpense || h.isResend || h.isSystemReminder || h.isPaymentVerification) return false; return (Array.isArray(h.targets) && h.targets.includes(currentUser.name)); });
