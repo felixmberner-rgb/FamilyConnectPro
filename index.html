@@ -117,15 +117,12 @@
                         const generateId = () => Math.floor(100000 + Math.random() * 900000).toString();
 
                         rawLines.forEach(line => {
-                            // Bereinigung von Listen-Zeichen (z.B. "-", "*", "•", "1.", "2)") ohne die Mengen zu zerstören
                             let t = line.replace(/^[-*•]\s*/, '').replace(/^\d+[\.)]\s+/, '').trim();
                             if (t) {
                                 let itemName = t;
                                 let itemAmount = '';
                                 
-                                // Extrahiert hintenstehende Mengen (z.B. "Senf 4x", "Mehl 2 kg", "Milch 1.5 l")
                                 const trailMatch = t.match(/\s+(\d+(?:[.,]\d+)?)\s*(x|kg|g|l|ml|pkg|pack|packung|stk|stück|flaschen|flasche|dosen|dose)?$/i);
-                                // Extrahiert vorangestellte Mengen (z.B. "4x Senf", "2 kg Mehl")
                                 const leadMatch = t.match(/^(\d+(?:[.,]\d+)?)\s*(x|kg|g|l|ml|pkg|pack|packung|stk|stück|flaschen|flasche|dosen|dose)?\s+(.+)$/i);
                                 
                                 if (trailMatch) {
@@ -526,12 +523,26 @@
             useEffect(() => {
                 if (appLoaded && currentFamily && safeHouseholdMembers.length > 0 && safeHouseholdChores.length > 0) {
                     const chk = async () => {
-                        const uS = getNextSaturday(); const sT = householdTasks.filter(t => t.date === uS);
-                        if (sT.length < safeHouseholdChores.length) {
-                            const wN = getWeekNumber(new Date(uS)); let nT = [...householdTasks]; let chg = false;
-                            safeHouseholdChores.forEach((c, i) => { if (!sT.find(t => t.choreId === c.id)) { nT.push({ id: generateId(), choreId: c.id, choreName: c.name, date: uS, assignedTo: safeHouseholdMembers[(wN + i) % safeHouseholdMembers.length], status: 'pending', swapRequestedWith: null }); chg = true; } });
-                            if (chg) getFamilyDocRef(currentFamily.id).update({ householdTasks: nT.slice(-150) }).catch(()=>{});
-                        }
+                        try {
+                            const s = await getFamilyDocRef(currentFamily.id).get();
+                            if (!s.exists) return;
+                            const d = s.data();
+                            const currentTasks = d.householdTasks || [];
+                            const uS = getNextSaturday(); 
+                            const sT = currentTasks.filter(t => t.date === uS);
+                            
+                            if (sT.length < safeHouseholdChores.length) {
+                                const wN = getWeekNumber(new Date(uS)); 
+                                let nT = [...currentTasks]; let chg = false;
+                                safeHouseholdChores.forEach((c, i) => { 
+                                    if (!sT.find(t => t.choreId === c.id)) { 
+                                        nT.push({ id: generateId(), choreId: c.id, choreName: c.name, date: uS, assignedTo: safeHouseholdMembers[(wN + i) % safeHouseholdMembers.length], status: 'pending', swapRequestedWith: null }); 
+                                        chg = true; 
+                                    } 
+                                });
+                                if (chg) await getFamilyDocRef(currentFamily.id).update({ householdTasks: nT.slice(-150) });
+                            }
+                        } catch (e) {}
                     }; chk();
                 }
             }, [appLoaded, currentFamily?.id, JSON.stringify(safeHouseholdChores), JSON.stringify(safeHouseholdMembers)]);
@@ -618,7 +629,7 @@
                 if (!eTarget) return;
                 const tN = eTarget.creditor === currentUser.name ? eTarget.debtor : eTarget.creditor;
                 const nE = safeExpenses.map(e => e.id === id ? { ...e, isPaid: true, paidAt: new Date().toISOString(), paymentPending: false } : e);
-                const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [tN], acknowledgedBy: [], isSettlement: true, isCustomPush: true, category: 'other', amount: parseFloat(eTarget.amount), expenseIds: [id], details: [{ id: eTarget.id, reason: eTarget.reason, amount: eTarget.amount, creditor: eTarget.creditor, debtor: eTarget.debtor }], reason: `${currentUser.name} hat die Auslage '${eTarget.reason}' direkt bestätigt.` };
+                const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [tN], acknowledgedBy: [], isSettlement: true, isCustomPush: true, category: 'other', amount: parseFloat(eTarget.amount), expenseIds: [id], details: [{ id: eTarget.id, reason: eTarget.reason, amount: eTarget.amount, creditor: eTarget.creditor, debtor: eTarget.debtor }], reason: `${currentUser.name} hat den Erhalt der Auslagen i.H.v. ${parseFloat(eTarget.amount).toFixed(2)}€ bestätigt.` };
                 await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: [nH, ...getCleanHistory(safeHistory)] });
             };
 
@@ -626,7 +637,7 @@
                 const expenseIds = eWT.map(e => e.id);
                 const details = eWT.map(e => ({ id: e.id, reason: e.reason, amount: e.amount, creditor: e.creditor, debtor: e.debtor }));
                 const nE = safeExpenses.map(e => expenseIds.includes(e.id) ? { ...e, isPaid: true, paidAt: new Date().toISOString(), paymentPending: false } : e);
-                const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [tN], acknowledgedBy: [], isSettlement: true, isCustomPush: true, category: 'other', amount: netAmount, expenseIds: expenseIds, details: details, reason: `${currentUser.name} hat ${netAmount.toFixed(2)}€ Verrechnung sofort bestätigt.` };
+                const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [tN], acknowledgedBy: [], isSettlement: true, isCustomPush: true, category: 'other', amount: netAmount, expenseIds: expenseIds, details: details, reason: `${currentUser.name} hat den Erhalt der Auslagen i.H.v. ${netAmount.toFixed(2)}€ bestätigt.` };
                 await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: [nH, ...getCleanHistory(safeHistory)] }); 
             }, false);
 
@@ -643,7 +654,7 @@
                     const expenseIds = expenses.map(e => e.id);
                     const details = expenses.map(e => ({ id: e.id, reason: e.reason, amount: e.amount, creditor: e.creditor, debtor: e.debtor }));
                     const nE = safeExpenses.map(e => expenseIds.includes(e.id) ? { ...e, paymentPending: true } : e);
-                    const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [target], acknowledgedBy: [], isPaymentVerification: true, isCustomPush: true, category: 'other', proofImage: base64Img, amount: amount, expenseIds: expenseIds, details: details, reason: `${currentUser.name} hat ${amount.toFixed(2)}€ Verrechnung eingereicht. Beweis anbei.` };
+                    const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [target], acknowledgedBy: [], isPaymentVerification: true, isCustomPush: true, category: 'other', proofImage: base64Img, amount: amount, expenseIds: expenseIds, details: details, reason: `${currentUser.name} hat deine Auslagen bezahlt. Jetzt prüfen und bestätigen.` };
                     await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: [nH, ...getCleanHistory(safeHistory)] }); setDebtorProofModal(null); showAlert("Erfolg", "Beweis gesendet! Wartet auf Bestätigung.");
                 } catch (e) { showAlert("Fehler", "Fehlgeschlagen."); } setIsSending(false);
             };
@@ -719,7 +730,15 @@
                                 const historyItems = safeHistory.filter(h => (h.isPaymentVerification || h.isSettlement) && ((h.sender === currentUser.name && (h.targets||[]).includes(expenseHistoryModal)) || (h.sender === expenseHistoryModal && (h.targets||[]).includes(currentUser.name))));
                                 const eventExpenseIds = new Set(); historyItems.forEach(h => (h.expenseIds || []).forEach(id => eventExpenseIds.add(id)));
                                 const legacyExpenses = safeExpenses.filter(e => e.isPaid && !eventExpenseIds.has(e.id) && ((e.creditor === currentUser?.name && e.debtor === expenseHistoryModal) || (e.creditor === expenseHistoryModal && e.debtor === currentUser?.name)));
-                                const combined = [ ...historyItems.map(h => ({ type: 'event', data: h, time: new Date(h.timestamp).getTime() })), ...legacyExpenses.map(e => ({ type: 'legacy', data: e, time: new Date(e.paidAt || e.timestamp).getTime() })) ].sort((a, b) => b.time - a.time);
+                                const combined = [ ...historyItems.map(h => ({ type: 'event', data: h, time: new Date(h.timestamp).getTime() })), ...legacyExpenses.map(e => ({ type: 'legacy', data: e, time: new Date(e.paidAt || e.timestamp).getTime() })) ]
+                                .filter(item => {
+                                    if (item.type === 'event') {
+                                        const isRejected = (Array.isArray(item.data.acknowledgedBy) ? item.data.acknowledgedBy : []).some(a => a.includes(':Abgelehnt'));
+                                        if (isRejected) return false;
+                                    }
+                                    return true;
+                                })
+                                .sort((a, b) => b.time - a.time);
                                 
                                 if(combined.length === 0) return <div className="text-center text-[#8E8E93] mt-4">Kein Verlauf vorhanden.</div>;
 
@@ -730,9 +749,8 @@
                                     } else {
                                         const h = item.data;
                                         const isAck = (Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []).some(a => a.includes(':Bestätigt'));
-                                        const isRejected = (Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []).some(a => a.includes(':Abgelehnt'));
-                                        const statusText = h.isSettlement ? 'Beglichen' : (isAck ? 'Beglichen' : (isRejected ? 'Abgelehnt' : 'Wird geprüft'));
-                                        const statusColor = (h.isSettlement || isAck) ? 'text-[#34C759] bg-[#34C759]/20' : (isRejected ? 'text-[#FF3B30] bg-[#FF3B30]/20' : 'text-[#FF9500] bg-[#FF9500]/20');
+                                        const statusText = h.isSettlement ? 'Beglichen' : (isAck ? 'Beglichen' : 'Wird geprüft');
+                                        const statusColor = (h.isSettlement || isAck) ? 'text-[#34C759] bg-[#34C759]/20' : 'text-[#FF9500] bg-[#FF9500]/20';
                                         return (
                                             <div key={h.id || idx} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-4 rounded-[16px]">
                                                 <div className="flex justify-between items-start mb-2">
@@ -860,19 +878,35 @@
                                         <div className={STYLES.card + " p-5 max-w-xl mx-auto"}><div className="flex justify-between items-center mb-6"><h3 className="font-bold text-[20px]">{expenseModal.mode === 'single' && `Auslage für ${expenseModal.target}`}{expenseModal.mode === 'split' && `Neue geteilte Auslage`}{expenseModal.mode === 'edit' && `Auslage bearbeiten`}</h3><button onClick={() => setExpenseModal(null)} className="w-8 h-8 bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-full flex justify-center items-center"><Icon name="X" size={18} /></button></div><div className="space-y-4 w-full">{expenseModal.mode === 'split' && <div className="bg-[#007AFF]/10 p-4 rounded-[14px] mb-4 text-[13px] text-[#007AFF]">Gib den <b>Gesamtbetrag</b> ein und die fixe Anzahl der Personen, durch die geteilt wird. Wähle unten dann die Personen aus.</div>}<div className="flex flex-col sm:flex-row gap-3 w-full"><input type="text" inputMode="decimal" placeholder="Gesamt (€)" className={STYLES.input + " sm:flex-1"} value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value.replace(/[^0-9.,]/g, '') })} /><input type="date" className={STYLES.input + " appearance-none min-w-0 sm:flex-1"} value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} /></div><input type="text" placeholder="Wofür? (z.B. Pizza)" className={STYLES.input} value={expenseForm.reason} onChange={e => setExpenseForm({ ...expenseForm, reason: e.target.value })} />{expenseModal.mode === 'split' && (<div className="pt-4 border-t border-[#E5E5EA] dark:border-[#38383A]"><p className="text-[14px] font-semibold mb-2">Geteilt durch wie viele Personen? (fixer Wert)</p><input type="number" inputMode="numeric" min="1" className={STYLES.input + " mb-5"} value={expenseForm.splitCount} onChange={e => setExpenseForm({ ...expenseForm, splitCount: e.target.value })} /><p className="text-[14px] font-semibold mb-2">Für wen willst du das eintragen?</p><div className="flex flex-wrap gap-2">{activeMembersList.filter(m => m?.name !== currentUser?.name).map(m => { const iS = expenseForm.splitTargets.includes(m.name); return (<button key={m.name} onClick={() => toggleSplitTarget(m.name)} className={`px-4 py-2.5 rounded-full text-[15px] font-semibold ${iS ? 'bg-[#007AFF] text-white' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}>{m.name}</button>); })}</div>{expenseForm.amount && expenseForm.splitCount > 0 && <div className="mt-5 text-center bg-[#34C759]/10 text-[#34C759] font-semibold p-4 rounded-[14px]">Anteil pro Person: <br /><span className="text-[22px]">{(parseFloat(String(expenseForm.amount).replace(',', '.')) / parseInt(expenseForm.splitCount)).toFixed(2)}€</span></div>}</div>)}<button onClick={handleSaveExpense} className={STYLES.btnPrimary}>{expenseModal.mode === 'edit' ? 'Änderungen speichern' : 'Speichern & Informieren'}</button></div></div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {activeMembersList.filter(m => m?.name !== currentUser?.name).map(m => {
+                                            {[...activeMembersList.filter(m => m?.name !== currentUser?.name)].sort((a, b) => {
+                                                const getMetrics = (mName) => {
+                                                    const eWT = safeExpenses.filter(e => !e.isPaid && !e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === mName) || (e.creditor === mName && e.debtor === currentUser?.name)));
+                                                    const hasPending = safeExpenses.some(e => !e.isPaid && e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === mName) || (e.creditor === mName && e.debtor === currentUser?.name)));
+                                                    let iO = 0; let tO = 0;
+                                                    eWT.forEach(e => { const amt = parseFloat(e.amount) || 0; if (e.creditor === currentUser?.name) tO += amt; else iO += amt; });
+                                                    const net = tO - iO;
+                                                    
+                                                    let category = 3; 
+                                                    if (net < 0) category = 0; 
+                                                    else if (net > 0) category = 1; 
+                                                    else if (eWT.length > 0) category = 2; 
+                                                    
+                                                    return { net, category };
+                                                };
+                                                const mA = getMetrics(a.name);
+                                                const mB = getMetrics(b.name);
+                                                
+                                                if (mA.category !== mB.category) return mA.category - mB.category;
+                                                if (mA.category === 0) return mA.net - mB.net; 
+                                                if (mA.category === 1) return mB.net - mA.net; 
+                                                return a.name.localeCompare(b.name);
+                                            }).map(m => {
                                                 const eWT = safeExpenses.filter(e => !e.isPaid && !e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === m.name) || (e.creditor === m.name && e.debtor === currentUser?.name)));
                                                 let iO = 0; let tO = 0; eWT.forEach(e => { const a = parseFloat(e.amount) || 0; if (e.creditor === currentUser?.name) tO += a; else iO += a; }); const net = tO - iO;
                                                 
-                                                const hasPending = safeExpenses.some(e => !e.isPaid && e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === m.name) || (e.creditor === m.name && e.debtor === currentUser?.name)));
-                                                
                                                 return (
                                                     <div key={m.name} className={STYLES.card + " flex flex-col h-full"}><div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]"><div className="min-w-0 pr-2 cursor-pointer active:opacity-70" onClick={() => setExpenseHistoryModal(m.name)}><p className="font-bold text-[18px] truncate">{m.name}</p>
-                                                        {hasPending && net === 0 && eWT.length === 0 ? (
-                                                            <p className="text-[14px] font-semibold mt-0.5 text-[#FF9500]">Prüfung ausstehend...</p>
-                                                        ) : (
-                                                            <p className={`text-[14px] font-semibold mt-0.5 truncate ${net > 0 ? 'text-[#34C759]' : net < 0 ? 'text-[#FF3B30]' : 'text-[#8E8E93]'}`}>{net > 0 ? `Schuldet dir: ${net.toFixed(2)}€` : net < 0 ? `Noch fällig: ${Math.abs(net).toFixed(2)}€` : 'Alles beglichen'}</p>
-                                                        )}
+                                                        <p className={`text-[14px] font-semibold mt-0.5 truncate ${net > 0 ? 'text-[#34C759]' : net < 0 ? 'text-[#FF3B30]' : 'text-[#8E8E93]'}`}>{net > 0 ? `Schuldet dir: ${net.toFixed(2)}€` : net < 0 ? `Noch fällig: ${Math.abs(net).toFixed(2)}€` : 'Alles beglichen'}</p>
                                                     </div><div className="flex gap-2">{eWT.length > 0 && <button onClick={() => net >= 0 ? handleSettleAll(m.name, eWT, Math.abs(net)) : openDebtorProofModal(m.name, Math.abs(net), eWT)} className="w-9 h-9 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="CheckCircle2" size={20} /></button>}<button onClick={() => openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Plus" size={20} /></button></div></div>{eWT.length > 0 && (<div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">{eWT.map(e => { const iMC = e.creditor === currentUser?.name; return (<div key={e.id} className={`flex justify-between items-center bg-white dark:bg-[#1C1C1E] border p-3 rounded-[16px] ${iMC ? 'border-[#007AFF]/30' : 'border-[#E5E5EA] dark:border-[#38383A]'}`}><div className="pr-3 min-w-0 flex-1"><p className="text-[15px] font-semibold truncate">{e.reason}</p><p className="text-[12px] text-[#8E8E93] font-medium">{formatDate(e.date || e.timestamp)}</p></div><div className="flex flex-col items-end gap-2 flex-shrink-0"><span className={`font-semibold text-[16px] ${iMC ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{iMC ? '+' : '-'}{parseFloat(e.amount || 0).toFixed(2)}€</span>{iMC ? (<div className="flex gap-1.5 mt-1"><button onClick={() => openEditExpense(e)} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14} /></button><button onClick={() => handleMarkExpensePaid(e.id)} className="w-8 h-8 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center"><Icon name="Check" size={16} /></button><button onClick={() => handleDeleteExpense(e.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14} /></button></div>) : (<span className="text-[11px] uppercase font-bold text-[#8E8E93] bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-2.5 py-1 rounded-full mt-1">Offen</span>)}</div></div>) })}</div>)}</div>
                                                 );
                                             })}
@@ -964,17 +998,19 @@
                 try {
                     const fC = cfg.firebaseConfig ? cfg.firebaseConfig : cfg;
                     if (!firebase.apps.length) app = firebase.initializeApp(fC); else app = firebase.app();
-                    db = firebase.firestore(); try { db.enablePersistence({ synchronizeTabs: true }).catch(e => { }); } catch (e) { }
+                    db = firebase.firestore(); 
+                    try { 
+                        db.enablePersistence({ synchronizeTabs: true }).catch(e => { console.warn("Persistence error", e); });
+                    } catch (e) { }
                     auth = firebase.auth();
-                    if (firebase.messaging.isSupported()) { messaging = firebase.messaging(); }
+                    messaging = firebase.messaging();
                     setS("ready");
                 } catch (e) { setEM("Verbindungsfehler: " + e.message); setS("error"); }
             }, [cfg]);
 
             if (s === "config-needed") return <ConfigLoader onConfigLoaded={setCfg} />;
             if (s === "error") return (<div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50"><Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" /><h2 className="text-xl font-bold mb-2">Systemfehler</h2><p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{eM}</p><button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); localStorage.removeItem('firebaseConfig'); setCfg(null); setS("config-needed"); }} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[16px] font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm">Neue Config laden</button></div>);
-            if (s === "booting") return <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50"><Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" /></div>;
-
+            if (s === "booting") return <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50"><Icon name="ShieldCheck" size={64} className="text-[#007AFF] animate-pulse mb-4" /></div>;
             return <App />;
         }
 
