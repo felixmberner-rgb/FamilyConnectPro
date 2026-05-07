@@ -554,7 +554,15 @@
             useEffect(() => {
                 if (currentFamily && currentUser) {
                     const nP = myPolls.filter(p => p.active).find(p => !p.options.some(o => o.votes.includes(currentUser.name)) && !isExpired(p.timestamp, 60));
-                    if (nP && !sessionStorage.getItem(`prompted_poll_${nP.id}`)) { sessionStorage.setItem(`prompted_poll_${nP.id}`, 'true'); setModal({ type: 'poll_vote', title: nP.question, poll: nP, onVote: (o) => { handleVote(nP.id, o); setModal(null); }, onClose: () => setModal(null) }); return; }
+                    if (nP && !sessionStorage.getItem(`prompted_poll_${nP.id}`)) { 
+                        sessionStorage.setItem(`prompted_poll_${nP.id}`, 'true'); 
+                        setModal({ 
+                            type: 'poll_vote', title: nP.question, poll: nP, 
+                            onVote: (o) => { handleVote(nP.id, o); setModal(null); setActiveTab('shopping'); setShoppingSubTab('polls'); }, 
+                            onClose: () => { setModal(null); setActiveTab('shopping'); setShoppingSubTab('polls'); } 
+                        }); 
+                        return; 
+                    }
 
                     const paymentVerifEvent = safeHistory.find(h => {
                         if (!h.isPaymentVerification) return false;
@@ -563,7 +571,10 @@
                         return !ackBy.some(a => a.startsWith(currentUser.name));
                     });
                     
-                    if (paymentVerifEvent && !modal && !verifyPaymentModal && !debtorProofModal) { setVerifyPaymentModal(paymentVerifEvent); return; }
+                    if (paymentVerifEvent && !modal && !verifyPaymentModal && !debtorProofModal) { 
+                        setVerifyPaymentModal(paymentVerifEvent); 
+                        return; 
+                    }
 
                     const lE = safeHistory.find(h => { if (h.isExpense || h.isResend || h.isSystemReminder || h.isPaymentVerification || h.isSettlement) return false; return (Array.isArray(h.targets) && h.targets.includes(currentUser.name)); });
                     if (lE) {
@@ -571,9 +582,27 @@
                         if (!aA && lE.sender !== currentUser.name && lE.realSender !== currentUser.name && !isExpired(lE.timestamp)) {
                             if (!sessionStorage.getItem(`prompted_${lE.id}`)) {
                                 sessionStorage.setItem(`prompted_${lE.id}`, 'true');
-                                if (lE.isCustomPush || lE.isSuccessfulSwap || lE.isRejectedSwap) { setModal({ type: 'info_only', title: lE.isCustomPush ? lE.sender : "Vertretung", message: lE.reason, icon: lE.isCustomPush ? "Bell" : "Users", onClose: () => { handleAcknowledge(lE.id, 'Gelesen'); setModal(null); } }); } 
-                                else if (lE.isSwapRequest) { setModal({ type: 'swap_request_ack', title: `Vertretungsanfrage`, message: `${lE.sender} bittet um Vertretung für:\n${lE.choreName}`, onAccept: () => { handleHouseholdAction(lE.taskId, 'accept_swap'); handleAcknowledge(lE.id, 'Übernommen'); setModal(null); }, onReject: () => { handleHouseholdAction(lE.taskId, 'reject_swap'); handleAcknowledge(lE.id, 'Abgelehnt'); setModal(null); }, onCancel: () => setModal(null) }); } 
-                                else { setModal({ type: 'custom_ack', title: `Ruf von ${lE.sender}`, message: `${lE.reason}`, onRespond: (r) => { handleAcknowledge(lE.id, r); setModal(null); }, onCancel: () => setModal(null) }); }
+                                if (lE.isCustomPush || lE.isSuccessfulSwap || lE.isRejectedSwap) { 
+                                    setModal({ 
+                                        type: 'info_only', title: lE.isCustomPush ? lE.sender : "Vertretung", message: lE.reason, icon: lE.isCustomPush ? "Bell" : "Users", 
+                                        onClose: () => { handleAcknowledge(lE.id, 'Gelesen'); setModal(null); if(lE.isSuccessfulSwap || lE.isRejectedSwap) setActiveTab('household'); } 
+                                    }); 
+                                } 
+                                else if (lE.isSwapRequest) { 
+                                    setModal({ 
+                                        type: 'swap_request_ack', title: `Vertretungsanfrage`, message: `${lE.sender} bittet um Vertretung für:\n${lE.choreName}`, 
+                                        onAccept: () => { handleHouseholdAction(lE.taskId, 'accept_swap'); handleAcknowledge(lE.id, 'Übernommen'); setModal(null); setActiveTab('household'); }, 
+                                        onReject: () => { handleHouseholdAction(lE.taskId, 'reject_swap'); handleAcknowledge(lE.id, 'Abgelehnt'); setModal(null); setActiveTab('household'); }, 
+                                        onCancel: () => { setModal(null); setActiveTab('household'); } 
+                                    }); 
+                                } 
+                                else { 
+                                    setModal({ 
+                                        type: 'custom_ack', title: `Ruf von ${lE.sender}`, message: `${lE.reason}`, 
+                                        onRespond: (r) => { handleAcknowledge(lE.id, r); setModal(null); setActiveTab('home'); }, 
+                                        onCancel: () => { setModal(null); setActiveTab('home'); } 
+                                    }); 
+                                }
                             }
                         }
                     }
@@ -587,25 +616,21 @@
                     let count = 0;
                     const now = Date.now();
                     
-                    // 1. Offene Abstimmungen zählen
                     count += myPolls.filter(p => p.active && !p.options.some(o => o.votes.includes(currentUser.name)) && (new Date(p.votingDeadline).getTime() > now)).length;
                     
-                    // 2. Offene Auslagen-Prüfungen zählen
                     count += safeHistory.filter(h => h.isPaymentVerification && Array.isArray(h.targets) && h.targets.includes(currentUser.name) && !(Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []).some(a => a.startsWith(currentUser.name))).length;
                     
-                    // 3. Andere Pop-ups zählen (Rufe, Info-Mitteilungen, Haushalts-Anfragen)
                     count += safeHistory.filter(h => {
                         if (h.isExpense || h.isResend || h.isSystemReminder || h.isPaymentVerification || h.isSettlement) return false;
                         if (!Array.isArray(h.targets) || !h.targets.includes(currentUser.name)) return false;
                         if (h.sender === currentUser.name || h.realSender === currentUser.name) return false;
                         
                         const t = new Date(h.timestamp).getTime();
-                        if (!isNaN(t) && (now - t) > 5 * 60 * 1000) return false; // 5 Minuten abgelaufen
+                        if (!isNaN(t) && (now - t) > 5 * 60 * 1000) return false; 
                         
                         return !(Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []).some(a => a === currentUser.name || a.startsWith(currentUser.name + ':'));
                     }).length;
 
-                    // Badge auf App-Icon anwenden
                     if (navigator.setAppBadge) {
                         if (count > 0) navigator.setAppBadge(count).catch(() => {});
                         else navigator.clearAppBadge().catch(() => {});
@@ -613,7 +638,7 @@
                 };
 
                 updateBadge();
-                const interval = setInterval(updateBadge, 5000); // Alle 5 Sek auf Ablauf prüfen
+                const interval = setInterval(updateBadge, 5000); 
                 return () => clearInterval(interval);
             }, [currentFamily, currentUser, safeHistory, myPolls]);
 
@@ -634,7 +659,7 @@
             const toggleHouseholdMember = async (n) => { await updateHouseholdConfig(safeHouseholdMembers.includes(n) ? safeHouseholdMembers.filter(x => x !== n) : [...safeHouseholdMembers, n], safeHouseholdChores); };
             const handleAddChore = async () => { if (!newChoreName.trim()) return; await updateHouseholdConfig(safeHouseholdMembers, [...safeHouseholdChores, { id: generateId(), name: newChoreName.trim() }]); setNewChoreName(""); };
             const handleDeleteChore = async (id) => { await updateHouseholdConfig(safeHouseholdMembers, safeHouseholdChores.filter(c => c.id !== id)); };
-            const requestPushPermission = async (slnt = false) => { if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return !slnt && showAlert("Fehler", "Push nicht unterstützt."); try { let s = {}; let f = {}; try { const r = localStorage.getItem('firebaseConfig') || localStorage.getItem('familyConnectAppConfig'); if (r) { const p = JSON.parse(r); s = p.vapidKey ? p : (p.firebaseConfig || {}); f = p.firebaseConfig || p; } } catch (e) { } const v = currentFamily?.vapidKey || s.vapidKey; if (!v) return !slnt && showAlert("Fehler", "Kein VAPID-Key!"); let w = await navigator.serviceWorker.getRegistration(); if (!w) { w = await navigator.serviceWorker.register(`./firebase-messaging-sw.js?apiKey=${f.apiKey || ''}&projectId=${f.projectId || ''}&senderId=${f.messagingSenderId || ''}&appId=${f.appId || ''}`); } else { await w.update(); } if (slnt && Notification.permission !== 'granted') return; if (!slnt) setPushStatus('Wird angefragt...'); const p = slnt ? Notification.permission : await Notification.requestPermission(); if (p !== 'granted') { if (!slnt) setPushStatus('Abgelehnt ❌'); return; } const t = await messaging.getToken({ vapidKey: v.trim(), serviceWorkerRegistration: w }); if (!t) { if (!slnt) { setPushStatus('Fehler'); showAlert("Fehler", "Kein Token."); } return; } if (currentUser?.fcmToken !== t) await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: t } : m) }); setPushStatus('Aktiviert ✅'); if (!slnt) showAlert("Erfolg", "Push aktiviert!"); } catch (e) { if (!slnt) { setPushStatus('Fehler'); showAlert("Fehler", "Token Fehler."); } } };
+            const requestPushPermission = async (slnt = false) => { if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return !slnt && showAlert("Fehler", "Push nicht unterstützt."); try { let s = {}; let f = {}; try { const r = localStorage.getItem('firebaseConfig') || localStorage.getItem('familyConnectAppConfig'); if (r) { const p = JSON.parse(r); s = p.vapidKey ? p : (p.firebaseConfig || {}); f = p.firebaseConfig || p; } } catch (e) { } const v = currentFamily?.vapidKey || s.vapidKey; if (!v) return !slnt && showAlert("Fehler", "Kein VAPID-Key!"); let w = await navigator.serviceWorker.getRegistration(); if (!w) { w = await navigator.serviceWorker.register(`./firebase-messaging-sw.js?apiKey=${f.apiKey || ''}&projectId=${f.projectId || ''}&senderId=${f.messagingSenderId || ''}&appId=${f.appId || ''}`); } else { await w.update(); } if (slnt && Notification.permission !== 'granted') return; if (!slnt) setPushStatus('Wird angefragt...'); const p = slnt ? Notification.permission : await Notification.requestPermission(); if (p !== 'granted') { if (!slnt) setPushStatus('Abgelehnt ❌'); return; } const t = await messaging.getToken({ vapidKey: v.trim(), serviceWorkerRegistration: w }); if (!t) { if (!slnt) { setPushStatus('Fehler'); showAlert("Fehler", "Kein Token."); } return; } if (currentUser?.fcmToken !== t) await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: t } : m) }); setPushStatus('Aktiviert ✅'); if (!slnt) showAlert("Erfolg", "Push aktiviert!"); } catch (e) { if (!slnt) { setPushStatus('Fehler'); showAlert("Token Fehler: " + e.message); } } };
             const handleSendNotification = async (cRO = null, cT = null, iR = false) => { const rO = cRO || REASONS.find(r => r.id === selectedReason); const tL = cT || selectedMembers; if (!rO || tL.length === 0) return; if (safeHistory.filter(h => h?.sender === currentUser.name && h?.timestamp && new Date(h.timestamp).toDateString() === new Date().toDateString()).length >= 20) return showAlert("Limit", "Tageslimit erreicht."); setIsSending(true); if (navigator.vibrate) navigator.vibrate(10); const n = new Date(); const iN = n.getHours() >= 22 || n.getHours() < 7; const aT = []; safeMembers.forEach(m => { if (m && tL.includes(m.name) && m.status !== 'pending') { if (!(m.dndUntil && new Date(m.dndUntil) > n)) { aT.push(m.name); if (!iN && rO.category !== 'push_only') { const u = rO.category === 'meal' ? m.voiceMonkeyMeal : m.voiceMonkeyOther; if (u && u.trim() !== '') fetch(u).catch(e => { }); } } } }); if (aT.length === 0) { setIsSending(false); return showAlert("Hinweis", "Alle auf DND."); } const nH = { id: Date.now().toString(), timestamp: n.toISOString(), sender: currentUser.name, reason: rO.sentence, targets: aT, acknowledgedBy: [], isExpense: false, isResend: iR, category: rO.category }; try { await getFamilyDocRef(currentFamily.id).update({ history: [nH, ...getCleanHistory(safeHistory)] }); if (navigator.vibrate) navigator.vibrate([30, 50, 30]); if (!cRO && rO.category !== 'push_only' && !iR) setTrackingEventId(nH.id); setSelectedReason(null); setSelectedMembers([]); } catch (e) { } setTimeout(() => setIsSending(false), 800); };
             const handleAcknowledge = async (hId, rT = 'Bestätigt') => { if (navigator.vibrate) navigator.vibrate([20, 30]); const rS = `${currentUser.name}:${rT}`; try { const r = getFamilyDocRef(currentFamily.id); const s = await r.get(); if (!s.exists) return; let c = false; const u = (s.data().history || []).map(i => { if (i.id === hId) { const a = Array.isArray(i.acknowledgedBy) ? i.acknowledgedBy : []; if (!a.some(x => x === currentUser.name || x.startsWith(currentUser.name + ':'))) { c = true; return { ...i, acknowledgedBy: [...a, rS] }; } } return i; }); if (c) await r.update({ history: getCleanHistory(u) }); } catch (e) { } };
             const handleCreateList = async (lD) => { if (!lD.name.trim()) return; const nL = { id: generateId(), name: lD.name.trim(), sharedWith: lD.sharedWith, createdBy: currentUser.name, items: [], isShoppingActive: false, timestamp: new Date().toISOString() }; try { await getFamilyDocRef(currentFamily.id).update({ shoppingLists: [...safeShoppingLists, nL] }); setSelectedShoppingListId(nL.id); if (navigator.vibrate) navigator.vibrate(10); setModal(null); } catch (e) { } };
@@ -651,7 +676,29 @@
             const handleExtendList = async (id) => { try { await getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.map(l => l.id === id ? { ...l, timestamp: new Date().toISOString(), expirationWarned: false } : l) }); showAlert("Erfolg", "Verlängert."); } catch (e) { } };
             const handleAddPoll = async () => { if (!newPoll.question.trim() || !newPoll.votingDeadline) return showAlert("Fehler", "Frage und Frist benötigt."); let vO = newPoll.options.filter(o => o.trim() !== ''); if (newPoll.type === 'direct' && vO.length < 2) return showAlert("Fehler", "Min. 2 Optionen."); if (newPoll.type !== 'direct' && (new Date(newPoll.collectionDeadline) >= new Date(newPoll.votingDeadline))) return showAlert("Fehler", "Sammeln vor Abstimmen."); const pO = { id: generateId(), type: newPoll.type, question: newPoll.question.trim(), options: vO.map(o => ({ id: generateId(), text: o.trim(), votes: [], addedBy: currentUser.name })), collectionDeadline: newPoll.type === 'collection' ? new Date(newPoll.collectionDeadline).toISOString() : null, votingDeadline: new Date(newPoll.votingDeadline).toISOString(), sharedWith: newPoll.sharedWith, createdBy: currentUser.name, active: true, reminded: false, timestamp: new Date().toISOString() }; try { await getFamilyDocRef(currentFamily.id).update({ polls: [pO, ...safePolls] }); setNewPoll({ type: 'direct', question: '', options: ['', ''], collectionDeadline: getLocalIsoString(12), votingDeadline: getLocalIsoString(48), sharedWith: ['Alle'] }); setIsCreatingPoll(false); } catch (e) { } };
             const handleAddPollOption = async (pId) => { const t = pollNewOptions[pId]; if (!t || !t.trim()) return; try { await getFamilyDocRef(currentFamily.id).update({ polls: safePolls.map(p => p.id === pId ? { ...p, options: [...p.options, { id: generateId(), text: t.trim(), votes: [], addedBy: currentUser.name }] } : p) }); setPollNewOptions({ ...pollNewOptions, [pId]: '' }); } catch (e) { } };
-            const handleVote = async (pId, oId) => { if (navigator.vibrate) navigator.vibrate(10); try { await getFamilyDocRef(currentFamily.id).update({ polls: safePolls.map(p => p.id === pId ? { ...p, options: p.options.map(o => ({ ...o, votes: o.id === oId ? [...(Array.isArray(o.votes) ? o.votes : []).filter(v => v !== currentUser.name), currentUser.name] : (Array.isArray(o.votes) ? o.votes : []).filter(v => v !== currentUser.name) })) } : p) }); } catch (e) { } };
+            
+            const handleVote = async (pId, oId) => { 
+                if (navigator.vibrate) navigator.vibrate(10); 
+                try { 
+                    const s = await getFamilyDocRef(currentFamily.id).get();
+                    if (!s.exists) return;
+                    const d = s.data();
+                    const currPolls = d.polls || [];
+                    
+                    await getFamilyDocRef(currentFamily.id).update({ 
+                        polls: currPolls.map(p => p.id === pId ? { 
+                            ...p, 
+                            options: p.options.map(o => ({ 
+                                ...o, 
+                                votes: o.id === oId 
+                                    ? [...(Array.isArray(o.votes) ? o.votes : []).filter(v => v !== currentUser.name), currentUser.name] 
+                                    : (Array.isArray(o.votes) ? o.votes : []).filter(v => v !== currentUser.name) 
+                            })) 
+                        } : p) 
+                    }); 
+                } catch (e) { } 
+            };
+            
             const handleDeletePoll = async (pId) => showConfirm("Löschen", "Umfrage löschen?", async () => { await getFamilyDocRef(currentFamily.id).update({ polls: safePolls.filter(p => p.id !== pId) }); }, true);
 
             const resetExpenseForm = (o = {}) => setExpenseForm({ amount: '', reason: '', date: getLocalTodayString(), splitCount: 1, splitTargets: [], ...o });
@@ -688,22 +735,42 @@
             const submitDebtorProof = async (base64Img) => {
                 const { target, amount, expenses } = debtorProofModal; setIsSending(true);
                 try {
+                    const s = await getFamilyDocRef(currentFamily.id).get();
+                    if (!s.exists) return;
+                    const d = s.data();
+                    const currExpenses = d.expenses || [];
+                    const currHistory = d.history || [];
+
                     const expenseIds = expenses.map(e => e.id);
                     const details = expenses.map(e => ({ id: e.id, reason: e.reason, amount: e.amount, creditor: e.creditor, debtor: e.debtor }));
-                    const nE = safeExpenses.map(e => expenseIds.includes(e.id) ? { ...e, paymentPending: true } : e);
+                    const nE = currExpenses.map(e => expenseIds.includes(e.id) ? { ...e, paymentPending: true } : e);
                     const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [target], acknowledgedBy: [], isPaymentVerification: true, isCustomPush: true, category: 'other', proofImage: base64Img, amount: amount, expenseIds: expenseIds, details: details, reason: `${currentUser.name} hat deine Auslagen bezahlt. Jetzt prüfen und bestätigen.` };
-                    await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: [nH, ...getCleanHistory(safeHistory)] }); setDebtorProofModal(null); showAlert("Erfolg", "Beweis gesendet! Wartet auf Bestätigung.");
+                    
+                    await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: [nH, ...getCleanHistory(currHistory)] }); 
+                    setDebtorProofModal(null); 
+                    setActiveTab('expenses');
+                    showAlert("Erfolg", "Beweis gesendet! Wartet auf Bestätigung.");
                 } catch (e) { showAlert("Fehler", "Fehlgeschlagen."); } setIsSending(false);
             };
 
             const handleVerifyDecision = async (event, isAccepted) => {
                 try {
-                    let nE = safeExpenses.map(e => (event.expenseIds || []).includes(e.id) ? (isAccepted ? { ...e, isPaid: true, paymentPending: false, paidAt: new Date().toISOString() } : { ...e, paymentPending: false }) : e);
-                    let uH = safeHistory.map(h => h.id === event.id ? { ...h, acknowledgedBy: [...(Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []), `${currentUser.name}:${isAccepted ? 'Bestätigt' : 'Abgelehnt'}`], proofImage: null } : h);
+                    const s = await getFamilyDocRef(currentFamily.id).get();
+                    if (!s.exists) return;
+                    const d = s.data();
+                    const currExpenses = d.expenses || [];
+                    const currHistory = d.history || [];
+
+                    let nE = currExpenses.map(e => (event.expenseIds || []).includes(e.id) ? (isAccepted ? { ...e, isPaid: true, paymentPending: false, paidAt: new Date().toISOString() } : { ...e, paymentPending: false }) : e);
+                    let uH = currHistory.map(h => h.id === event.id ? { ...h, acknowledgedBy: [...(Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []), `${currentUser.name}:${isAccepted ? 'Bestätigt' : 'Abgelehnt'}`], proofImage: null } : h);
+                    
                     if (!isAccepted) uH.unshift({ id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [event.sender], acknowledgedBy: [], isCustomPush: true, category: 'other', reason: `Zahlung über ${event.amount?.toFixed(2) || '0.00'}€ abgelehnt.` });
                     else uH.unshift({ id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [event.sender], acknowledgedBy: [], isCustomPush: true, category: 'other', reason: `Zahlung über ${event.amount?.toFixed(2) || '0.00'}€ bestätigt.` });
                     
-                    await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: getCleanHistory(uH) }); setVerifyPaymentModal(null); if (isAccepted) showAlert("Erfolg", "Abrechnung erfolgreich!");
+                    await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: getCleanHistory(uH) }); 
+                    setVerifyPaymentModal(null); 
+                    setActiveTab('expenses');
+                    if (isAccepted) showAlert("Erfolg", "Abrechnung erfolgreich!");
                 } catch (e) { }
             };
 
