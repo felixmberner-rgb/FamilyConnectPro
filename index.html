@@ -580,6 +580,43 @@
                 }
             }, [currentFamily, currentUser, modal, verifyPaymentModal, debtorProofModal]);
 
+            useEffect(() => {
+                if (!currentFamily || !currentUser) return;
+                
+                const updateBadge = () => {
+                    let count = 0;
+                    const now = Date.now();
+                    
+                    // 1. Offene Abstimmungen zählen
+                    count += myPolls.filter(p => p.active && !p.options.some(o => o.votes.includes(currentUser.name)) && (new Date(p.votingDeadline).getTime() > now)).length;
+                    
+                    // 2. Offene Auslagen-Prüfungen zählen
+                    count += safeHistory.filter(h => h.isPaymentVerification && Array.isArray(h.targets) && h.targets.includes(currentUser.name) && !(Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []).some(a => a.startsWith(currentUser.name))).length;
+                    
+                    // 3. Andere Pop-ups zählen (Rufe, Info-Mitteilungen, Haushalts-Anfragen)
+                    count += safeHistory.filter(h => {
+                        if (h.isExpense || h.isResend || h.isSystemReminder || h.isPaymentVerification || h.isSettlement) return false;
+                        if (!Array.isArray(h.targets) || !h.targets.includes(currentUser.name)) return false;
+                        if (h.sender === currentUser.name || h.realSender === currentUser.name) return false;
+                        
+                        const t = new Date(h.timestamp).getTime();
+                        if (!isNaN(t) && (now - t) > 5 * 60 * 1000) return false; // 5 Minuten abgelaufen
+                        
+                        return !(Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []).some(a => a === currentUser.name || a.startsWith(currentUser.name + ':'));
+                    }).length;
+
+                    // Badge auf App-Icon anwenden
+                    if (navigator.setAppBadge) {
+                        if (count > 0) navigator.setAppBadge(count).catch(() => {});
+                        else navigator.clearAppBadge().catch(() => {});
+                    }
+                };
+
+                updateBadge();
+                const interval = setInterval(updateBadge, 5000); // Alle 5 Sek auf Ablauf prüfen
+                return () => clearInterval(interval);
+            }, [currentFamily, currentUser, safeHistory, myPolls]);
+
             useEffect(() => { const hSW = (e) => { if (e.data && e.data.type === 'TAB_CHANGE') setActiveTab(e.data.tab); }; if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', hSW); if (messaging) { try { const u = messaging.onMessage(p => { if (navigator.vibrate) navigator.vibrate([50, 100, 50]); showAlert(p.notification?.title || "Neu", p.notification?.body || ""); }); return () => { u(); if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', hSW); }; } catch (e) { } } return () => { if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', hSW); }; }, []);
 
             const handleAdminAuth = async () => { setAuthError(''); const p = (formInput.password || '').trim(); if (!p) return setAuthError('Passwort eingeben.'); try { const r = getFamilyDocRef('admin_setup'); const s = await r.get(); if (!s.exists) { await r.set({ isAdminDoc: true, password: p }); setIsAdminMode(true); } else { if (s.data().password === p) setIsAdminMode(true); else setAuthError('Falsches Passwort.'); } } catch (e) { setAuthError('Fehler.'); } };
