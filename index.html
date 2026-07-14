@@ -181,6 +181,10 @@
         .animate-action-sheet { animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .custom-checkbox:checked+div { background-color: #34C759; border-color: #34C759; }
         .custom-checkbox:checked+div svg { opacity: 1; }
+        /* Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #34C759; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #34C759; }
+        .toggle-checkbox:checked + .toggle-label:after { transform: translateX(100%); border-color: white; }
     </style>
 </head>
 
@@ -201,6 +205,13 @@
         };
 
         const SHOPPING_CATEGORIES = ['Obst & Gemüse', 'Eier & Backwaren', 'Kühlregal & Käse', 'Fleisch & Fisch', 'Vorrat & Nährmittel', 'Snacks & Süßes', 'Haushalt & Drogerie', 'Getränke', 'Sonstiges'];
+        
+        const ALL_MODULES = {
+            'shopping': { id: 'shopping', icon: 'ShoppingCart', label: 'Planung' },
+            'household': { id: 'household', icon: 'Home', label: 'Haushalt' },
+            'expenses': { id: 'expenses', icon: 'Euro', label: 'Auslagen' },
+            'gifts': { id: 'gifts', icon: 'Gift', label: 'Geschenke' }
+        };
 
         function getAutoCategory(i) {
             const l = i.toLowerCase();
@@ -221,16 +232,17 @@
         function formatDate(ts) { if (!ts) return ''; const d = new Date(ts); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE', { weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit' }); }
         function getStatusColor(a) {
             if (!a) return 'text-[#8E8E93] dark:text-[#EBEBF5]/60';
-            if (a.includes('sofort') || a.includes('Übernommen') || a.includes('Gelesen')) return 'text-[#34C759]';
+            if (a.includes('sofort') || a.includes('Übernommen') || a.includes('Gelesen') || a.includes('Zugefügt') || a.includes('Bin dabei')) return 'text-[#34C759]';
             if (a.includes('5 Minuten')) return 'text-[#FF9500]';
             if (a.includes('Fangt') || a.includes('Abgelehnt')) return 'text-[#FF3B30]';
             return 'text-[#34C759]';
         }
         function isExpired(ts, mx = 5) { if (!ts) return true; const t = new Date(ts).getTime(); if (isNaN(t)) return true; return (Date.now() - t) > mx * 60 * 1000; }
-        function getCleanHistory(hist) { return (hist || []).filter(h => { if (h.isExpense || h.isHousehold || h.isSystemReminder || h.isCustomPush || h.isSwapRequest || h.isSuccessfulSwap || h.isRejectedSwap || h.isPaymentVerification || h.isSettlement) return true; return !isExpired(h.timestamp, 5); }).slice(0, 50); }
+        function getCleanHistory(hist) { return (hist || []).filter(h => { if (h.isExpense || h.isHousehold || h.isSystemReminder || h.isCustomPush || h.isSwapRequest || h.isSuccessfulSwap || h.isRejectedSwap || h.isPaymentVerification || h.isSettlement || h.isGiftInvite) return true; return !isExpired(h.timestamp, 5); }).slice(0, 50); }
         function getSharedWith(obj) { return Array.isArray(obj?.sharedWith) ? obj.sharedWith : (obj?.sharedWith ? [obj.sharedWith] : ['Alle']); }
         function getNextSaturday() { const d = new Date(); const diff = (6 - d.getDay() + 7) % 7; d.setDate(d.getDate() + diff); return d.toISOString().split('T')[0]; }
         function getWeekNumber(d) { d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7)); const ys = new Date(Date.UTC(d.getUTCFullYear(), 0, 1)); return Math.ceil((((d - ys) / 86400000) + 1) / 7); }
+        function getDaysLeft(dateStr) { const t = new Date(); t.setHours(0,0,0,0); const d = new Date(dateStr); d.setHours(0,0,0,0); return Math.round((d - t) / (1000 * 60 * 60 * 24)); }
         function safeFormatDateTime(ts) { if (!ts) return ''; const d = new Date(ts); if (isNaN(d.getTime())) return ''; return `am ${d.toLocaleDateString('de-DE')} um ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Uhr`; }
 
         try {
@@ -288,7 +300,10 @@
             PieChart: '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
             Trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
             Timer: '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
-            Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>'
+            Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
+            Gift: '<polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
+            Calendar: '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
+            Cake: '<path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4-2 2 1 2 1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/>'
         };
 
         const REASONS = [
@@ -338,7 +353,7 @@
             }
             if (data.type === 'info_only') {
                 return (
-                    <div className={STYLES.modalOverlay}><div className={STYLES.modalContent + " !h-auto max-w-sm"}><div className="flex flex-col items-center mb-6 mt-1 text-center"><div className={`w-14 h-14 ${data.icon === 'Users' ? 'bg-[#FF9500]/10 text-[#FF9500]' : 'bg-[#007AFF]/10 text-[#007AFF]'} rounded-[22px] flex items-center justify-center mb-5 shadow-sm transform rotate-3`}><Icon name={data.icon || 'Bell'} size={28} strokeWidth={2.5} /></div><h3 className="font-bold text-[20px] tracking-tight mb-1.5">{data.title}</h3><p className="text-[#3C3C43] dark:text-[#EBEBF5]/70 text-[15px] leading-relaxed px-2 font-medium whitespace-pre-wrap">{data.message}</p></div><button onClick={data.onClose} className={STYLES.btnPrimary}>Schließen</button></div></div>
+                    <div className={STYLES.modalOverlay}><div className={STYLES.modalContent + " !h-auto max-w-sm"}><div className="flex flex-col items-center mb-6 mt-1 text-center"><div className={`w-14 h-14 ${data.icon === 'Users' ? 'bg-[#FF9500]/10 text-[#FF9500]' : data.icon === 'Gift' ? 'bg-[#AF52DE]/10 text-[#AF52DE]' : 'bg-[#007AFF]/10 text-[#007AFF]'} rounded-[22px] flex items-center justify-center mb-5 shadow-sm transform rotate-3`}><Icon name={data.icon || 'Bell'} size={28} strokeWidth={2.5} /></div><h3 className="font-bold text-[20px] tracking-tight mb-1.5">{data.title}</h3><p className="text-[#3C3C43] dark:text-[#EBEBF5]/70 text-[15px] leading-relaxed px-2 font-medium whitespace-pre-wrap">{data.message}</p></div><button onClick={data.onClose} className={STYLES.btnPrimary}>Schließen</button></div></div>
                 );
             }
             if (data.type === 'swap_request_ack') {
@@ -374,9 +389,13 @@
             return (<div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-8 bg-[#000000] text-white w-full h-full overflow-y-auto"><div className="w-full max-w-sm text-center space-y-8 my-auto"><Icon name="ShieldCheck" size={96} strokeWidth={1.5} className="text-[#007AFF] mx-auto" /><div><h1 className="text-[34px] font-bold tracking-tight mb-2">System Setup</h1><p className="text-gray-400 text-[15px] leading-relaxed px-4">Bitte lade deine <span className="font-mono text-[#007AFF]">config.json</span> hoch.</p></div>{err && <p className="text-[#FF3B30] text-[13px] font-semibold bg-[#FF3B30]/10 p-3 rounded-[10px] border border-[#FF3B30]/20">{err}</p>}<label className="inline-flex items-center justify-center w-full bg-[#007AFF] text-white py-4 rounded-[14px] font-semibold text-[17px] active:opacity-80 transition-opacity cursor-pointer">Konfiguration laden <input type="file" accept=".json" onChange={h} onClick={(e) => { e.target.value = null; }} /></label></div></div>);
         }
 
-        const LiquidTabBar = ({ activeTab, setActiveTab, isKeyboardOpen }) => {
-            const t = [{ id: 'home', icon: 'Bell' }, { id: 'shopping', icon: 'ShoppingCart' }, { id: 'household', icon: 'Home' }, { id: 'expenses', icon: 'Euro' }, { id: 'settings', icon: 'Settings' }];
-            const aIdx = t.findIndex(x => x.id === activeTab);
+        const LiquidTabBar = ({ activeTab, setActiveTab, activeModIds, isKeyboardOpen }) => {
+            const t = [
+                { id: 'home', icon: 'Bell' },
+                ...(activeModIds || ['shopping', 'household', 'expenses']).map(id => ALL_MODULES[id]),
+                { id: 'settings', icon: 'Settings' }
+            ];
+            const aIdx = Math.max(0, t.findIndex(x => x.id === activeTab));
             return (
                 <div className={`fixed bottom-0 left-0 right-0 flex justify-center z-50 pointer-events-none px-4 transition-transform duration-500 ease-out ${isKeyboardOpen ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`} style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}><div className="pointer-events-auto ios-blur shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#E5E5EA] dark:border-[#38383A] rounded-full p-1.5 flex items-center justify-between w-full max-w-[320px] md:max-w-[400px] relative h-[60px]"><div className="absolute inset-y-1.5 left-1.5 flex justify-center items-center transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" style={{ width: `calc((100% - 12px) / ${t.length})`, transform: `translateX(${aIdx * 100}%)` }}><div className="w-[46px] h-[46px] bg-[#007AFF]/15 dark:bg-[#007AFF]/25 rounded-full flex-shrink-0"></div></div>{t.map((tab) => { const iA = activeTab === tab.id; return <button key={tab.id} onClick={() => { if (navigator.vibrate) navigator.vibrate(10); setActiveTab(tab.id); }} className="flex-1 relative z-10 flex items-center justify-center h-full active:opacity-60 transition-opacity"><Icon name={tab.icon} size={iA ? 24 : 22} strokeWidth={iA ? 2.5 : 2} className={`transition-colors duration-300 flex-shrink-0 ${iA ? 'text-[#007AFF]' : 'text-[#8E8E93] dark:text-[#98989D]'}`} /></button>; })}</div></div>
             );
@@ -439,12 +458,22 @@
             const [isCreatingPoll, setIsCreatingPoll] = useState(false);
             const [pollNewOptions, setPollNewOptions] = useState({});
 
+            const [giftsView, setGiftsView] = useState('list');
+            const [activeGiftEventId, setActiveGiftEventId] = useState(null);
+            const [newGiftIdea, setNewGiftIdea] = useState('');
+            const [giftBuyerAmount, setGiftBuyerAmount] = useState('');
+            const [giftBuyerExtCount, setGiftBuyerExtCount] = useState('0');
+            const [expandedExpenses, setExpandedExpenses] = useState({});
+
+            const activeModIds = currentFamily?.activeModules || ['shopping', 'household', 'expenses'];
             const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
             const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
             const safeExpenses = Array.isArray(currentFamily?.expenses) ? currentFamily.expenses.filter(e => e && typeof e === 'object' && e.id) : [];
             const safeHistory = Array.isArray(currentFamily?.history) ? currentFamily.history.filter(h => h && typeof h === 'object' && h.id) : [];
             const safeShoppingLists = Array.isArray(currentFamily?.shoppingLists) ? currentFamily.shoppingLists : [];
             const safePolls = Array.isArray(currentFamily?.polls) ? currentFamily.polls : [];
+            const safeGiftPersons = Array.isArray(currentFamily?.giftPersons) ? currentFamily.giftPersons : [];
+            const safeGiftEvents = Array.isArray(currentFamily?.giftEvents) ? currentFamily.giftEvents : [];
 
             const myPolls = safePolls.filter(p => { const sw = Array.isArray(p.sharedWith) ? p.sharedWith : (p.sharedWith ? [p.sharedWith] : ['Alle']); if (sw.includes('Alle')) return true; if (p.createdBy === currentUser?.name) return true; return sw.includes(currentUser?.name); });
             const myShoppingLists = safeShoppingLists.filter(l => { const sw = Array.isArray(l.sharedWith) ? l.sharedWith : (l.sharedWith ? [l.sharedWith] : ['Alle']); if (sw.includes('Alle')) return true; if (l.createdBy === currentUser?.name) return true; return sw.includes(currentUser?.name); });
@@ -481,6 +510,12 @@
             useEffect(() => { const hFI = (e) => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') setIsKeyboardOpen(true); }; const hFO = (e) => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { setTimeout(() => { const aT = document.activeElement ? document.activeElement.tagName : ''; if (aT !== 'INPUT' && aT !== 'TEXTAREA') { setIsKeyboardOpen(false); window.scrollTo(0, 0); } }, 50); } }; window.addEventListener('focusin', hFI); window.addEventListener('focusout', hFO); return () => { window.removeEventListener('focusin', hFI); window.removeEventListener('focusout', hFO); }; }, []);
             useEffect(() => { const initAuth = async () => { try { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token); else await auth.signInAnonymously(); } catch (e) { } }; initAuth(); const unsub = auth.onAuthStateChanged(u => { setFirebaseUser(u); if (!u && !localFamilyId) setAppLoaded(true); }); return () => unsub(); }, [localFamilyId]);
             
+            useEffect(() => {
+                if (activeTab !== 'home' && activeTab !== 'settings' && !activeModIds.includes(activeTab)) {
+                    setActiveTab('home');
+                }
+            }, [activeModIds, activeTab]);
+
             useEffect(() => {
                 const handleFocus = () => {
                     if (localFamilyId && firebaseUser) {
@@ -519,6 +554,46 @@
                 }, () => { setAppLoaded(true); });
                 return () => unsub();
             }, [firebaseUser, localFamilyId, localUserName, localUserPassword, isAdminMode]);
+
+            useEffect(() => {
+                if (appLoaded && currentFamily && activeModIds.includes('gifts')) {
+                    let fp = [...safeGiftPersons];
+                    let changed = false;
+                    safeMembers.forEach(m => {
+                        if (!fp.find(p => p.name === m.name && p.type === 'family')) {
+                            fp.push({ id: generateId(), name: m.name, type: 'family', birthdate: '', nameday: '', birthdayNeedsGift: true, namedayNeedsGift: false });
+                            changed = true;
+                        }
+                    });
+
+                    let ce = [...safeGiftEvents];
+                    const now = new Date();
+                    const cy = now.getFullYear();
+                    fp.forEach(p => {
+                        ['birthdate', 'nameday'].forEach(type => {
+                            if (p[type]) {
+                                const pts = p[type].split('-');
+                                if (pts.length === 3) {
+                                    [cy, cy+1].forEach(yr => {
+                                        const eid = `${p.id}_${type}_${yr}`;
+                                        if (!ce.find(e => e.id === eid)) {
+                                            const dTest = new Date(`${yr}-${pts[1]}-${pts[2]}`);
+                                            if (!isNaN(dTest.getTime())) {
+                                                ce.push({ id: eid, personId: p.id, type: type, date: `${yr}-${pts[1]}-${pts[2]}`, status: 'planning', participants: [], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null });
+                                                changed = true;
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    });
+
+                    if (changed) {
+                        getFamilyDocRef(currentFamily.id).update({ giftPersons: fp, giftEvents: ce }).catch(()=>{});
+                    }
+                }
+            }, [appLoaded, currentFamily?.id, safeGiftPersons.length, safeMembers.length, activeModIds]);
 
             useEffect(() => {
                 if (appLoaded && currentFamily && safeHouseholdMembers.length > 0 && safeHouseholdChores.length > 0) {
@@ -582,7 +657,22 @@
                         if (!aA && lE.sender !== currentUser.name && lE.realSender !== currentUser.name && !isExpired(lE.timestamp)) {
                             if (!sessionStorage.getItem(`prompted_${lE.id}`)) {
                                 sessionStorage.setItem(`prompted_${lE.id}`, 'true');
-                                if (lE.isCustomPush || lE.isSuccessfulSwap || lE.isRejectedSwap) { 
+                                if (lE.isGiftInvite) {
+                                    setModal({
+                                        type: 'confirm', title: 'Geschenk planen', message: `${lE.sender} lädt dich ein, ein Geschenk für ${lE.personName} zu planen. Bist du dabei?`, confirmText: 'Mitschenken', cancelText: 'Nein, danke',
+                                        onConfirm: async () => {
+                                            const updated = safeGiftEvents.map(e => e.id === lE.eventId ? { ...e, participants: [...e.participants, currentUser.name], pendingParticipants: e.pendingParticipants.filter(x => x !== currentUser.name) } : e);
+                                            await getFamilyDocRef(currentFamily.id).update({ giftEvents: updated });
+                                            handleAcknowledge(lE.id, 'Zugefügt'); setActiveTab('gifts'); setGiftsView('list'); setModal(null);
+                                        },
+                                        onCancel: async () => {
+                                            const updated = safeGiftEvents.map(e => e.id === lE.eventId ? { ...e, declinedParticipants: [...(e.declinedParticipants||[]), currentUser.name], pendingParticipants: e.pendingParticipants.filter(x => x !== currentUser.name) } : e);
+                                            await getFamilyDocRef(currentFamily.id).update({ giftEvents: updated });
+                                            handleAcknowledge(lE.id, 'Abgelehnt'); setModal(null);
+                                        }
+                                    });
+                                }
+                                else if (lE.isCustomPush || lE.isSuccessfulSwap || lE.isRejectedSwap) { 
                                     setModal({ 
                                         type: 'info_only', title: lE.isCustomPush ? lE.sender : "Vertretung", message: lE.reason, icon: lE.isCustomPush ? "Bell" : "Users", 
                                         onClose: () => { handleAcknowledge(lE.id, 'Gelesen'); setModal(null); if(lE.isSuccessfulSwap || lE.isRejectedSwap) setActiveTab('household'); } 
@@ -791,6 +881,213 @@
             const handleDeleteMember = (n) => { if (n === currentUser.name) return; showConfirm("Löschen", `${n} entfernen?`, async () => await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.filter(m => m?.name !== n) }), true); };
             const saveSettings = async (k, v) => await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, [k]: v ? String(v).trim() : '' } : m) });
 
+            const saveGiftPerson = async (pId, updates) => {
+                const uP = safeGiftPersons.map(p => p.id === pId ? { ...p, ...updates } : p);
+                await getFamilyDocRef(currentFamily.id).update({ giftPersons: uP });
+            };
+            const addCustomGiftPerson = async () => {
+                const n = prompt("Name der Person:");
+                if (!n || !n.trim()) return;
+                const uP = [...safeGiftPersons, { id: generateId(), name: n.trim(), type: 'custom', birthdate: '', nameday: '', birthdayNeedsGift: true, namedayNeedsGift: false }];
+                await getFamilyDocRef(currentFamily.id).update({ giftPersons: uP });
+            };
+            const handleGiftAction = async (eId, action, payload) => {
+                const ev = safeGiftEvents.find(x => x.id === eId); if (!ev) return;
+                const p = safeGiftPersons.find(x => x.id === ev.personId);
+                let uE = [...safeGiftEvents];
+                let hUpd = [];
+
+                if (action === 'join_alone') {
+                    uE = uE.map(e => e.id === eId ? { ...e, participants: [currentUser.name] } : e);
+                } else if (action === 'invite') {
+                    const sel = payload;
+                    uE = uE.map(e => e.id === eId ? { ...e, participants: e.participants.includes(currentUser.name) ? e.participants : [...e.participants, currentUser.name], pendingParticipants: [...e.pendingParticipants, ...sel] } : e);
+                    sel.forEach(t => hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `${currentUser.name} lädt dich ein, ein Geschenk für ${p.name} zu planen.`, targets: [t], acknowledgedBy: [], isGiftInvite: true, eventId: eId, personName: p.name }));
+                } else if (action === 'add_idea') {
+                    uE = uE.map(e => e.id === eId ? { ...e, ideas: [...e.ideas, { id: generateId(), text: payload, addedBy: currentUser.name, votes: [] }] } : e);
+                } else if (action === 'start_vote') {
+                    uE = uE.map(e => e.id === eId ? { ...e, status: 'voting', voteDeadline: payload } : e);
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Die Abstimmung für das Geschenk von ${p.name} läuft!`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                } else if (action === 'vote') {
+                    uE = uE.map(e => e.id === eId ? { ...e, ideas: e.ideas.map(i => i.id === payload ? { ...i, votes: i.votes.includes(currentUser.name) ? i.votes.filter(x => x !== currentUser.name) : [...i.votes, currentUser.name] } : i) } : e);
+                } else if (action === 'end_vote') {
+                    let maxV = -1; let win = '';
+                    ev.ideas.forEach(i => { if (i.votes.length > maxV) { maxV = i.votes.length; win = i.text; } });
+                    uE = uE.map(e => e.id === eId ? { ...e, status: 'buying' } : e);
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `Abstimmung beendet! Favorit für ${p.name}: ${win || 'Keine'}. Wer besorgt es?`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                } else if (action === 'claim_buy') {
+                    uE = uE.map(e => e.id === eId ? { ...e, buyer: currentUser.name } : e);
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `${currentUser.name} besorgt das Geschenk für ${p.name}!`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                } else if (action === 'settle') {
+                    const amt = parseFloat(payload.amount.replace(',', '.'));
+                    const extCount = parseInt(payload.extCount || '0', 10);
+                    const totalP = ev.participants.length + extCount;
+                    const perP = (amt / totalP).toFixed(2);
+                    
+                    let nE = [...safeExpenses];
+                    ev.participants.forEach(mem => {
+                        if (mem !== currentUser.name) {
+                            nE.unshift({ id: generateId(), creditor: currentUser.name, debtor: mem, amount: perP, reason: `Geschenk für ${p.name}`, date: getLocalTodayString(), timestamp: new Date().toISOString(), isPaid: false });
+                            hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p.name}: ${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
+                        }
+                    });
+                    uE = uE.map(e => e.id === eId ? { ...e, status: 'settled', cost: amt } : e);
+                    await getFamilyDocRef(currentFamily.id).update({ giftEvents: uE, expenses: nE, history: [...hUpd, ...getCleanHistory(safeHistory)] });
+                    setGiftsView('list'); setActiveGiftEventId(null);
+                    return;
+                }
+
+                const updates = { giftEvents: uE };
+                if (hUpd.length > 0) updates.history = [...hUpd, ...getCleanHistory(safeHistory)];
+                await getFamilyDocRef(currentFamily.id).update(updates);
+            };
+
+            const renderGiftEventView = () => {
+                const e = safeGiftEvents.find(x => x.id === activeGiftEventId);
+                const p = safeGiftPersons.find(x => x.id === e?.personId);
+                if (!e || !p) return null;
+                const isPart = e.participants.includes(currentUser.name);
+                const isNeedGift = e.type === 'birthdate' ? p.birthdayNeedsGift : p.namedayNeedsGift;
+                
+                return (
+                    <div className="absolute inset-0 bg-[var(--app-bg)] dark:bg-black z-50 flex flex-col animate-in slide-in-from-right duration-300">
+                        <header className="pt-safe-top pb-4 px-4 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur flex items-center justify-between border-b border-[#E5E5EA] dark:border-[#38383A] z-10 shadow-sm">
+                            <button onClick={() => { setActiveGiftEventId(null); setGiftsView('list'); }} className="text-[#007AFF] p-1 flex items-center"><Icon name="ChevronRight" size={24} className="rotate-180" /></button>
+                            <h2 className="font-bold text-[18px] truncate">{e.type === 'birthdate' ? 'Geburtstag' : 'Namenstag'} von {p.name}</h2>
+                            <div className="w-8"></div>
+                        </header>
+                        <main className="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
+                            <div className="text-center">
+                                <Icon name="Cake" size={48} className="mx-auto mb-2 text-[#AF52DE]" />
+                                <p className="text-[20px] font-bold">{formatDate(e.date)}</p>
+                                <p className="text-[#8E8E93] text-[15px] font-medium">{getDaysLeft(e.date) === 0 ? 'Heute!' : `in ${getDaysLeft(e.date)} Tagen`}</p>
+                            </div>
+
+                            {!isNeedGift ? (
+                                <div className="bg-[#007AFF]/10 p-5 rounded-[16px] text-center border border-[#007AFF]/20">
+                                    <Icon name="Bell" size={24} className="text-[#007AFF] mx-auto mb-2" />
+                                    <p className="text-[#007AFF] font-medium">Dies ist nur eine Erinnerung. Es ist kein Geschenk geplant.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {(!isPart && e.participants.length === 0) && (
+                                        <div className={STYLES.card + " p-5 text-center"}>
+                                            <h3 className="font-bold text-[18px] mb-4">Geschenk planen</h3>
+                                            <div className="flex flex-col gap-3">
+                                                <button onClick={() => handleGiftAction(e.id, 'join_alone')} className={STYLES.btnPrimary}>Allein schenken</button>
+                                                <button onClick={() => setModal({
+                                                    type: 'confirm', title: 'Mitschenker wählen', message: 'Wähle Personen aus, die mit dir schenken sollen:',
+                                                    onConfirm: () => { handleGiftAction(e.id, 'invite', selectedMembers); setModal(null); },
+                                                    onCancel: () => setModal(null)
+                                                })} className={STYLES.btnSecondary + " !bg-[#AF52DE]/10 !text-[#AF52DE]"}>Zusammen schenken</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {(!isPart && e.participants.length > 0) && (
+                                        <div className={STYLES.card + " p-5 text-center"}>
+                                            <p className="mb-4 text-[#8E8E93]">Geplant von: {e.participants.join(', ')}</p>
+                                            {e.pendingParticipants.includes(currentUser.name) ? (
+                                                <button onClick={() => {
+                                                    const uE = safeGiftEvents.map(x => x.id === e.id ? { ...x, participants: [...x.participants, currentUser.name], pendingParticipants: x.pendingParticipants.filter(y => y !== currentUser.name) } : x);
+                                                    getFamilyDocRef(currentFamily.id).update({ giftEvents: uE });
+                                                }} className={STYLES.btnPrimary}>Einladung annehmen</button>
+                                            ) : (
+                                                <p className="font-semibold text-[#FF9500]">Du bist nicht beteiligt.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {isPart && (
+                                        <>
+                                            <div className="bg-white dark:bg-[#1C1C1E] p-4 rounded-[16px] border border-[#E5E5EA] dark:border-[#38383A]">
+                                                <h3 className="font-bold text-[16px] mb-2 flex items-center gap-2"><Icon name="Users" size={16} /> Beteiligte</h3>
+                                                <p className="text-[14px] text-[#3C3C43] dark:text-gray-300">{e.participants.join(', ')} {e.pendingParticipants.length > 0 && <span className="text-[#8E8E93]">(Warten auf: {e.pendingParticipants.join(', ')})</span>}</p>
+                                            </div>
+
+                                            {e.status === 'planning' && (
+                                                <div className={STYLES.card + " p-5"}>
+                                                    <h3 className="font-bold text-[18px] mb-4">Ideen Sammlung</h3>
+                                                    <div className="space-y-3 mb-5">
+                                                        {e.ideas.length === 0 ? <p className="text-[#8E8E93] text-[14px] italic">Noch keine Ideen.</p> : e.ideas.map(i => (
+                                                            <div key={i.id} className="p-3 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[12px]"><p className="font-semibold text-[15px]">{i.text}</p><p className="text-[11px] text-[#8E8E93] mt-1">von {i.addedBy}</p></div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <input type="text" placeholder="Neue Idee (auch Links)..." className={STYLES.input} value={newGiftIdea} onChange={ev => setNewGiftIdea(ev.target.value)} />
+                                                        <button onClick={() => { if (newGiftIdea.trim()) { handleGiftAction(e.id, 'add_idea', newGiftIdea.trim()); setNewGiftIdea(''); } }} className="bg-[#AF52DE] text-white px-4 rounded-[12px]"><Icon name="Plus" size={20} /></button>
+                                                    </div>
+                                                    {e.ideas.length > 0 && (
+                                                        <button onClick={() => handleGiftAction(e.id, 'start_vote', null)} className="w-full mt-5 py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF]/10 text-[#007AFF]">Abstimmung starten</button>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {e.status === 'voting' && (
+                                                <div className={STYLES.card + " p-5 border-[#007AFF] border-2"}>
+                                                    <h3 className="font-bold text-[18px] mb-4 text-[#007AFF]">Abstimmung läuft</h3>
+                                                    <div className="space-y-3 mb-5">
+                                                        {e.ideas.map(i => {
+                                                            const mV = i.votes.includes(currentUser.name);
+                                                            return (
+                                                                <div key={i.id} onClick={() => handleGiftAction(e.id, 'vote', i.id)} className={`flex justify-between items-center p-3 rounded-[12px] border cursor-pointer ${mV ? 'bg-[#007AFF]/10 border-[#007AFF]' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] border-transparent'}`}>
+                                                                    <div><p className="font-semibold">{i.text}</p><p className="text-[12px] text-[#8E8E93]">{i.votes.length} Stimme(n)</p></div>
+                                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${mV ? 'border-[#007AFF] bg-[#007AFF]' : 'border-[#C6C6C8]'}`}>{mV && <Icon name="Check" size={14} className="text-white" />}</div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                    <button onClick={() => handleGiftAction(e.id, 'end_vote')} className="w-full py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF] text-white shadow-sm">Abstimmung beenden</button>
+                                                </div>
+                                            )}
+
+                                            {(e.status === 'buying' || e.status === 'settled') && (
+                                                <div className={STYLES.card + " p-5"}>
+                                                    <h3 className="font-bold text-[18px] mb-4">Besorgung</h3>
+                                                    {e.ideas.length > 0 && (
+                                                        <div className="mb-4 p-3 bg-[#34C759]/10 rounded-[12px] border border-[#34C759]/30">
+                                                            <p className="text-[12px] text-[#34C759] font-bold uppercase mb-1">Favoriten</p>
+                                                            {(() => {
+                                                                let mx = -1; e.ideas.forEach(i => { if(i.votes.length > mx) mx = i.votes.length; });
+                                                                const favs = e.ideas.filter(i => i.votes.length === mx);
+                                                                return favs.map(f => <p key={f.id} className="font-semibold">{f.text}</p>);
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                    {!e.buyer ? (
+                                                        <button onClick={() => handleGiftAction(e.id, 'claim_buy')} className="w-full py-4 rounded-[14px] bg-[#AF52DE] text-white font-bold text-[17px] shadow-sm">Ich besorge es!</button>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
+                                                            <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
+                                                            
+                                                            {e.buyer === currentUser.name && !e.settled && e.status !== 'settled' && (
+                                                                <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left">
+                                                                    <p className="font-bold mb-3">Kosten eintragen</p>
+                                                                    <div className="space-y-3">
+                                                                        <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
+                                                                        <div>
+                                                                            <p className={STYLES.subTitle + " !ml-1"}>Zahlen externe Personen mit? (Anzahl)</p>
+                                                                            <input type="number" min="0" className={STYLES.input} value={giftBuyerExtCount} onChange={ev => setGiftBuyerExtCount(ev.target.value)} />
+                                                                        </div>
+                                                                        <button onClick={() => { if(giftBuyerAmount) handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount, extCount: giftBuyerExtCount }) }} className={STYLES.btnPrimary}>Kosten aufteilen & buchen</button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {e.status === 'settled' && (
+                                                                <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1"><Icon name="CheckCircle2" size={18} /> Erledigt & Verrechnet ({e.cost}€)</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </main>
+                    </div>
+                );
+            };
+
             if (!appLoaded) return <div className="h-full w-full bg-[var(--app-bg)] flex flex-col items-center justify-center relative z-50"><Icon name="ShieldCheck" size={64} strokeWidth={1.5} className="text-[#007AFF] animate-pulse mb-4" /></div>;
 
             if (isAdminMode) {
@@ -898,12 +1195,16 @@
 
                     {householdSwapModal && <div className={STYLES.modalOverlay}><div className={STYLES.modalContent + " !h-auto max-w-sm"}><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[18px]">Vertretung anfragen</h3><button onClick={() => setHouseholdSwapModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex justify-center items-center"><Icon name="X" size={16} /></button></div><p className="text-[14px] text-[#8E8E93] mb-4">Wen möchtest du bitten?</p><div className="flex flex-col gap-3 max-h-[40vh] overflow-y-auto pb-2">{activeMembersList.filter(m => m.name !== currentUser.name).map(m => (<button key={m.name} onClick={() => { handleHouseholdAction(householdSwapModal, 'request_swap', m.name); setHouseholdSwapModal(null); showAlert("Erfolgreich", `Anfrage an ${m.name} gesendet!`); }} className={STYLES.btnSecondary + " text-left px-4 !mt-0"}>{m.name}</button>))}</div></div></div>}
 
+                    {activeGiftEventId && renderGiftEventView()}
+
                     <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
                         {!(activeTab === 'shopping' && isShoppingMode) && (
                             <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex flex-col justify-end w-full sticky top-0 min-h-[70px]">
                                 <div className="text-center w-full min-w-0 flex items-center justify-center mt-4">
                                     <h1 className="text-[32px] md:text-[34px] font-bold tracking-tight leading-tight truncate">
-                                        {activeTab === 'home' && `Familie ${currentFamily?.name || ''}`}{activeTab === 'shopping' && 'Planung'}{activeTab === 'expenses' && 'Auslagen'}{activeTab === 'household' && 'Haushalt'}{activeTab === 'settings' && 'Einstellungen'}
+                                        {activeTab === 'home' && `Familie ${currentFamily?.name || ''}`}
+                                        {activeTab === 'settings' && 'Einstellungen'}
+                                        {activeTab !== 'home' && activeTab !== 'settings' && ALL_MODULES[activeTab]?.label}
                                     </h1>
                                 </div>
                                 {activeTab === 'shopping' && (
@@ -1023,13 +1324,123 @@
                                                 let iO = 0; let tO = 0; eWT.forEach(e => { const a = parseFloat(e.amount) || 0; if (e.creditor === currentUser?.name) tO += a; else iO += a; }); const net = tO - iO;
                                                 const hasPending = safeExpenses.some(e => !e.isPaid && e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === m.name) || (e.creditor === m.name && e.debtor === currentUser?.name)));
                                                 
+                                                const isExpanded = expandedExpenses[m.name];
+                                                const displayExpenses = isExpanded ? eWT : eWT.slice(0, 3);
+                                                const hasMore = eWT.length > 3;
+
                                                 return (
                                                     <div key={m.name} className={STYLES.card + " flex flex-col h-full"}><div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]"><div className="min-w-0 pr-2 cursor-pointer active:opacity-70" onClick={() => setExpenseHistoryModal(m.name)}><p className="font-bold text-[18px] truncate">{m.name}</p>
                                                         <p className={`text-[14px] font-semibold mt-0.5 truncate ${net > 0 ? 'text-[#34C759]' : net < 0 ? 'text-[#FF3B30]' : (hasPending && eWT.length === 0) ? 'text-[#FF9500]' : 'text-[#8E8E93]'}`}>{net > 0 ? `Schuldet dir: ${net.toFixed(2)}€` : net < 0 ? `Noch fällig: ${Math.abs(net).toFixed(2)}€` : (hasPending && eWT.length === 0) ? 'Wird geprüft.' : 'Alles beglichen'}</p>
-                                                    </div><div className="flex gap-2">{eWT.length > 0 && <button onClick={() => net >= 0 ? handleSettleAll(m.name, eWT, Math.abs(net)) : openDebtorProofModal(m.name, Math.abs(net), eWT)} className="w-9 h-9 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="CheckCircle2" size={20} /></button>}<button onClick={() => openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Plus" size={20} /></button></div></div>{eWT.length > 0 && (<div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">{eWT.map(e => { const iMC = e.creditor === currentUser?.name; return (<div key={e.id} className={`flex justify-between items-center bg-white dark:bg-[#1C1C1E] border p-3 rounded-[16px] ${iMC ? 'border-[#007AFF]/30' : 'border-[#E5E5EA] dark:border-[#38383A]'}`}><div className="pr-3 min-w-0 flex-1"><p className="text-[15px] font-semibold truncate">{e.reason}</p><p className="text-[12px] text-[#8E8E93] font-medium">{formatDate(e.date || e.timestamp)}</p></div><div className="flex flex-col items-end gap-2 flex-shrink-0"><span className={`font-semibold text-[16px] ${iMC ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{iMC ? '+' : '-'}{parseFloat(e.amount || 0).toFixed(2)}€</span>{iMC ? (<div className="flex gap-1.5 mt-1"><button onClick={() => openEditExpense(e)} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14} /></button><button onClick={() => handleMarkExpensePaid(e.id)} className="w-8 h-8 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center"><Icon name="Check" size={16} /></button><button onClick={() => handleDeleteExpense(e.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14} /></button></div>) : (<span className="text-[11px] uppercase font-bold text-[#8E8E93] bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-2.5 py-1 rounded-full mt-1">Offen</span>)}</div></div>) })}</div>)}</div>
+                                                    </div><div className="flex gap-2">{eWT.length > 0 && <button onClick={() => net >= 0 ? handleSettleAll(m.name, eWT, Math.abs(net)) : openDebtorProofModal(m.name, Math.abs(net), eWT)} className="w-9 h-9 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="CheckCircle2" size={20} /></button>}<button onClick={() => openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Plus" size={20} /></button></div></div>{eWT.length > 0 && (<div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">{displayExpenses.map(e => { const iMC = e.creditor === currentUser?.name; return (<div key={e.id} className={`flex justify-between items-center bg-white dark:bg-[#1C1C1E] border p-3 rounded-[16px] ${iMC ? 'border-[#007AFF]/30' : 'border-[#E5E5EA] dark:border-[#38383A]'}`}><div className="pr-3 min-w-0 flex-1"><p className="text-[15px] font-semibold truncate">{e.reason}</p><p className="text-[12px] text-[#8E8E93] font-medium">{formatDate(e.date || e.timestamp)}</p></div><div className="flex flex-col items-end gap-2 flex-shrink-0"><span className={`font-semibold text-[16px] ${iMC ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{iMC ? '+' : '-'}{parseFloat(e.amount || 0).toFixed(2)}€</span>{iMC ? (<div className="flex gap-1.5 mt-1"><button onClick={() => openEditExpense(e)} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14} /></button><button onClick={() => handleMarkExpensePaid(e.id)} className="w-8 h-8 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center"><Icon name="Check" size={16} /></button><button onClick={() => handleDeleteExpense(e.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14} /></button></div>) : (<span className="text-[11px] uppercase font-bold text-[#8E8E93] bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-2.5 py-1 rounded-full mt-1">Offen</span>)}</div></div>) })}
+                                                    {hasMore && <button onClick={() => setExpandedExpenses(p => ({ ...p, [m.name]: !isExpanded }))} className="w-full py-2.5 text-[13px] font-bold text-[#8E8E93] bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[10px] active:opacity-70 flex justify-center items-center gap-1 mt-2"><Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={14} /> {isExpanded ? "Weniger anzeigen" : `Alle ${eWT.length} Auslagen anzeigen`}</button>}
+                                                    </div>)}</div>
                                                 );
                                             })}
                                         </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'gifts' && !activeGiftEventId && (
+                                <div className="space-y-6 pb-10 animate-in fade-in">
+                                    {giftsView === 'list' ? (
+                                        <>
+                                            <div className="flex justify-between items-center mb-4 px-2">
+                                                <h2 className="text-[20px] font-bold text-[#AF52DE] flex items-center gap-2"><Icon name="Calendar" size={20} /> Anstehende Feste</h2>
+                                                <button onClick={() => setGiftsView('settings')} className="text-[#007AFF] text-[13px] font-bold bg-[#007AFF]/10 px-3 py-1.5 rounded-full"><Icon name="Settings" size={14} className="inline mr-1" /> Verwaltung</button>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {safeGiftEvents
+                                                    .filter(e => e.status !== 'settled')
+                                                    .sort((a,b) => new Date(a.date) - new Date(b.date))
+                                                    .filter(e => { const d = new Date(e.date); d.setHours(0,0,0,0); const t = new Date(nowGlobal); t.setHours(0,0,0,0); return d >= t; })
+                                                    .map(e => {
+                                                        const p = safeGiftPersons.find(x => x.id === e.personId);
+                                                        if (!p) return null;
+                                                        const dL = getDaysLeft(e.date);
+                                                        const isPart = e.participants.includes(currentUser.name);
+                                                        const isNeedGift = e.type === 'birthdate' ? p.birthdayNeedsGift : p.namedayNeedsGift;
+                                                        
+                                                        let statusBadge = null;
+                                                        if (!isNeedGift) statusBadge = <span className="text-[11px] font-bold bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full">Kein Geschenk</span>;
+                                                        else if (e.status === 'planning' && e.participants.length === 0) statusBadge = <span className="text-[11px] font-bold bg-[#FF3B30]/20 text-[#FF3B30] px-2 py-0.5 rounded-full">Ungelöst</span>;
+                                                        else if (e.status === 'planning') statusBadge = <span className="text-[11px] font-bold bg-[#FF9500]/20 text-[#FF9500] px-2 py-0.5 rounded-full">Planung</span>;
+                                                        else if (e.status === 'voting') statusBadge = <span className="text-[11px] font-bold bg-[#007AFF]/20 text-[#007AFF] px-2 py-0.5 rounded-full">Abstimmung</span>;
+                                                        else if (e.status === 'buying') statusBadge = <span className="text-[11px] font-bold bg-[#AF52DE]/20 text-[#AF52DE] px-2 py-0.5 rounded-full">Besorgung</span>;
+
+                                                        return (
+                                                            <div key={e.id} onClick={() => setActiveGiftEventId(e.id)} className={STYLES.card + ` p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform ${dL <= 7 ? 'border-l-4 border-l-[#AF52DE]' : ''}`}>
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="text-center w-[50px] shrink-0">
+                                                                        <p className={`text-[22px] font-bold leading-none ${dL <= 7 ? 'text-[#AF52DE]' : 'text-black dark:text-white'}`}>{dL === 0 ? 'Heute' : dL}</p>
+                                                                        <p className="text-[11px] text-[#8E8E93] font-bold uppercase">{dL === 0 ? 'Fest' : dL === 1 ? 'Tag' : 'Tage'}</p>
+                                                                    </div>
+                                                                    <div className="w-px h-10 bg-[#E5E5EA] dark:bg-[#38383A]"></div>
+                                                                    <div>
+                                                                        <h3 className="font-bold text-[16px]">{p.name}</h3>
+                                                                        <p className="text-[12px] text-[#8E8E93]">{e.type === 'birthdate' ? 'Geburtstag' : 'Namenstag'} ({formatDate(e.date)})</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col items-end gap-2">
+                                                                    {statusBadge}
+                                                                    {isPart && <Icon name="Users" size={14} className="text-[#007AFF]" />}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                })}
+                                                {safeGiftEvents.filter(e => e.status !== 'settled').filter(e => { const d = new Date(e.date); d.setHours(0,0,0,0); const t = new Date(nowGlobal); t.setHours(0,0,0,0); return d >= t; }).length === 0 && <p className="col-span-full text-center text-[#8E8E93] py-8 italic">Keine anstehenden Feste.</p>}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="flex justify-between items-center mb-4 px-2">
+                                                <h2 className="text-[20px] font-bold flex items-center gap-2"><Icon name="Users" size={20} /> Personen & Feste</h2>
+                                                <button onClick={() => setGiftsView('list')} className="text-[#007AFF] text-[13px] font-bold bg-[#F2F2F7] dark:bg-[#2C2C2E] px-3 py-1.5 rounded-full">Zurück</button>
+                                            </div>
+                                            
+                                            <div className="space-y-4">
+                                                {safeGiftPersons.map(p => (
+                                                    <div key={p.id} className={STYLES.card + " p-4"}>
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <h3 className="font-bold text-[18px] flex items-center gap-2">{p.name} {p.type === 'custom' && <span className="text-[10px] bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full uppercase">Extern</span>}</h3>
+                                                            {p.type === 'custom' && <button onClick={async () => { await getFamilyDocRef(currentFamily.id).update({ giftPersons: safeGiftPersons.filter(x => x.id !== p.id) }); }} className="text-[#FF3B30] p-1"><Icon name="Trash2" size={16} /></button>}
+                                                        </div>
+                                                        
+                                                        <div className="space-y-4">
+                                                            <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-3 rounded-[12px]">
+                                                                <div className="flex justify-between items-center mb-2">
+                                                                    <span className="font-semibold text-[14px]">Geburtstag</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
+                                                                        <div className="relative inline-block w-10 align-middle select-none">
+                                                                            <input type="checkbox" id={`bg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.birthdayNeedsGift} onChange={e => saveGiftPerson(p.id, { birthdayNeedsGift: e.target.checked })}/>
+                                                                            <label htmlFor={`bg-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <input type="date" className={STYLES.input + " !py-2 !text-[14px]"} value={p.birthdate} onChange={e => saveGiftPerson(p.id, { birthdate: e.target.value })} />
+                                                            </div>
+                                                            
+                                                            <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-3 rounded-[12px]">
+                                                                <div className="flex justify-between items-center mb-2">
+                                                                    <span className="font-semibold text-[14px]">Namenstag (Optional)</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
+                                                                        <div className="relative inline-block w-10 align-middle select-none">
+                                                                            <input type="checkbox" id={`ng-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.namedayNeedsGift} onChange={e => saveGiftPerson(p.id, { namedayNeedsGift: e.target.checked })}/>
+                                                                            <label htmlFor={`ng-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <input type="date" className={STYLES.input + " !py-2 !text-[14px]"} value={p.nameday} onChange={e => saveGiftPerson(p.id, { nameday: e.target.value })} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <button onClick={addCustomGiftPerson} className="w-full py-4 rounded-[16px] border-2 border-dashed border-[#AF52DE]/40 bg-[#AF52DE]/5 text-[#AF52DE] font-bold text-[16px] flex justify-center items-center gap-2"><Icon name="Plus" size={20} /> Externe Person hinzufügen</button>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             )}
@@ -1056,6 +1467,36 @@
 
                             {activeTab === 'settings' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in pb-10">
+                                    {isAdmin && (
+                                        <section className="md:col-span-2">
+                                            <h2 className={STYLES.subTitle}>Module konfigurieren (Max 3)</h2>
+                                            <div className={STYLES.card + " divide-y divide-[#E5E5EA] dark:divide-[#38383A]"}>
+                                                {Object.keys(ALL_MODULES).map(modId => {
+                                                    const isActive = activeModIds.includes(modId);
+                                                    return (
+                                                        <div key={modId} className="p-4 flex justify-between items-center">
+                                                            <div className="flex items-center gap-3"><Icon name={ALL_MODULES[modId].icon} size={20} className="text-[#007AFF]" /><span className="font-medium">{ALL_MODULES[modId].label}</span></div>
+                                                            <div className="relative inline-block w-12 mr-2 align-middle select-none">
+                                                                <input type="checkbox" id={`toggle-${modId}`} className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={isActive} onChange={async (e) => {
+                                                                    let newMods = [...activeModIds];
+                                                                    if (e.target.checked) {
+                                                                        if (newMods.length >= 3) { showAlert("Limit erreicht", "Es können maximal 3 Module gleichzeitig aktiv sein."); return; }
+                                                                        newMods.push(modId);
+                                                                    } else {
+                                                                        newMods = newMods.filter(id => id !== modId);
+                                                                    }
+                                                                    await getFamilyDocRef(currentFamily.id).update({ activeModules: newMods });
+                                                                }}/>
+                                                                <label htmlFor={`toggle-${modId}`} className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out"></label>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                            <p className="text-[12px] text-[#8E8E93] mt-2 px-2">Aktiviere genau drei Module für die untere Navigationsleiste.</p>
+                                        </section>
+                                    )}
+
                                     <section>
                                         <h2 className={STYLES.subTitle + " flex items-center gap-2"}><Icon name="BellOff" size={14} /> Nicht stören</h2>
                                         <div className={STYLES.card + " p-5 h-[calc(100%-2rem)]"}>
@@ -1095,7 +1536,7 @@
                             )}
                         </main>
                     </div>
-                    <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} isKeyboardOpen={isKeyboardOpen} />
+                    <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} activeModIds={activeModIds} isKeyboardOpen={isKeyboardOpen} />
                 </div>
             );
         }
