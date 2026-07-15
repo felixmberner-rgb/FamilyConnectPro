@@ -278,8 +278,29 @@
         const { createRoot } = ReactDOM;
 
         const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
-        let app, db, auth, messaging;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
+let app, db, auth, messaging;
+
+// Firebase sicher initialisieren
+try {
+    const storedConfig = localStorage.getItem('firebaseConfig');
+    if (storedConfig) {
+        const configData = JSON.parse(storedConfig);
+        const finalConfig = configData.firebaseConfig ? configData.firebaseConfig : configData;
+        
+        if (!firebase.apps.length) {
+            app = firebase.initializeApp(finalConfig);
+        } else {
+            app = firebase.app();
+        }
+        db = firebase.firestore();
+        auth = firebase.auth();
+        // Optional: messaging = firebase.messaging();
+    }
+} catch (error) {
+    console.error("Fehler beim Laden der Firebase-Config:", error);
+}
+
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-connect-pro';
 
         function getFamilyDocRef(fId) { return db.doc(`artifacts/${appId}/public/data/families/${fId}`); }
 
