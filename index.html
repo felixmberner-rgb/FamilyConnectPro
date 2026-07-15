@@ -317,9 +317,7 @@
             Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
             Gift: '<polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
             Calendar: '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
-            Cake: '<path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4-2 2 1 2 1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/>',
-            TreePine: '<path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 2l4 5.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.8 1.7H17Z"/><path d="M12 22v-3"/>',
-            Egg: '<path d="M12 22c-4.4 0-8-3.1-8-8 0-5.5 3.6-12 8-12s8 6.5 8 12c0 4.9-3.6 8-8 8Z"/>'
+            Cake: '<path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4-2 2 1 2 1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/>'
         };
 
         const REASONS = [
@@ -358,7 +356,7 @@
             }
             if (data.type === 'gift_invite_sel') {
                 return (
-                    <div className={STYLES.modalOverlay}><div className={STYLES.modalContent + " !h-auto"}><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[20px]">Mitschenker wählen</h3><button onClick={data.onClose} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center"><Icon name="X" size={16} /></button></div><p className="text-[#8E8E93] text-[14px] mb-4">Wähle Personen aus, die mit dir schenken sollen:</p><div className="space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar">{data.activeMembersList.map(m => { if(m.name === data.currentUser.name) return null; const isSel = data.selected.includes(m.name); return (<label key={m.name} className={STYLES.listItem + " cursor-pointer mt-2"}><span className="font-medium text-[16px]">{m.name}</span><input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e) => { let n = [...data.selected]; if(e.target.checked) n.push(m.name); else n = n.filter(x => x !== m.name); if(data.setSelected) data.setSelected(n); }} /><div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] flex items-center justify-center"><Icon name="Check" size={14} className="text-white opacity-0" /></div></label>); })}</div><button onClick={() => data.onConfirm(data.selected)} className={STYLES.btnPrimary + " mt-6"}>Einladen</button></div></div>
+                    <div className={STYLES.modalOverlay}><div className={STYLES.modalContent + " !h-auto"}><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[20px]">Mitschenker wählen</h3><button onClick={data.onClose} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center"><Icon name="X" size={16} /></button></div><p className="text-[#8E8E93] text-[14px] mb-4">Wähle Personen aus, die mit dir schenken sollen:</p><div className="space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar">{data.activeMembersList.map(m => { if(m.name === data.currentUser.name) return null; const isSel = data.selected.includes(m.name); return (<label key={m.name} className={STYLES.listItem + " cursor-pointer mt-2"}><span className="font-medium text-[16px]">{m.name}</span><input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e) => { let n = [...data.selected]; if(e.target.checked) n.push(m.name); else n = n.filter(x => x !== m.name); data.setSelected(n); }} /><div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] flex items-center justify-center"><Icon name="Check" size={14} className="text-white opacity-0" /></div></label>); })}</div><button onClick={() => data.onConfirm(data.selected)} className={STYLES.btnPrimary + " mt-6"}>Einladen</button></div></div>
                 );
             }
             if (data.type === 'shopping_list_create' || data.type === 'shopping_list_edit_share') {
@@ -481,7 +479,6 @@
 
             const [giftsView, setGiftsView] = useState('list');
             const [activeGiftEventId, setActiveGiftEventId] = useState(null);
-            const [activeHoliday, setActiveHoliday] = useState(null);
             const [newGiftIdea, setNewGiftIdea] = useState('');
             const [giftBuyerAmount, setGiftBuyerAmount] = useState('');
             const [giftBuyerExtCount, setGiftBuyerExtCount] = useState('0');
@@ -520,7 +517,7 @@
             const nowGlobal = new Date();
             const isExecutionWindow = (nowGlobal.getDay() === 5 && nowGlobal.getHours() >= 16) || (nowGlobal.getDay() === 6);
             
-            const activeCallEvent = safeHistory.find(h => { if (h.isExpense || h.isResend || h.isSwapRequest || h.isRejectedSwap || h.isCustomPush || h.isSystemReminder || h.isPaymentVerification || h.isSettlement || h.isGiftInvite || h.category === 'gift') return false; return !isExpired(h.timestamp); });
+            const activeCallEvent = safeHistory.find(h => { if (h.isExpense || h.isResend || h.isSwapRequest || h.isRejectedSwap || h.isCustomPush || h.isSystemReminder || h.isPaymentVerification || h.isSettlement || h.reason === 'Erinnerung: Haushaltsdienst! 🧹') return false; return !isExpired(h.timestamp); });
             const trackingEvent = trackingEventId ? safeHistory.find(h => h.id === trackingEventId) : null;
 
             const showConfirm = (t, m, oC, d = false) => setModal({ type: 'confirm', title: t, message: m, danger: d, onConfirm: () => { oC(); setModal(null); }, onCancel: () => setModal(null) });
@@ -592,55 +589,37 @@
                     const now = new Date();
                     const cy = now.getFullYear();
                     
+                    const updateEvent = (p, type, yr, dateStr) => {
+                        const eid = `${p.id}_${type}_${yr}`;
+                        if (!ce.find(e => e.id === eid)) {
+                            const dTest = new Date(dateStr);
+                            if (!isNaN(dTest.getTime())) {
+                                ce.push({ id: eid, personId: p.id, type: type, date: dateStr, status: 'planning', participants: [], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null });
+                                changed = true;
+                            }
+                        }
+                    };
+
                     fp.forEach(p => {
                         ['birthdate', 'nameday'].forEach(type => {
                             if (p[type]) {
                                 const pts = p[type].split('-');
                                 if (pts.length === 3) {
                                     [cy, cy+1].forEach(yr => {
-                                        const eid = `${p.id}_${type}_${yr}`;
-                                        const dateStr = `${yr}-${pts[1]}-${pts[2]}`;
-                                        const existingIndex = ce.findIndex(e => e.id === eid);
-                                        if (existingIndex === -1) {
-                                            const dTest = new Date(dateStr);
-                                            if (!isNaN(dTest.getTime())) {
-                                                ce.push({ id: eid, personId: p.id, type: type, date: dateStr, status: 'planning', participants: [], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null });
-                                                changed = true;
-                                            }
-                                        } else if (ce[existingIndex].date !== dateStr) {
-                                            ce[existingIndex] = { ...ce[existingIndex], date: dateStr };
-                                            changed = true;
-                                        }
+                                        updateEvent(p, type, yr, `${yr}-${pts[1]}-${pts[2]}`);
                                     });
                                 }
                             }
                         });
                         
                         [cy, cy+1].forEach(yr => {
-                            const eid = `${p.id}_christmas_${yr}`;
-                            const dateStr = `${yr}-12-24`;
-                            const existingIndex = ce.findIndex(e => e.id === eid);
-                            if (existingIndex === -1) {
-                                ce.push({ id: eid, personId: p.id, type: 'christmas', date: dateStr, status: 'planning', participants: [], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null });
-                                changed = true;
-                            } else if (ce[existingIndex].date !== dateStr) {
-                                ce[existingIndex] = { ...ce[existingIndex], date: dateStr };
-                                changed = true;
-                            }
+                            updateEvent(p, 'christmas', yr, `${yr}-12-24`);
                         });
                         
                         [cy, cy+1].forEach(yr => {
                             const Y = yr, a = Y % 19, b = Math.floor(Y / 100), c = Y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
                             const easterDateStr = `${yr}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                            const eid = `${p.id}_easter_${yr}`;
-                            const existingIndex = ce.findIndex(ev => ev.id === eid);
-                            if (existingIndex === -1) {
-                                ce.push({ id: eid, personId: p.id, type: 'easter', date: easterDateStr, status: 'planning', participants: [], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null });
-                                changed = true;
-                            } else if (ce[existingIndex].date !== easterDateStr) {
-                                ce[existingIndex] = { ...ce[existingIndex], date: easterDateStr };
-                                changed = true;
-                            }
+                            updateEvent(p, 'easter', yr, easterDateStr);
                         });
                     });
 
@@ -954,15 +933,13 @@
                 let hUpd = [];
 
                 if (action === 'join_alone') {
-                    uE = uE.map(e => e.id === eId ? { ...e, participants: [currentUser.name], buyer: currentUser.name } : e);
+                    uE = uE.map(e => e.id === eId ? { ...e, participants: [currentUser.name] } : e);
                 } else if (action === 'invite') {
                     const sel = payload;
                     uE = uE.map(e => e.id === eId ? { ...e, participants: e.participants.includes(currentUser.name) ? e.participants : [...e.participants, currentUser.name], pendingParticipants: [...e.pendingParticipants, ...sel] } : e);
-                    sel.forEach(t => hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `${currentUser.name} lädt dich ein, ein Geschenk für ${p.name} zu planen.`, targets: [t], acknowledgedBy: [], isGiftInvite: true, eventId: eId, personName: p.name, category: 'gift' }));
+                    sel.forEach(t => hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `${currentUser.name} lädt dich ein, ein Geschenk für ${p.name} zu planen.`, targets: [t], acknowledgedBy: [], isGiftInvite: true, eventId: eId, personName: p.name }));
                 } else if (action === 'remove_participant') {
                     uE = uE.map(e => e.id === eId ? { ...e, participants: e.participants.filter(x => x !== payload) } : e);
-                } else if (action === 'remove_pending') {
-                    uE = uE.map(e => e.id === eId ? { ...e, pendingParticipants: e.pendingParticipants.filter(x => x !== payload) } : e);
                 } else if (action === 'add_idea') {
                     uE = uE.map(e => e.id === eId ? { ...e, ideas: [...e.ideas, { id: generateId(), text: payload, addedBy: currentUser.name, votes: [] }] } : e);
                 } else if (action === 'delete_idea') {
@@ -973,32 +950,30 @@
                     uE = uE.map(e => e.id === eId ? { ...e, ideas: e.ideas.map(i => i.id === payload ? { ...i, text: newText.trim() } : i) } : e);
                 } else if (action === 'start_vote') {
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'voting', voteDeadline: payload } : e);
-                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Die Abstimmung für das Geschenk von ${p.name} läuft!`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'gift' });
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Die Abstimmung für das Geschenk von ${p.name} läuft!`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'vote') {
                     uE = uE.map(e => e.id === eId ? { ...e, ideas: e.ideas.map(i => i.id === payload ? { ...i, votes: i.votes.includes(currentUser.name) ? i.votes.filter(x => x !== currentUser.name) : [...i.votes, currentUser.name] } : i) } : e);
                 } else if (action === 'end_vote') {
                     let maxV = -1; let win = '';
                     ev.ideas.forEach(i => { if (i.votes.length > maxV) { maxV = i.votes.length; win = i.text; } });
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'buying' } : e);
-                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `Abstimmung beendet! Favorit für ${p.name}: ${win || 'Keine'}. Wer besorgt es?`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'gift' });
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `Abstimmung beendet! Favorit für ${p.name}: ${win || 'Keine'}. Wer besorgt es?`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'claim_buy') {
                     uE = uE.map(e => e.id === eId ? { ...e, buyer: currentUser.name } : e);
-                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `${currentUser.name} besorgt das Geschenk für ${p.name}!`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'gift' });
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `${currentUser.name} besorgt das Geschenk für ${p.name}!`, targets: ev.participants.filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'settle') {
                     const amt = parseFloat(payload.amount.replace(',', '.'));
                     const extCount = parseInt(payload.extCount || '0', 10);
                     const totalP = ev.participants.length + extCount;
+                    const perP = (amt / totalP).toFixed(2);
                     
                     let nE = [...safeExpenses];
-                    if (totalP > 1 && amt > 0) {
-                        const perP = (amt / totalP).toFixed(2);
-                        ev.participants.forEach(mem => {
-                            if (mem !== currentUser.name) {
-                                nE.unshift({ id: generateId(), creditor: currentUser.name, debtor: mem, amount: perP, reason: `Geschenk für ${p.name}`, date: getLocalTodayString(), timestamp: new Date().toISOString(), isPaid: false });
-                                hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p.name}: ${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
-                            }
-                        });
-                    }
+                    ev.participants.forEach(mem => {
+                        if (mem !== currentUser.name) {
+                            nE.unshift({ id: generateId(), creditor: currentUser.name, debtor: mem, amount: perP, reason: `Geschenk für ${p.name}`, date: getLocalTodayString(), timestamp: new Date().toISOString(), isPaid: false });
+                            hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p.name}: ${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
+                        }
+                    });
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'settled', cost: amt } : e);
                     await getFamilyDocRef(currentFamily.id).update({ giftEvents: uE, expenses: nE, history: [...hUpd, ...getCleanHistory(safeHistory)] });
                     setGiftsView('list'); setActiveGiftEventId(null);
@@ -1013,14 +988,9 @@
             const syncCalendar = async (url) => {
                 if(!url) return;
                 try {
-                    let fetchUrl = url;
-                    if (fetchUrl.startsWith('webcal://')) fetchUrl = fetchUrl.replace('webcal://', 'https://');
-                    
-                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(fetchUrl)}`);
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
                     const data = await res.json();
                     const icsData = data.contents;
-                    if(!icsData) throw new Error("No contents");
-                    
                     const lines = icsData.split(/\r?\n/);
                     let inEvent = false;
                     let summary = '';
@@ -1086,13 +1056,13 @@
                 return (
                     <div className="absolute inset-0 bg-[var(--app-bg)] dark:bg-black z-50 flex flex-col animate-in slide-in-from-right duration-300">
                         <header className="pt-safe-top pb-4 px-4 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur flex items-center justify-between border-b border-[#E5E5EA] dark:border-[#38383A] z-10 shadow-sm">
-                            <button onClick={() => { setActiveGiftEventId(null); if (!activeHoliday) setGiftsView('list'); }} className="text-[#007AFF] p-1 flex items-center"><Icon name="ChevronRight" size={24} className="rotate-180" /></button>
+                            <button onClick={() => { setActiveGiftEventId(null); setGiftsView('list'); }} className="text-[#007AFF] p-1 flex items-center"><Icon name="ChevronRight" size={24} className="rotate-180" /></button>
                             <h2 className="font-bold text-[18px] truncate">{titleStr} von {p.name}</h2>
                             <div className="w-8"></div>
                         </header>
                         <main className="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
                             <div className="text-center">
-                                <Icon name={e.type==='birthdate'?'Cake':e.type==='christmas'?'TreePine':e.type==='easter'?'Egg':'Gift'} size={48} className={`mx-auto mb-2 ${e.type==='birthdate'?'text-[#AF52DE]':e.type==='christmas'?'text-[#34C759]':e.type==='easter'?'text-[#007AFF]':'text-[#FF9500]'}`} />
+                                <Icon name={e.type==='birthdate'?'Cake':e.type==='christmas'?'Gift':'Sparkles'} size={48} className={`mx-auto mb-2 ${e.type==='birthdate'?'text-[#AF52DE]':e.type==='christmas'?'text-[#34C759]':e.type==='easter'?'text-[#007AFF]':'text-[#FF9500]'}`} />
                                 <p className="text-[20px] font-bold">{formatDate(e.date)}</p>
                                 <p className="text-[#8E8E93] text-[15px] font-medium">{getDaysLeft(e.date) === 0 ? 'Heute!' : `in ${getDaysLeft(e.date)} Tagen`}</p>
                             </div>
@@ -1110,7 +1080,7 @@
                                             <div className="flex flex-col gap-3">
                                                 <button onClick={() => handleGiftAction(e.id, 'join_alone')} className={STYLES.btnPrimary}>Allein schenken</button>
                                                 <button onClick={() => {
-                                                    setModal({ type: 'gift_invite_sel', activeMembersList, currentUser, selected: [], onConfirm: (sel) => { handleGiftAction(e.id, 'invite', sel); setModal(null); }, onClose: () => setModal(null) });
+                                                    setModal({ type: 'gift_invite_sel', activeMembersList, currentUser, selected: [], setSelected: function(s){this.selected=s;}, onConfirm: (sel) => { handleGiftAction(e.id, 'invite', sel); setModal(null); }, onClose: () => setModal(null) });
                                                 }} className={STYLES.btnSecondary + " !bg-[#AF52DE]/10 !text-[#AF52DE]"}>Zusammen schenken</button>
                                             </div>
                                         </div>
@@ -1134,7 +1104,7 @@
                                                 <div className="flex justify-between items-center mb-2">
                                                     <h3 className="font-bold text-[16px] flex items-center gap-2"><Icon name="Users" size={16} /> Beteiligte</h3>
                                                     <button onClick={() => {
-                                                        setModal({ type: 'gift_invite_sel', activeMembersList, currentUser, selected: [], onConfirm: (sel) => { handleGiftAction(e.id, 'invite', sel); setModal(null); }, onClose: () => setModal(null) });
+                                                        setModal({ type: 'gift_invite_sel', activeMembersList, currentUser, selected: [], setSelected: function(s){this.selected=s;}, onConfirm: (sel) => { handleGiftAction(e.id, 'invite', sel); setModal(null); }, onClose: () => setModal(null) });
                                                     }} className="text-[#007AFF] text-[12px] font-bold">Einladen</button>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
@@ -1142,10 +1112,7 @@
                                                         <span key={pm} className="bg-[#F2F2F7] dark:bg-[#2C2C2E] px-3 py-1 rounded-full text-[13px] font-medium flex items-center gap-1">{pm} {pm !== currentUser.name && <button onClick={() => showConfirm("Entfernen", `${pm} entfernen?`, () => handleGiftAction(e.id, 'remove_participant', pm), true)} className="text-[#FF3B30] ml-1"><Icon name="X" size={12}/></button>}</span>
                                                     ))}
                                                     {e.pendingParticipants.map(pm => (
-                                                        <span key={pm} className="bg-[#FF9500]/10 text-[#FF9500] px-3 py-1 rounded-full text-[13px] font-medium flex items-center gap-1">
-                                                            Wartet: {pm}
-                                                            <button onClick={() => showConfirm("Entfernen", `Einladung für ${pm} zurückziehen?`, () => handleGiftAction(e.id, 'remove_pending', pm), true)} className="text-[#FF3B30] ml-1"><Icon name="X" size={12}/></button>
-                                                        </span>
+                                                        <span key={pm} className="bg-[#FF9500]/10 text-[#FF9500] px-3 py-1 rounded-full text-[13px] font-medium">Wartet: {pm}</span>
                                                     ))}
                                                 </div>
                                             </div>
@@ -1172,6 +1139,9 @@
                                                     {e.ideas.length > 0 && e.participants.length > 1 && (
                                                         <button onClick={() => handleGiftAction(e.id, 'start_vote', null)} className="w-full mt-5 py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF]/10 text-[#007AFF]">Abstimmung starten</button>
                                                     )}
+                                                    {e.ideas.length > 0 && e.participants.length === 1 && (
+                                                        <button onClick={() => handleGiftAction(e.id, 'start_vote', null)} className="w-full mt-5 py-3 rounded-[12px] font-bold text-[15px] bg-[#AF52DE]/10 text-[#AF52DE]">Zur Besorgung übergehen</button>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -1193,18 +1163,38 @@
                                                 </div>
                                             )}
 
-                                            {(e.status === 'buying' || e.status === 'settled' || (e.status === 'planning' && e.participants.length === 1)) && (
+                                            {(e.status === 'buying' || e.status === 'settled') && (
                                                 <div className={STYLES.card + " p-5"}>
                                                     <h3 className="font-bold text-[18px] mb-4">Besorgung</h3>
-                                                    {e.participants.length === 1 ? (
+                                                    {e.ideas.length > 0 && (
+                                                        <div className="mb-4 p-3 bg-[#34C759]/10 rounded-[12px] border border-[#34C759]/30">
+                                                            <p className="text-[12px] text-[#34C759] font-bold uppercase mb-1">Favoriten</p>
+                                                            {(() => {
+                                                                let mx = -1; e.ideas.forEach(i => { if(i.votes.length > mx) mx = i.votes.length; });
+                                                                const favs = e.ideas.filter(i => i.votes.length === mx);
+                                                                return favs.map(f => <p key={f.id} className="font-semibold">{urlify(f.text)}</p>);
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                    {!e.buyer ? (
+                                                        <button onClick={() => handleGiftAction(e.id, 'claim_buy')} className="w-full py-4 rounded-[14px] bg-[#AF52DE] text-white font-bold text-[17px] shadow-sm">Ich besorge es!</button>
+                                                    ) : (
                                                         <div className="text-center">
                                                             <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
-                                                            {e.status !== 'settled' && (
-                                                                <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left mt-4">
-                                                                    <p className="font-bold mb-3">Kosten (optional)</p>
+                                                            <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
+                                                            
+                                                            {e.buyer === currentUser.name && !e.settled && e.status !== 'settled' && (
+                                                                <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left">
+                                                                    <p className="font-bold mb-3">{e.participants.length > 1 ? 'Kosten eintragen' : 'Kosten (optional)'}</p>
                                                                     <div className="space-y-3">
                                                                         <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
-                                                                        <button onClick={() => handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: '0' })} className={STYLES.btnPrimary}>Als erledigt markieren</button>
+                                                                        {e.participants.length > 1 && (
+                                                                            <div>
+                                                                                <p className={STYLES.subTitle + " !ml-1"}>Zahlen externe Personen mit? (Anzahl)</p>
+                                                                                <input type="number" min="0" className={STYLES.input} value={giftBuyerExtCount} onChange={ev => setGiftBuyerExtCount(ev.target.value)} />
+                                                                            </div>
+                                                                        )}
+                                                                        <button onClick={() => { if(giftBuyerAmount || e.participants.length===1) handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: giftBuyerExtCount }) }} className={STYLES.btnPrimary}>{e.participants.length > 1 ? 'Kosten aufteilen & buchen' : 'Als erledigt markieren'}</button>
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -1212,46 +1202,6 @@
                                                                 <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1"><Icon name="CheckCircle2" size={18} /> Erledigt {e.cost > 0 && `(${e.cost}€)`}</p>
                                                             )}
                                                         </div>
-                                                    ) : (
-                                                        <>
-                                                            {e.ideas.length > 0 && (
-                                                                <div className="mb-4 p-3 bg-[#34C759]/10 rounded-[12px] border border-[#34C759]/30">
-                                                                    <p className="text-[12px] text-[#34C759] font-bold uppercase mb-1">Favoriten</p>
-                                                                    {(() => {
-                                                                        let mx = -1; e.ideas.forEach(i => { if(i.votes.length > mx) mx = i.votes.length; });
-                                                                        const favs = e.ideas.filter(i => i.votes.length === mx);
-                                                                        return favs.map(f => <p key={f.id} className="font-semibold">{urlify(f.text)}</p>);
-                                                                    })()}
-                                                                </div>
-                                                            )}
-                                                            {!e.buyer ? (
-                                                                <button onClick={() => handleGiftAction(e.id, 'claim_buy')} className="w-full py-4 rounded-[14px] bg-[#AF52DE] text-white font-bold text-[17px] shadow-sm">Ich besorge es!</button>
-                                                            ) : (
-                                                                <div className="text-center">
-                                                                    <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
-                                                                    <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
-                                                                    
-                                                                    {e.buyer === currentUser.name && !e.settled && e.status !== 'settled' && (
-                                                                        <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left">
-                                                                            <p className="font-bold mb-3">{e.participants.length > 1 ? 'Kosten eintragen' : 'Kosten (optional)'}</p>
-                                                                            <div className="space-y-3">
-                                                                                <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
-                                                                                {e.participants.length > 1 && (
-                                                                                    <div>
-                                                                                        <p className={STYLES.subTitle + " !ml-1"}>Zahlen externe Personen mit? (Anzahl)</p>
-                                                                                        <input type="number" min="0" className={STYLES.input} value={giftBuyerExtCount} onChange={ev => setGiftBuyerExtCount(ev.target.value)} />
-                                                                                    </div>
-                                                                                )}
-                                                                                <button onClick={() => { if(giftBuyerAmount || e.participants.length===1) handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: giftBuyerExtCount }) }} className={STYLES.btnPrimary}>{e.participants.length > 1 ? 'Kosten aufteilen & buchen' : 'Als erledigt markieren'}</button>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                    {e.status === 'settled' && (
-                                                                        <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1"><Icon name="CheckCircle2" size={18} /> Erledigt {e.cost > 0 && `(${e.cost}€)`}</p>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </>
                                                     )}
                                                 </div>
                                             )}
@@ -1289,4 +1239,556 @@
                                                     <div className="p-5 border-b border-[#E5E5EA] dark:border-[#38383A]"><h4 className={STYLES.subTitle + " !ml-0"}>Rundruf senden</h4><div className="space-y-3"><input type="text" placeholder="Überschrift" className={STYLES.input} value={pD.title} onChange={e => setAdminPushData({ ...adminPushData, [fam.id]: { ...pD, title: e.target.value } })} /><textarea placeholder="Nachricht" rows="2" className={STYLES.input + " resize-none"} value={pD.message} onChange={e => setAdminPushData({ ...adminPushData, [fam.id]: { ...pD, message: e.target.value } })}></textarea><button disabled={isSending} onClick={() => handleSendAdminPush(fam)} className={STYLES.btnPrimary}>Als Push senden</button></div></div>
                                                     <div className="p-5 border-b border-[#E5E5EA] dark:border-[#38383A]"><h4 className={STYLES.subTitle + " !ml-0 flex items-center gap-2"}><Icon name="Smartphone" size={14} /> Apple Kurzbefehle anpassen</h4><div className="space-y-3"><input type="text" placeholder="Ruf-Kurzbefehl Link" className={STYLES.input} value={adminLinksState[fam.id]?.ruf || ''} onChange={e => setAdminLinksState({ ...adminLinksState, [fam.id]: { ...adminLinksState[fam.id], ruf: e.target.value } })} /><input type="text" placeholder="KI Scanner Link" className={STYLES.input} value={adminLinksState[fam.id]?.scanner || ''} onChange={e => setAdminLinksState({ ...adminLinksState, [fam.id]: { ...adminLinksState[fam.id], scanner: e.target.value } })} /><input type="text" placeholder="Film vorschlagen Link" className={STYLES.input} value={adminLinksState[fam.id]?.film || ''} onChange={e => setAdminLinksState({ ...adminLinksState, [fam.id]: { ...adminLinksState[fam.id], film: e.target.value } })} /><button onClick={async () => { await getFamilyDocRef(fam.id).update({ shortcutLinks: adminLinksState[fam.id] }); showAlert("Erfolg", "Links gespeichert!"); }} className={STYLES.btnPrimary}>Links speichern</button></div></div>
                                                     <div className="p-5"><h4 className={STYLES.subTitle + " !ml-0"}>Mitglieder</h4><div className="space-y-3 mb-5">{lSM.map(m => (<div key={m.name} className={STYLES.listItem}><div className="flex items-center gap-3"><span className="font-semibold text-[16px] text-black dark:text-white">{m.name}</span>{m.status === 'pending' ? <span className="bg-[#FF9500]/20 text-[#FF9500] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Ausstehend</span> : <span className="bg-[#34C759]/20 text-[#34C759] text-[11px] font-bold px-2 py-0.5 rounded-md uppercase">Aktiv</span>}</div><button onClick={() => adminDeleteMember(fam.id, m.name)} className="text-[#FF3B30] p-1"><Icon name="Trash2" size={18} /></button></div>))}</div><div className="flex flex-col sm:flex-row gap-3"><input type="text" placeholder="Neuer Vorname" className={STYLES.input + " sm:flex-1"} value={newMemberNames[fam.id] || ''} onChange={e => setNewMemberNames({ ...newMemberNames, [fam.id]: e.target.value })} /><button onClick={() => adminAddMember(fam)} className={STYLES.btnPrimary + " sm:w-auto px-6 !mt-0"}>Registrieren</button></div></div>
-       
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </main>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!currentFamily || !currentUser) {
+                return (
+                    <div className="h-full w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 relative z-40"><div className="bg-white/10 backdrop-blur-3xl border border-white/20 p-8 rounded-[32px] shadow-2xl w-full max-w-sm relative z-10 my-auto"><h1 className="text-[34px] font-bold text-center mb-8">FamilyConnect</h1><div className="flex bg-black/40 p-1 rounded-xl mb-8"><button className={`flex-1 py-2 text-[15px] font-semibold rounded-[8px] ${authMode === 'login' ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93]'}`} onClick={() => { setAuthMode('login'); setAuthError(''); }}>Anmelden</button><button className={`flex-1 py-2 text-[15px] font-semibold rounded-[8px] ${authMode === 'join' ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93]'}`} onClick={() => { setAuthMode('join'); setAuthError(''); }}>Beitreten</button><button className={`flex-1 py-2 text-[15px] font-semibold rounded-[8px] ${authMode === 'admin' ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93]'}`} onClick={() => { setAuthMode('admin'); setAuthError(''); }}>Admin</button></div><div className="space-y-3">{authMode === 'admin' ? (<><input type="password" placeholder="Master-Passwort" className="w-full bg-white/10 px-4 py-3.5 rounded-xl text-white box-border" value={formInput.password} onChange={e => setFormInput({ ...formInput, password: e.target.value })} />{authError && <p className="text-[#FF3B30] text-[13px] text-center">{authError}</p>}<button onClick={handleAdminAuth} className="w-full bg-[#007AFF] text-white font-semibold py-3.5 rounded-xl mt-4">Admin Login</button></>) : (<><input type="text" placeholder="Familien-ID" className="w-full bg-white/10 px-4 py-3.5 rounded-xl text-white box-border" value={formInput.familyId} onChange={e => setFormInput({ ...formInput, familyId: e.target.value })} /><input type="text" placeholder="Vorname" className="w-full bg-white/10 px-4 py-3.5 rounded-xl text-white box-border" value={formInput.name} onChange={e => setFormInput({ ...formInput, name: e.target.value })} /><input type="password" placeholder="Passwort" className="w-full bg-white/10 px-4 py-3.5 rounded-xl text-white box-border" value={formInput.password} onChange={e => setFormInput({ ...formInput, password: e.target.value })} />{authError && <p className="text-[#FF3B30] text-[13px] text-center">{authError}</p>}<button onClick={() => authMode === 'login' ? handleLogin() : handleJoinFamily()} className="w-full bg-[#007AFF] text-white font-semibold py-3.5 rounded-xl mt-4">{authMode === 'login' ? 'Anmelden' : 'Beitreten'}</button></>)}</div></div></div>
+                );
+            }
+
+            return (
+                <div className="h-full w-full bg-[var(--app-bg)] font-sans flex flex-col relative overflow-hidden z-10">
+                    <Modal data={modal} onClose={() => setModal(null)} />
+                    {debtorProofModal && <SettleProofModal target={debtorProofModal.target} amount={debtorProofModal.amount} isSending={isSending} onClose={() => setDebtorProofModal(null)} onSubmit={submitDebtorProof} />}
+                    {verifyPaymentModal && <VerifyPaymentModal event={verifyPaymentModal} isSending={isSending} onAccept={() => handleVerifyDecision(verifyPaymentModal, true)} onReject={() => handleVerifyDecision(verifyPaymentModal, false)} />}
+                    {trackingEvent && <TrackingOverlay event={trackingEvent} currentFamily={currentFamily} currentUser={currentUser} safeMembers={safeMembers} onClose={() => setTrackingEventId(null)} onResend={(n, r) => { const o = REASONS.find(x => x.sentence === r); if (o) handleSendNotification(o, [n], true); }} />}
+                    {householdHistoryModal && <div className={STYLES.modalOverlay}><div className={STYLES.modalContent}><div className="flex justify-between items-center mb-6"><h3 className="font-bold text-[20px]">Historie</h3><button onClick={() => setHouseholdHistoryModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center flex-shrink-0"><Icon name="X" size={18} /></button></div><div className="flex-1 overflow-y-auto space-y-3 pr-1">{householdTasks.filter(t => t.choreId === householdHistoryModal).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).map(task => { const isPast = new Date(task.date) < new Date(upcomingSatDate); const isMe = task.assignedTo === currentUser.name; const isExpiredTask = isPast && (Date.now() - new Date(task.date).getTime() > 7 * 24 * 60 * 60 * 1000); return (<div key={task.id} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-4 rounded-[16px]"><div className="flex justify-between items-start mb-2"><span className="font-bold text-[15px]">{formatDate(task.date)}</span><span className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded-full ${task.status === 'completed' ? 'bg-[#34C759]/20 text-[#34C759]' : task.status === 'open' ? 'bg-[#FF9500]/20 text-[#FF9500]' : isExpiredTask ? 'bg-[#FF3B30]/20 text-[#FF3B30]' : 'bg-[#007AFF]/20 text-[#007AFF]'}`}>{task.status === 'completed' ? 'Erledigt' : task.status === 'open' ? 'Offen' : isExpiredTask ? 'Nicht erledigt' : 'Eingeteilt'}</span></div><div className="text-[14px]">Eingeteilt: <span className="font-semibold">{task.assignedTo || 'Niemand'}</span></div>{task.status === 'completed' && task.completedAt && <div className="text-[12px] text-[#8E8E93] mt-1">Erledigt durch {task.completedBy}</div>}{isPast && !isExpiredTask && task.status !== 'completed' && isMe && <button onClick={() => { handleHouseholdAction(task.id, 'complete'); setHouseholdHistoryModal(null); }} className="w-full py-2.5 mt-3 rounded-[12px] bg-green-100 text-green-700 font-bold text-[14px] active:scale-[0.98] transition-transform shadow-sm">Nachträglich bestätigen</button>}</div>) })}</div></div></div>}
+                    
+                    {expenseHistoryModal && (
+                        <div className={STYLES.modalOverlay}><div className={STYLES.modalContent}><div className="flex justify-between items-center mb-6"><h3 className="font-bold text-[20px] truncate pr-2">Verlauf: {expenseHistoryModal}</h3><button onClick={() => setExpenseHistoryModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex items-center justify-center flex-shrink-0"><Icon name="X" size={18} /></button></div><div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                            {(() => {
+                                const historyItems = safeHistory.filter(h => (h.isPaymentVerification || h.isSettlement) && ((h.sender === currentUser.name && (h.targets||[]).includes(expenseHistoryModal)) || (h.sender === expenseHistoryModal && (h.targets||[]).includes(currentUser.name))));
+                                const eventExpenseIds = new Set(); historyItems.forEach(h => (h.expenseIds || []).forEach(id => eventExpenseIds.add(id)));
+                                const legacyExpenses = safeExpenses.filter(e => e.isPaid && !eventExpenseIds.has(e.id) && ((e.creditor === currentUser?.name && e.debtor === expenseHistoryModal) || (e.creditor === expenseHistoryModal && e.debtor === currentUser?.name)));
+                                const combined = [ ...historyItems.map(h => ({ type: 'event', data: h, time: new Date(h.timestamp).getTime() })), ...legacyExpenses.map(e => ({ type: 'legacy', data: e, time: new Date(e.paidAt || e.timestamp).getTime() })) ]
+                                .filter(item => {
+                                    if (item.type === 'event') {
+                                        const isRejected = (Array.isArray(item.data.acknowledgedBy) ? item.data.acknowledgedBy : []).some(a => a.includes(':Abgelehnt'));
+                                        if (isRejected) return false;
+                                    }
+                                    return true;
+                                })
+                                .sort((a, b) => b.time - a.time);
+                                
+                                if(combined.length === 0) return <div className="text-center text-[#8E8E93] mt-4">Kein Verlauf vorhanden.</div>;
+
+                                return combined.map((item, idx) => {
+                                    if (item.type === 'legacy') {
+                                        const e = item.data; const iMC = e.creditor === currentUser?.name;
+                                        return (<div key={e.id || idx} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-4 rounded-[16px]"><div className="flex justify-between items-start mb-2"><span className="font-bold text-[15px]">{formatDate(e.paidAt || e.timestamp)}</span><span className="text-[11px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#34C759]/20 text-[#34C759]">Beglichen</span></div><div className="text-[14px]">{e.reason} ({parseFloat(e.amount).toFixed(2)}€)</div><div className="text-[12px] text-[#8E8E93] mt-1">{iMC ? `${expenseHistoryModal} hat gezahlt` : `Du hast gezahlt`}</div></div>);
+                                    } else {
+                                        const h = item.data;
+                                        const isAck = (Array.isArray(h.acknowledgedBy) ? h.acknowledgedBy : []).some(a => a.includes(':Bestätigt'));
+                                        const statusText = h.isSettlement ? 'Beglichen' : (isAck ? 'Beglichen' : 'Wird geprüft');
+                                        const statusColor = (h.isSettlement || isAck) ? 'text-[#34C759] bg-[#34C759]/20' : 'text-[#FF9500] bg-[#FF9500]/20';
+                                        return (
+                                            <div key={h.id || idx} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-4 rounded-[16px]">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className="font-bold text-[15px]">{formatDate(h.timestamp)}</span>
+                                                    <span className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded-full ${statusColor}`}>{statusText}</span>
+                                                </div>
+                                                <div className="text-[15px] font-bold mb-3 flex items-center justify-between">
+                                                    Verrechnet: <span className="text-[17px]">{parseFloat(h.amount || 0).toFixed(2)}€</span>
+                                                </div>
+                                                <div className="space-y-1 bg-white dark:bg-[#1C1C1E] p-2.5 rounded-[12px] border border-[#E5E5EA] dark:border-[#38383A]">
+                                                    {(h.details || []).map((d, i) => (
+                                                        <div key={d.id || i} className="flex justify-between items-center text-[13px] border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0 pb-1.5 mb-1.5 last:pb-0 last:mb-0">
+                                                            <div className="flex flex-col min-w-0 pr-2"><span className="truncate font-semibold">{d.reason}</span><span className="text-[#8E8E93] text-[11px]">{d.creditor === currentUser.name ? `Von ${d.debtor}` : `An ${d.creditor}`}</span></div>
+                                                            <span className={`font-bold shrink-0 ${d.creditor === currentUser.name ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{d.creditor === currentUser.name ? '+' : '-'}{parseFloat(d.amount).toFixed(2)}€</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="text-[12px] text-[#8E8E93] mt-3 font-medium">
+                                                    {h.sender === currentUser.name ? `Von dir eingereicht` : `Von ${h.sender} eingereicht`}
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+                                });
+                            })()}
+                        </div></div></div>
+                    )}
+
+                    {householdSwapModal && <div className={STYLES.modalOverlay}><div className={STYLES.modalContent + " !h-auto max-w-sm"}><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[18px]">Vertretung anfragen</h3><button onClick={() => setHouseholdSwapModal(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full flex justify-center items-center"><Icon name="X" size={16} /></button></div><p className="text-[14px] text-[#8E8E93] mb-4">Wen möchtest du bitten?</p><div className="flex flex-col gap-3 max-h-[40vh] overflow-y-auto pb-2">{activeMembersList.filter(m => m.name !== currentUser.name).map(m => (<button key={m.name} onClick={() => { handleHouseholdAction(householdSwapModal, 'request_swap', m.name); setHouseholdSwapModal(null); showAlert("Erfolgreich", `Anfrage an ${m.name} gesendet!`); }} className={STYLES.btnSecondary + " text-left px-4 !mt-0"}>{m.name}</button>))}</div></div></div>}
+
+                    {activeGiftEventId && renderGiftEventView()}
+
+                    <div className="flex-1 flex flex-col w-full max-w-5xl mx-auto relative h-full sm:shadow-2xl sm:border-x border-gray-300/50 dark:border-[#38383A]">
+                        {!(activeTab === 'shopping' && isShoppingMode) && (
+                            <header className="flex-none pt-safe-top pb-4 px-6 bg-white/80 dark:bg-[#1C1C1E]/80 ios-blur border-b border-[#C6C6C8] dark:border-[#38383A] z-30 flex flex-col justify-end w-full sticky top-0 min-h-[70px]">
+                                <div className="text-center w-full min-w-0 flex items-center justify-center mt-4">
+                                    <h1 className="text-[32px] md:text-[34px] font-bold tracking-tight leading-tight truncate">
+                                        {activeTab === 'home' && `Familie ${currentFamily?.name || ''}`}
+                                        {activeTab === 'settings' && 'Einstellungen'}
+                                        {activeTab !== 'home' && activeTab !== 'settings' && ALL_MODULES[activeTab]?.label}
+                                    </h1>
+                                </div>
+                                {activeTab === 'shopping' && (
+                                    <div className="flex justify-center mt-4">
+                                        <div className="bg-[#E5E5EA] dark:bg-[#2C2C2E] p-1 rounded-[10px] flex gap-1 w-full max-w-sm">
+                                            <button onClick={() => setShoppingSubTab('list')} className={`flex-1 py-1.5 text-[14px] font-semibold rounded-[8px] transition-all shadow-sm ${shoppingSubTab === 'list' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>Einkaufsliste</button>
+                                            <button onClick={() => setShoppingSubTab('polls')} className={`flex-1 py-1.5 text-[14px] font-semibold rounded-[8px] transition-all shadow-sm ${shoppingSubTab === 'polls' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white' : 'text-[#8E8E93] dark:text-[#EBEBF5]/60'}`}>Abstimmungen</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </header>
+                        )}
+
+                        <main className={`scrollable-area w-full relative ${activeTab === 'shopping' && isShoppingMode ? 'pt-safe-top px-0 pb-0 bg-white dark:bg-black' : 'px-4 pt-6'}`}>
+                            {activeTab === 'home' && (
+                                <div className="space-y-8 animate-in fade-in pb-10">
+                                    {activeCallEvent && (
+                                        <section>
+                                            <h2 className={STYLES.subTitle}>Laufender Ruf</h2>
+                                            <div onClick={() => setTrackingEventId(activeCallEvent.id)} className="bg-gradient-to-br from-[#007AFF] to-[#5856D6] rounded-[20px] p-5 text-white shadow-[0_8px_20px_rgba(0,122,255,0.25)] cursor-pointer active:scale-95 transition-transform flex items-center justify-between"><div className="flex items-center gap-4 min-w-0 pr-4"><div className="bg-white/20 p-3 rounded-full flex-shrink-0 relative"><div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-75"></div><Icon name={activeCallEvent.isHousehold ? "Home" : "Bell"} size={24} className="text-white relative z-10" /></div><div className="min-w-0"><h3 className="font-bold text-[18px] tracking-tight truncate mb-0.5">Ruf von {activeCallEvent.sender}</h3><p className="text-white/80 text-[14px] font-medium truncate">{activeCallEvent.reason}</p></div></div><Icon name="ChevronRight" size={20} className="text-white/60 flex-shrink-0" /></div>
+                                        </section>
+                                    )}
+                                    <section>
+                                        <h2 className={STYLES.subTitle}>Grund</h2>
+                                        <div className={STYLES.card + " p-5"}><div className="grid grid-cols-4 gap-y-6 gap-x-2">{REASONS.map(r => { if (r.id === 'general_meal') return null; const iS = selectedReason === r.id; return (<div key={r.id} onClick={() => { if (navigator.vibrate) navigator.vibrate(10); setSelectedReason(r.id); }} className="flex flex-col items-center cursor-pointer"><div className={`w-[56px] h-[56px] rounded-[16px] flex items-center justify-center mb-2 transition-transform ${iS ? 'bg-[#007AFF] text-white scale-105 shadow-md' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-black dark:text-white'}`}><Icon name={r.icon} size={24} strokeWidth={iS ? 2.5 : 2} /></div><span className={`text-[12px] text-center font-medium ${iS ? 'text-black dark:text-white' : 'text-[#8E8E93]'}`}>{r.label}</span></div>); })}</div></div>
+                                    </section>
+                                    <section>
+                                        <div className="flex justify-between items-end mb-2 px-2"><h2 className={STYLES.subTitle + " !mb-0 !ml-0"}>Empfänger</h2><button className="text-[14px] text-[#007AFF] font-semibold active:opacity-70" onClick={() => { if (navigator.vibrate) navigator.vibrate(10); const o = activeMembersList.filter(m => m?.name !== currentUser?.name && !(m?.dndUntil && new Date(m.dndUntil) > new Date())).map(m => m.name); setSelectedMembers(selectedMembers.length === o.length ? [] : o); }}>{selectedMembers.length >= (activeMembersList.length - 1) ? 'Keine' : 'Alle'}</button></div>
+                                        <div className={STYLES.card}>{activeMembersList.filter(m => m?.name !== currentUser?.name).map((m, i, a) => { const iS = selectedMembers.includes(m.name); const iD = m.dndUntil && new Date(m.dndUntil) > new Date(); return (<div key={m.name} onClick={() => { if (iD) return; if (navigator.vibrate) navigator.vibrate(10); setSelectedMembers(p => iS ? p.filter(x => x !== m.name) : [...p, m.name]); }} className={`flex justify-between p-4 ${i !== a.length - 1 ? 'border-b border-[#E5E5EA] dark:border-[#38383A]' : ''} ${iD ? 'opacity-40 grayscale' : ''}`}><div className="flex items-center gap-2"><span className="font-medium text-[17px] truncate">{m.name}</span>{iD && <Icon name="BellOff" size={16} className="text-[#FF9500]" />}</div><div className={`w-[51px] h-[31px] rounded-full relative flex-shrink-0 transition-colors ${iS ? 'bg-[#34C759]' : iD ? 'bg-gray-200' : 'bg-[#E9E9EB] dark:bg-[#38383A]'}`}><div className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] bg-white rounded-full transition-transform ${iS ? 'translate-x-[20px]' : 'translate-x-0'}`} /></div></div>); })}</div>
+                                    </section>
+                                    <button disabled={!selectedReason || selectedMembers.length === 0 || isSending} onClick={() => handleSendNotification()} className={`w-full py-4 rounded-[14px] font-semibold text-[17px] ${!selectedReason || selectedMembers.length === 0 ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#8E8E93]' : 'bg-[#007AFF] text-white'}`}>{isSending ? 'Wird gesendet...' : 'Jetzt rufen'}</button>
+                                </div>
+                            )}
+
+                            {activeTab === 'shopping' && (
+                                <div className={`animate-in fade-in duration-500 ${isShoppingMode ? 'pb-0 h-full flex flex-col' : 'pb-10 space-y-6'}`}>
+                                    {shoppingSubTab === 'list' && (
+                                        <>
+                                            {!isShoppingMode && (<div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 custom-scrollbar">{myShoppingLists.map(l => <button key={l.id} onClick={() => setSelectedShoppingListId(l.id)} className={`px-4 py-2 rounded-full font-bold text-[14px] whitespace-nowrap border ${selectedShoppingListId === l.id ? 'bg-[#007AFF] text-white border-[#007AFF]' : 'bg-white dark:bg-[#1C1C1E] text-[#8E8E93] border-[#E5E5EA] dark:border-[#38383A]'}`}>{l.name}</button>)}<button onClick={() => setModal({ type: 'shopping_list_create', listData: { name: '', sharedWith: ['Alle'] }, setListData: (d) => setModal(p => ({ ...p, listData: d })), activeMembersList, currentUser, onSave: (f) => handleCreateList(f), onClose: () => setModal(null) })} className="px-4 py-2 rounded-full font-bold text-[14px] whitespace-nowrap bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] border border-[#007AFF]/30 flex items-center gap-1"><Icon name="Plus" size={16} /> Neu</button></div>)}
+                                            {!activeList && myShoppingLists.length === 0 ? (
+                                                <div className="text-center text-[#8E8E93] mt-16"><Icon name="ShoppingCart" size={48} className="mx-auto mb-4 opacity-50" /><p className="font-medium text-[16px] mb-4">Noch keine Einkaufsliste.</p><button onClick={() => setModal({ type: 'shopping_list_create', listData: { name: '', sharedWith: ['Alle'] }, setListData: (d) => setModal(p => ({ ...p, listData: d })), activeMembersList, currentUser, onSave: (f) => handleCreateList(f), onClose: () => setModal(null) })} className="bg-[#007AFF] text-white px-6 py-3 rounded-full font-bold">Erstellen</button></div>
+                                            ) : activeList && (
+                                                isShoppingMode ? (
+                                                    <div className="flex flex-col h-full bg-white dark:bg-black"><div className="pt-4 pb-4 px-6 flex justify-between items-center bg-white dark:bg-[#1C1C1E] border-b border-[#E5E5EA] dark:border-[#38383A] sticky top-0 z-20 shadow-sm"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#34C759] animate-pulse"></div><h2 className="font-bold text-[22px] truncate max-w-[200px]">{activeList.name}</h2></div><button onClick={toggleShoppingMode} className="bg-[#FF3B30]/10 text-[#FF3B30] px-4 py-2 rounded-full font-bold text-[15px]">Fertig</button></div><div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 pb-24">{SHOPPING_CATEGORIES.map(c => { const items = groupedShoppingItems[c]; if (!items || items.length === 0) return null; return (<div key={c} className="space-y-2"><h3 className="font-bold text-[18px] text-[#8E8E93] ml-2">{c}</h3>{items.map(i => (<label key={i.id} className="flex items-center bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] active:scale-[0.98] transition-transform cursor-pointer border border-transparent"><div className="flex-1 min-w-0 pr-4"><div className="flex items-center gap-1"><span className="font-bold text-[18px] truncate">{i.name}</span>{i.amount && <span className="text-[13px] font-bold text-[#007AFF] bg-[#007AFF]/10 border border-[#007AFF]/20 px-2.5 py-1 rounded-full shrink-0 ml-2">{i.amount}</span>}</div>{i.notes && <p className="text-[14px] text-[#8E8E93] mt-1 truncate">{i.notes}</p>}</div><div className="relative"><input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={i.checked} onChange={(e) => handleToggleShoppingItem(i.id, e.target.checked)} /><div className="w-8 h-8 rounded-full border-2 border-[#C6C6C8] dark:border-[#545458] flex items-center justify-center"><Icon name="Check" size={18} className="text-white opacity-0" /></div></div></label>))}</div>); })}
+                                                    {activeShoppingItems.length === 0 && <div className="text-center text-[#8E8E93] mt-10"><Icon name="CheckCircle2" size={48} className="mx-auto mb-4 text-[#34C759] opacity-50" /><p className="font-medium text-[18px]">Alles erledigt!</p></div>}
+                                                    {checkedShoppingItems.length > 0 && (<div className="pt-8 opacity-60"><h3 className={STYLES.subTitle}>Abgehakt</h3><div className="space-y-2">{checkedShoppingItems.map(i => (<label key={i.id} className="flex items-center p-2 cursor-pointer"><span className="flex-1 font-medium text-[16px] text-gray-500 line-through truncate">{i.name} {i.amount && `(${i.amount})`}</span><input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={i.checked} onChange={(e) => handleToggleShoppingItem(i.id, e.target.checked)} /><div className="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center"><Icon name="Check" size={14} className="text-gray-400" /></div></label>))}</div></div>)}</div></div>
+                                                ) : (
+                                                    <>
+                                                        {activeList && Date.now() - new Date(activeList.timestamp).getTime() > 80 * 24 * 60 * 60 * 1000 && (<div className="bg-[#FF9500]/10 border border-[#FF9500]/30 p-4 rounded-[16px] mb-4 flex justify-between items-center"><p className="text-[13px] text-[#FF9500] font-medium pr-4">Liste wird bald gelöscht.</p><button onClick={() => handleExtendList(activeList.id)} className="bg-[#FF9500] text-white px-4 py-2 rounded-full text-[13px] font-bold">Verlängern</button></div>)}
+                                                        {isLockedByOther ? (<div className="bg-[#34C759]/10 border border-[#34C759]/30 p-4 rounded-[16px] mb-4 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><Icon name="ShoppingCart" size={24} className="text-[#34C759] shrink-0" /><p className="text-[14px] text-[#34C759] font-medium leading-snug">Einkauf läuft gerade! Gesperrt.</p></div><button onClick={toggleShoppingMode} className="bg-[#34C759] text-white px-4 py-2 rounded-full text-[13px] font-bold shadow-sm shrink-0">Beitreten</button></div>) : (
+                                                            <section className={STYLES.card + " p-5"}><div className="flex justify-between items-center mb-4"><h2 className="font-bold text-[18px]">Auf die Liste</h2><div className="flex gap-2">{activeList.createdBy === currentUser.name && <button onClick={() => openShareSettings(activeList)} className="text-[13px] text-[#007AFF] font-bold bg-[#007AFF]/10 px-3 py-1.5 rounded-full flex items-center gap-1"><Icon name="Users" size={14} /> Teilen</button>}<button onClick={() => handleDeleteList(activeList.id)} className="text-[13px] text-[#FF3B30] font-bold bg-[#FF3B30]/10 px-3 py-1.5 rounded-full">Löschen</button></div></div><div className="space-y-3"><input type="text" placeholder="Produkt (z.B. Äpfel)" className={STYLES.input} value={newShoppingItem.name} onChange={e => setNewShoppingItem({ ...newShoppingItem, name: e.target.value })} /><div className="flex flex-row gap-3"><div className="relative w-1/3 min-w-[80px]"><select className={STYLES.input + " appearance-none cursor-pointer pr-8"} value={newShoppingItem.amountValue} onChange={e => setNewShoppingItem({ ...newShoppingItem, amountValue: e.target.value })}>{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#8E8E93]"><Icon name="ChevronRight" size={14} className="transform rotate-90" /></div></div><input type="text" placeholder="Einheit (Pkg, L)" className={STYLES.input + " flex-1 w-2/3"} value={newShoppingItem.amountUnit} onChange={e => setNewShoppingItem({ ...newShoppingItem, amountUnit: e.target.value })} /></div><input type="text" placeholder="Notiz (Optional)" className={STYLES.input} value={newShoppingItem.notes} onChange={e => setNewShoppingItem({ ...newShoppingItem, notes: e.target.value })} /><button onClick={handleAddShoppingItem} disabled={!newShoppingItem.name.trim()} className={STYLES.btnPrimary}>Hinzufügen</button></div></section>
+                                                        )}
+                                                        {activeShoppingItems.length > 0 && (<section className={STYLES.card}><div className="p-4 bg-[#007AFF]/5 flex justify-between items-center"><h2 className="font-bold text-[18px] flex items-center gap-2"><Icon name="ShoppingCart" size={20} className="text-[#007AFF]" /> {activeShoppingItems.length} Artikel</h2><button onClick={toggleShoppingMode} className="bg-[#007AFF] text-white px-4 py-2 rounded-full font-bold text-[14px]">Einkauf starten</button></div><div className="p-4 space-y-6">{SHOPPING_CATEGORIES.map(c => { const items = groupedShoppingItems[c]; if (!items || items.length === 0) return null; return (<div key={c} className="space-y-2"><h3 className={STYLES.subTitle + " !ml-1"}>{c}</h3><div className="space-y-1">{items.map(i => (<div key={i.id} className={`flex justify-between items-center py-2 border-b border-[#E5E5EA] dark:border-[#38383A] last:border-0 ${isLockedByOther ? 'opacity-50' : ''}`}><div className="flex-1 min-w-0 pr-3"><p className="font-semibold text-[16px] truncate flex items-center">{i.name}{i.amount && <span className="text-[13px] font-bold text-[#007AFF] bg-[#007AFF]/10 px-2.5 py-1 rounded-full ml-2">{i.amount}</span>}</p>{i.notes && <p className="text-[13px] text-[#8E8E93] truncate mt-1">{i.notes}</p>}</div><div className="flex gap-1.5 shrink-0"><button disabled={isLockedByOther} onClick={() => { let val = '1'; let unit = ''; const m = (i.amount || '').match(/^(\d+)\s*(.*)$/); if (m) { val = m[1]; unit = m[2]; } setModal({ type: 'shopping_item_edit', itemData: { ...i, amountValue: val, amountUnit: unit }, setItemData: (d) => setModal(p => ({ ...p, itemData: d })), onSave: (f) => handleSaveEditedShoppingItem(f), onClose: () => setModal(null) }); }} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14} /></button><button disabled={isLockedByOther} onClick={() => handleDeleteShoppingItem(i.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14} /></button></div></div>))}</div></div>); })}</div></section>)}
+                                                        {checkedShoppingItems.length > 0 && (<section className={STYLES.card + " opacity-70"}><div className="p-4 flex justify-between items-center border-b border-[#E5E5EA] dark:border-[#38383A]"><h2 className="font-bold text-[16px]">Abgehakt ({checkedShoppingItems.length})</h2><button onClick={handleDeleteAllCheckedItems} disabled={isLockedByOther} className="text-[#FF3B30] font-semibold text-[13px] bg-[#FF3B30]/10 px-3 py-1.5 rounded-full disabled:opacity-50">Alle löschen</button></div><div className="p-4 space-y-2">{checkedShoppingItems.slice(0, 5).map(i => (<div key={i.id} className="flex justify-between items-center py-1"><span className="font-medium text-[15px] text-gray-500 line-through truncate">{i.name} {i.amount && `(${i.amount})`}</span><button disabled={isLockedByOther} onClick={() => handleToggleShoppingItem(i.id, false)} className="text-[#007AFF] text-[13px] font-bold">Wiederherstellen</button></div>))}{checkedShoppingItems.length > 5 && <div className="text-center text-[13px] text-[#8E8E93] pt-2">... und {checkedShoppingItems.length - 5} weitere</div>}</div></section>)}
+                                                    </>
+                                                )
+                                            )}
+                                        </>
+                                    )}
+
+                                    {shoppingSubTab === 'polls' && (
+                                        <>
+                                            <section className={STYLES.card + " p-5"}>
+                                                {!isCreatingPoll ? (<button onClick={() => setIsCreatingPoll(true)} className="w-full bg-[#007AFF]/10 text-[#007AFF] py-3.5 rounded-[12px] font-bold text-[17px] flex items-center justify-center gap-2"><Icon name="Plus" size={20} /> Neue Abstimmung</button>) : (
+                                                    <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200"><div className="flex justify-between items-center mb-2"><h2 className="font-bold text-[18px]">Frage stellen</h2><button onClick={() => setIsCreatingPoll(false)} className="text-[#8E8E93]"><Icon name="X" size={20} /></button></div><div className="flex bg-[var(--app-bg)] dark:bg-[#2C2C2E] p-1 rounded-[10px] mb-4"><button onClick={() => setNewPoll({ ...newPoll, type: 'direct' })} className={`flex-1 py-2 text-[14px] font-semibold rounded-[8px] ${newPoll.type === 'direct' ? 'bg-white dark:bg-[#1C1C1E] shadow-sm' : 'text-[#8E8E93]'}`}>Direkt</button><button onClick={() => setNewPoll({ ...newPoll, type: 'collection' })} className={`flex-1 py-2 text-[14px] font-semibold rounded-[8px] ${newPoll.type === 'collection' ? 'bg-white dark:bg-[#1C1C1E] shadow-sm' : 'text-[#8E8E93]'}`}>Erst sammeln</button></div><input type="text" placeholder="Frage?" className={STYLES.input} value={newPoll.question} onChange={e => setNewPoll({ ...newPoll, question: e.target.value })} /><div className="flex flex-col gap-3 w-full overflow-hidden">{newPoll.type === 'collection' && (<div className="w-full box-border"><p className={STYLES.subTitle + " !ml-1"}>Sammeln bis</p><div className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] focus-within:ring-2 ring-[#007AFF]/20"><input type="datetime-local" className="w-full bg-transparent outline-none font-medium text-[16px] appearance-none" style={{ display: 'block', width: '100%' }} value={newPoll.collectionDeadline} onChange={e => setNewPoll({ ...newPoll, collectionDeadline: e.target.value })} /></div></div>)}<div className="w-full box-border"><p className={STYLES.subTitle + " !ml-1"}>Abstimmen bis</p><div className="w-full box-border bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-4 py-3.5 rounded-[12px] focus-within:ring-2 ring-[#007AFF]/20"><input type="datetime-local" className="w-full bg-transparent outline-none font-medium text-[16px] appearance-none" style={{ display: 'block', width: '100%' }} value={newPoll.votingDeadline} onChange={e => setNewPoll({ ...newPoll, votingDeadline: e.target.value })} /></div></div></div>{newPoll.type === 'direct' && (<div className="space-y-3 pt-2 w-full box-border"><h3 className={STYLES.subTitle + " !ml-1"}>Optionen</h3>{newPoll.options.map((opt, idx) => (<div key={idx} className="flex items-center gap-2 w-full box-border"><input type="text" placeholder={`Option ${idx + 1}`} className={STYLES.input + " min-w-0"} value={opt} onChange={e => { const n = [...newPoll.options]; n[idx] = e.target.value; setNewPoll({ ...newPoll, options: n }); }} />{newPoll.options.length > 2 && <button onClick={() => { setNewPoll({ ...newPoll, options: newPoll.options.filter((_, i) => i !== idx) }); }} className="w-[52px] h-[52px] bg-[#FF3B30]/10 text-[#FF3B30] rounded-[12px] flex items-center justify-center flex-shrink-0 active:opacity-70"><Icon name="Trash2" size={20} /></button>}</div>))}<button onClick={() => setNewPoll({ ...newPoll, options: [...newPoll.options, ''] })} className="w-full py-3.5 bg-[#34C759]/10 text-[#34C759] rounded-[12px] font-bold text-[16px] flex justify-center items-center gap-2 mt-2"><Icon name="Plus" size={20} /> Weitere Option</button></div>)}<div><p className={STYLES.subTitle + " !ml-1 mt-4"}>Wer darf abstimmen?</p><div className="space-y-2 max-h-[25vh] overflow-y-auto custom-scrollbar"><label className={STYLES.listItem + " cursor-pointer"}><span className="font-bold text-[16px]">Familie (Alle)</span><input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={newPoll.sharedWith.includes('Alle')} onChange={(e) => setNewPoll({ ...newPoll, sharedWith: e.target.checked ? ['Alle'] : [] })} /><div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] flex items-center justify-center"><Icon name="Check" size={14} className="text-white opacity-0" /></div></label>{activeMembersList.map(m => { if (m.name === currentUser?.name) return null; const isSel = newPoll.sharedWith.includes(m.name); return (<label key={m.name} className={STYLES.listItem + " cursor-pointer mt-2"}><span className="font-medium text-[16px]">{m.name}</span><input type="checkbox" className="custom-checkbox opacity-0 absolute h-0 w-0" checked={isSel} onChange={(e) => { let n = [...newPoll.sharedWith].filter(x => x !== 'Alle'); if (e.target.checked) n.push(m.name); else n = n.filter(x => x !== m.name); setNewPoll({ ...newPoll, sharedWith: n }); }} /><div className="w-6 h-6 rounded-full border-2 border-[#C6C6C8] flex items-center justify-center"><Icon name="Check" size={14} className="text-white opacity-0" /></div></label>); })}</div></div><button onClick={handleAddPoll} className={STYLES.btnPrimary}>Umfrage starten</button></div>
+                                                )}
+                                            </section>
+                                            <div className="space-y-6">
+                                                {myPolls.length === 0 && !isCreatingPoll ? (<div className="text-center text-[#8E8E93] font-medium mt-10">Keine aktiven Abstimmungen.</div>) : (
+                                                    myPolls.map(p => {
+                                                        const n = new Date(); const iC = p.type === 'collection' && new Date(p.collectionDeadline) > n; const iV = !iC && new Date(p.votingDeadline) > n; const iF = new Date(p.votingDeadline) <= n;
+                                                        const tV = p.options.reduce((s, o) => s + o.votes.length, 0); const hV = p.options.some(o => o.votes.includes(currentUser?.name));
+                                                        let tO = []; if (iF && tV > 0) { const m = Math.max(...p.options.map(o => o.votes.length)); tO = p.options.filter(o => o.votes.length === m).map(o => o.id); }
+                                                        return (
+                                                            <div key={p.id} className={STYLES.card + ` p-5 ${iF ? 'opacity-80 border-[#E5E5EA] dark:border-[#38383A]' : 'border-[#007AFF]/30'}`}><div className="flex justify-between items-start mb-2"><div className="pr-4"><h3 className="font-bold text-[20px] leading-tight">{p.question}</h3><p className="text-[13px] text-[#8E8E93] mt-1 flex items-center gap-1.5"><Icon name="Timer" size={14} /> {iC ? `Sammeln bis ${formatDate(p.collectionDeadline)} ${formatTime(p.collectionDeadline)}` : iV ? `Abstimmen bis ${formatDate(p.votingDeadline)} ${formatTime(p.votingDeadline)}` : 'Beendet'}</p></div>{p.createdBy === currentUser?.name && <button onClick={() => handleDeletePoll(p.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14} /></button>}</div>{iF && tV > 0 && <div className="text-[13px] font-bold text-[#34C759] uppercase tracking-wider mb-4 flex items-center gap-1"><Icon name="Trophy" size={16} /> Endergebnis</div>}<div className="space-y-3 mt-4">{p.options.length === 0 && <p className="text-sm text-gray-500 italic">Noch keine Vorschläge.</p>}{p.options.map(o => { const mV = o.votes.includes(currentUser?.name); const pct = tV > 0 ? Math.round((o.votes.length / tV) * 100) : 0; const iW = tO.includes(o.id); return (<div key={o.id} onClick={() => { if (iV) handleVote(p.id, o.id); }} className={`relative overflow-hidden rounded-[14px] p-4 ${iV ? 'cursor-pointer' : ''} border ${iW ? 'border-[#34C759] bg-[#34C759]/10' : mV && !iF ? 'border-[#007AFF]' : 'border-[#E5E5EA] dark:border-[#38383A] bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}>{(hV || iF) && <div className={`absolute inset-y-0 left-0 transition-all duration-500 ${iW ? 'bg-[#34C759]/20' : mV && !iF ? 'bg-[#007AFF]/15' : 'bg-[#000000]/5 dark:bg-[#FFFFFF]/5'}`} style={{ width: `${pct}%` }}></div>}<div className="relative z-10 flex justify-between items-center"><div className="flex items-center gap-3">{(iV || (iF && mV)) && <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${mV ? (iW ? 'border-[#34C759] bg-[#34C759]' : 'border-[#007AFF] bg-[#007AFF]') : 'border-[#C6C6C8]'}`}>{mV && <Icon name="Check" size={12} className="text-white" />}</div>}<span className={`font-semibold text-[16px] ${iW ? 'text-[#34C759]' : mV && !iF ? 'text-[#007AFF]' : ''}`}>{o.text} {iC && <span className="text-[11px] text-gray-400 ml-1 font-normal">(von {o.addedBy})</span>}</span></div>{(hV || iF) && <div className="flex flex-col items-end"><span className={`font-bold text-[15px] ${iW ? 'text-[#34C759]' : ''}`}>{o.votes.length}</span>{o.votes.length > 0 && <span className="text-[11px] text-[#8E8E93] truncate max-w-[80px]">{o.votes.join(', ')}</span>}</div>}</div></div>); })}{iC && <div className="flex gap-2 mt-4 pt-4 border-t border-[#E5E5EA] dark:border-[#38383A]"><input type="text" placeholder="Dein Vorschlag..." className={STYLES.input} value={pollNewOptions[p.id] || ''} onChange={e => setPollNewOptions({ ...pollNewOptions, [p.id]: e.target.value })} /><button onClick={() => handleAddPollOption(p.id)} className="bg-[#007AFF]/10 text-[#007AFF] px-4 py-3 rounded-[12px] font-bold">Senden</button></div>}</div></div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'expenses' && (
+                            <div className="space-y-6 animate-in fade-in pb-10">
+                                {!expenseModal && <div className="flex justify-between items-center px-2"><h2 className={STYLES.subTitle + " !ml-0"}>Auslagen Übersicht</h2><button onClick={openSplitExpense} className="text-[14px] text-[#007AFF] font-semibold bg-[#007AFF]/10 px-4 py-2 rounded-full flex items-center gap-1"><Icon name="Users" size={16} /> Geteilt</button></div>}
+                                {expenseModal ? (
+                                    <div className={STYLES.card + " p-5 max-w-xl mx-auto"}><div className="flex justify-between items-center mb-6"><h3 className="font-bold text-[20px]">{expenseModal.mode === 'single' && `Auslage für ${expenseModal.target}`}{expenseModal.mode === 'split' && `Neue geteilte Auslage`}{expenseModal.mode === 'edit' && `Auslage bearbeiten`}</h3><button onClick={() => setExpenseModal(null)} className="w-8 h-8 bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-full flex justify-center items-center"><Icon name="X" size={18} /></button></div><div className="space-y-4 w-full">{expenseModal.mode === 'split' && <div className="bg-[#007AFF]/10 p-4 rounded-[14px] mb-4 text-[13px] text-[#007AFF]">Gib den <b>Gesamtbetrag</b> ein und die fixe Anzahl der Personen, durch die geteilt wird. Wähle unten dann die Personen aus.</div>}<div className="flex flex-col sm:flex-row gap-3 w-full"><input type="text" inputMode="decimal" placeholder="Gesamt (€)" className={STYLES.input + " sm:flex-1"} value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value.replace(/[^0-9.,]/g, '') })} /><input type="date" className={STYLES.input + " appearance-none min-w-0 sm:flex-1"} value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} /></div><input type="text" placeholder="Wofür? (z.B. Pizza)" className={STYLES.input} value={expenseForm.reason} onChange={e => setExpenseForm({ ...expenseForm, reason: e.target.value })} />{expenseModal.mode === 'split' && (<div className="pt-4 border-t border-[#E5E5EA] dark:border-[#38383A]"><p className="text-[14px] font-semibold mb-2">Geteilt durch wie viele Personen? (fixer Wert)</p><input type="number" inputMode="numeric" min="1" className={STYLES.input + " mb-5"} value={expenseForm.splitCount} onChange={e => setExpenseForm({ ...expenseForm, splitCount: e.target.value })} /><p className="text-[14px] font-semibold mb-2">Für wen willst du das eintragen?</p><div className="flex flex-wrap gap-2">{activeMembersList.filter(m => m?.name !== currentUser?.name).map(m => { const iS = expenseForm.splitTargets.includes(m.name); return (<button key={m.name} onClick={() => toggleSplitTarget(m.name)} className={`px-4 py-2.5 rounded-full text-[15px] font-semibold ${iS ? 'bg-[#007AFF] text-white' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E]'}`}>{m.name}</button>); })}</div>{expenseForm.amount && expenseForm.splitCount > 0 && <div className="mt-5 text-center bg-[#34C759]/10 text-[#34C759] font-semibold p-4 rounded-[14px]">Anteil pro Person: <br /><span className="text-[22px]">{(parseFloat(String(expenseForm.amount).replace(',', '.')) / parseInt(expenseForm.splitCount)).toFixed(2)}€</span></div>}</div>)}<button onClick={handleSaveExpense} className={STYLES.btnPrimary}>{expenseModal.mode === 'edit' ? 'Änderungen speichern' : 'Speichern & Informieren'}</button></div></div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {[...activeMembersList.filter(m => m?.name !== currentUser?.name)].sort((a, b) => {
+                                            const getMetrics = (mName) => {
+                                                const eWT = safeExpenses.filter(e => !e.isPaid && !e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === mName) || (e.creditor === mName && e.debtor === currentUser?.name)));
+                                                const hasPending = safeExpenses.some(e => !e.isPaid && e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === mName) || (e.creditor === mName && e.debtor === currentUser?.name)));
+                                                let iO = 0; let tO = 0;
+                                                eWT.forEach(e => { const amt = parseFloat(e.amount) || 0; if (e.creditor === currentUser?.name) tO += amt; else iO += amt; });
+                                                const net = tO - iO;
+                                                
+                                                let category = 4; 
+                                                if (net < 0) category = 0; 
+                                                else if (net > 0) category = 1; 
+                                                else if (eWT.length > 0) category = 2; 
+                                                else if (hasPending) category = 3;
+                                                
+                                                return { net, category };
+                                            };
+                                            const mA = getMetrics(a.name);
+                                            const mB = getMetrics(b.name);
+                                            
+                                            if (mA.category !== mB.category) return mA.category - mB.category;
+                                            if (mA.category === 0) return mA.net - mB.net; 
+                                            if (mA.category === 1) return mB.net - mA.net; 
+                                            return a.name.localeCompare(b.name);
+                                        }).map(m => {
+                                            const eWT = safeExpenses.filter(e => !e.isPaid && !e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === m.name) || (e.creditor === m.name && e.debtor === currentUser?.name)));
+                                            let iO = 0; let tO = 0; eWT.forEach(e => { const a = parseFloat(e.amount) || 0; if (e.creditor === currentUser?.name) tO += a; else iO += a; }); const net = tO - iO;
+                                            const hasPending = safeExpenses.some(e => !e.isPaid && e.paymentPending && ((e.creditor === currentUser?.name && e.debtor === m.name) || (e.creditor === m.name && e.debtor === currentUser?.name)));
+                                            
+                                            const isExpanded = expandedExpenses[m.name];
+                                            const displayExpenses = isExpanded ? eWT : eWT.slice(0, 3);
+                                            const hasMore = eWT.length > 3;
+
+                                            return (
+                                                <div key={m.name} className={STYLES.card + " flex flex-col h-full"}><div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]"><div className="min-w-0 pr-2 cursor-pointer active:opacity-70" onClick={() => setExpenseHistoryModal(m.name)}><p className="font-bold text-[18px] truncate">{m.name}</p>
+                                                    <p className={`text-[14px] font-semibold mt-0.5 truncate ${net > 0 ? 'text-[#34C759]' : net < 0 ? 'text-[#FF3B30]' : (hasPending && eWT.length === 0) ? 'text-[#FF9500]' : 'text-[#8E8E93]'}`}>{net > 0 ? `Schuldet dir: ${net.toFixed(2)}€` : net < 0 ? `Noch fällig: ${Math.abs(net).toFixed(2)}€` : (hasPending && eWT.length === 0) ? 'Wird geprüft.' : 'Alles beglichen'}</p>
+                                                </div><div className="flex gap-2">{eWT.length > 0 && <button onClick={() => net >= 0 ? handleSettleAll(m.name, eWT, Math.abs(net)) : openDebtorProofModal(m.name, Math.abs(net), eWT)} className="w-9 h-9 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="CheckCircle2" size={20} /></button>}<button onClick={() => openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Plus" size={20} /></button></div></div>{eWT.length > 0 && (<div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">{displayExpenses.map(e => { const iMC = e.creditor === currentUser?.name; return (<div key={e.id} className={`flex justify-between items-center bg-white dark:bg-[#1C1C1E] border p-3 rounded-[16px] ${iMC ? 'border-[#007AFF]/30' : 'border-[#E5E5EA] dark:border-[#38383A]'}`}><div className="pr-3 min-w-0 flex-1"><p className="text-[15px] font-semibold truncate">{e.reason}</p><p className="text-[12px] text-[#8E8E93] font-medium">{formatDate(e.date || e.timestamp)}</p></div><div className="flex flex-col items-end gap-2 flex-shrink-0"><span className={`font-semibold text-[16px] ${iMC ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{iMC ? '+' : '-'}{parseFloat(e.amount || 0).toFixed(2)}€</span>{iMC ? (<div className="flex gap-1.5 mt-1"><button onClick={() => openEditExpense(e)} className="Ich bin eine textbasierte KI und kann in diesem Fall nicht helfen.
+w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14} /></button><button onClick={() => handleMarkExpensePaid(e.id)} className="w-8 h-8 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center"><Icon name="Check" size={16} /></button><button onClick={() => handleDeleteExpense(e.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14} /></button></div>) : (<span className="text-[11px] uppercase font-bold text-[#8E8E93] bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-2.5 py-1 rounded-full mt-1">Offen</span>)}</div></div>) })}
+                                                {hasMore && <button onClick={() => setExpandedExpenses(p => ({ ...p, [m.name]: !isExpanded }))} className="w-full py-2.5 text-[13px] font-bold text-[#8E8E93] bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[10px] active:opacity-70 flex justify-center items-center gap-1 mt-2">{isExpanded ? "Weniger anzeigen" : `Alle ${eWT.length} Auslagen anzeigen`}</button>}
+                                                </div>)}</div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'gifts' && !activeGiftEventId && (
+                            <div className="space-y-6 pb-10 animate-in fade-in">
+                                {giftsView === 'list' ? (
+                                    <>
+                                        <div className="flex justify-between items-center mb-4 px-2">
+                                            <h2 className="text-[20px] font-bold text-[#AF52DE] flex items-center gap-2"><Icon name="Calendar" size={20} /> Anstehende Feste</h2>
+                                            <button onClick={() => setGiftsView('settings')} className="text-[#007AFF] bg-[#007AFF]/10 p-2 rounded-full flex justify-center items-center active:opacity-70"><Icon name="Users" size={18} /></button>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {(() => {
+                                                const upcomingEvents = safeGiftEvents
+                                                    .filter(e => e.status !== 'settled')
+                                                    .filter(e => {
+                                                        const d = new Date(e.date); d.setHours(0,0,0,0);
+                                                        const t = new Date(nowGlobal); t.setHours(0,0,0,0);
+                                                        return d >= t;
+                                                    })
+                                                    .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+                                                const uniqueEvents = [];
+                                                const seenKeys = new Set();
+                                                upcomingEvents.forEach(e => {
+                                                    const key = `${e.personId}_${e.type}`;
+                                                    if (!seenKeys.has(key)) {
+                                                        seenKeys.add(key);
+                                                        uniqueEvents.push(e);
+                                                    }
+                                                });
+
+                                                if (uniqueEvents.length === 0) return <p className="col-span-full text-center text-[#8E8E93] py-8 italic">Keine anstehenden Feste.</p>;
+
+                                                const eventElements = [];
+                                                let lastMonth = -1;
+                                                const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+                                                uniqueEvents.forEach(e => {
+                                                    const p = safeGiftPersons.find(x => x.id === e.personId);
+                                                    if (!p) return;
+                                                    const dL = getDaysLeft(e.date);
+                                                    const isPart = e.participants.includes(currentUser.name);
+                                                    const isNeedGift = e.type === 'birthdate' ? p.birthdayNeedsGift : 
+                                                                       e.type === 'nameday' ? p.namedayNeedsGift :
+                                                                       e.type === 'christmas' ? p.christmasNeedsGift : p.easterNeedsGift;
+                                                    
+                                                    const eventDate = new Date(e.date);
+                                                    const eventMonth = eventDate.getMonth();
+                                                    if (eventMonth !== lastMonth) {
+                                                        eventElements.push(
+                                                            <div key={`month_${eventMonth}_${e.id}`} className="col-span-full pt-4 pb-1">
+                                                                <h3 className="text-[13px] font-bold text-[#8E8E93] uppercase tracking-widest ml-2">{monthNames[eventMonth]} {eventDate.getFullYear()}</h3>
+                                                            </div>
+                                                        );
+                                                        lastMonth = eventMonth;
+                                                    }
+
+                                                    let statusBadge = null;
+                                                    if (!isNeedGift) statusBadge = <span className="text-[11px] font-bold bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full">Kein Geschenk</span>;
+                                                    else if (e.status === 'planning' && e.participants.length === 0) statusBadge = <span className="text-[11px] font-bold bg-[#FF3B30]/20 text-[#FF3B30] px-2 py-0.5 rounded-full">Ungelöst</span>;
+                                                    else if (e.status === 'planning') statusBadge = <span className="text-[11px] font-bold bg-[#FF9500]/20 text-[#FF9500] px-2 py-0.5 rounded-full">Planung</span>;
+                                                    else if (e.status === 'voting') statusBadge = <span className="text-[11px] font-bold bg-[#007AFF]/20 text-[#007AFF] px-2 py-0.5 rounded-full">Abstimmung</span>;
+                                                    else if (e.status === 'buying') statusBadge = <span className="text-[11px] font-bold bg-[#AF52DE]/20 text-[#AF52DE] px-2 py-0.5 rounded-full">Besorgung</span>;
+
+                                                    let titleStr = '';
+                                                    let iconName = 'Cake';
+                                                    let iconColor = 'text-[#AF52DE]';
+                                                    if(e.type === 'birthdate') { titleStr = `Geburtstag`; iconName = 'Cake'; iconColor = 'text-[#AF52DE]'; }
+                                                    if(e.type === 'nameday') { titleStr = `Namenstag`; iconName = 'Sparkles'; iconColor = 'text-[#FF9500]'; }
+                                                    if(e.type === 'christmas') { titleStr = `Weihnachten`; iconName = 'Gift'; iconColor = 'text-[#34C759]'; }
+                                                    if(e.type === 'easter') { titleStr = `Ostern`; iconName = 'Sparkles'; iconColor = 'text-[#007AFF]'; }
+
+                                                    eventElements.push(
+                                                        <div key={e.id} onClick={() => setActiveGiftEventId(e.id)} className={STYLES.card + ` p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform ${dL <= 7 ? `border-l-4 border-l-[${iconColor.split('text-')[1].replace(']','')}]` : ''}`}>
+                                                            <div className="flex items-center gap-4 min-w-0">
+                                                                <div className="text-center w-[50px] shrink-0">
+                                                                    <p className={`text-[22px] font-bold leading-none ${dL <= 7 ? iconColor : 'text-black dark:text-white'}`}>{dL === 0 ? 'Heute' : dL}</p>
+                                                                    <p className="text-[11px] text-[#8E8E93] font-bold uppercase">{dL === 0 ? 'Fest' : dL === 1 ? 'Tag' : 'Tage'}</p>
+                                                                </div>
+                                                                <div className="w-px h-10 bg-[#E5E5EA] dark:bg-[#38383A] shrink-0"></div>
+                                                                <div className="min-w-0 pr-2">
+                                                                    <div className="flex items-center gap-1.5"><Icon name={iconName} size={14} className={dL <= 7 ? iconColor : 'text-[#8E8E93]'} shrink-0 /><h3 className="font-bold text-[16px] truncate">{p.name}</h3></div>
+                                                                    <p className="text-[12px] text-[#8E8E93] truncate">{titleStr} ({formatDate(e.date)})</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col items-end gap-2 shrink-0">
+                                                                {statusBadge}
+                                                                {isPart && <Icon name="Users" size={14} className="text-[#007AFF]" />}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                });
+                                                return eventElements;
+                                            })()}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between items-center mb-4 px-2">
+                                            <h2 className="text-[20px] font-bold flex items-center gap-2"><Icon name="Users" size={20} /> Personen & Feste</h2>
+                                            <button onClick={() => setGiftsView('list')} className="text-[#007AFF] text-[13px] font-bold bg-[#F2F2F7] dark:bg-[#2C2C2E] px-3 py-1.5 rounded-full">Zurück</button>
+                                        </div>
+                                        
+                                        <div className="space-y-4">
+                                            {safeGiftPersons.map(p => (
+                                                <div key={p.id} className={STYLES.card + " p-4"}>
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h3 className="font-bold text-[18px] flex items-center gap-2">{p.name} {p.type === 'custom' && <span className="text-[10px] bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full uppercase">Extern</span>}</h3>
+                                                        {p.type === 'custom' && <button onClick={async () => { await getFamilyDocRef(currentFamily.id).update({ giftPersons: safeGiftPersons.filter(x => x.id !== p.id) }); }} className="text-[#FF3B30] p-1"><Icon name="Trash2" size={16} /></button>}
+                                                    </div>
+                                                    
+                                                    <div className="space-y-4">
+                                                        <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-3 rounded-[12px]">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <span className="font-semibold text-[14px]">Geburtstag</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
+                                                                    <div className="relative inline-block w-10 align-middle select-none">
+                                                                        <input type="checkbox" id={`bg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.birthdayNeedsGift} onChange={e => saveGiftPerson(p.id, { birthdayNeedsGift: e.target.checked })}/>
+                                                                        <label htmlFor={`bg-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <input type="date" className={STYLES.input + " !py-2 !text-[14px]"} value={p.birthdate} onChange={e => saveGiftPerson(p.id, { birthdate: e.target.value })} />
+                                                        </div>
+                                                        
+                                                        <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-3 rounded-[12px]">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <span className="font-semibold text-[14px]">Namenstag (Optional)</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
+                                                                    <div className="relative inline-block w-10 align-middle select-none">
+                                                                        <input type="checkbox" id={`ng-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.namedayNeedsGift} onChange={e => saveGiftPerson(p.id, { namedayNeedsGift: e.target.checked })}/>
+                                                                        <label htmlFor={`ng-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <input type="date" className={STYLES.input + " !py-2 !text-[14px]"} value={p.nameday} onChange={e => saveGiftPerson(p.id, { nameday: e.target.value })} />
+                                                        </div>
+
+                                                        <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-3 rounded-[12px]">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <span className="font-semibold text-[14px]">Weihnachten</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
+                                                                    <div className="relative inline-block w-10 align-middle select-none">
+                                                                        <input type="checkbox" id={`cg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.christmasNeedsGift} onChange={e => saveGiftPerson(p.id, { christmasNeedsGift: e.target.checked })}/>
+                                                                        <label htmlFor={`cg-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center pt-2 border-t border-[#E5E5EA] dark:border-[#38383A] mt-2">
+                                                                <span className="font-semibold text-[14px]">Ostern</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
+                                                                    <div className="relative inline-block w-10 align-middle select-none">
+                                                                        <input type="checkbox" id={`eg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.easterNeedsGift} onChange={e => saveGiftPerson(p.id, { easterNeedsGift: e.target.checked })}/>
+                                                                        <label htmlFor={`eg-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <button onClick={addCustomGiftPerson} className="w-full py-4 rounded-[16px] border-2 border-dashed border-[#AF52DE]/40 bg-[#AF52DE]/5 text-[#AF52DE] font-bold text-[16px] flex justify-center items-center gap-2"><Icon name="Plus" size={20} /> Externe Person hinzufügen</button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'household' && (
+                            <div className="space-y-6 animate-in fade-in pb-10">
+                                <div className="flex justify-between items-center pl-2 pr-1 mb-1"><h2 className={STYLES.subTitle + " !mb-0 !ml-0 whitespace-nowrap"}>Hausarbeiten (Samstag)</h2>{canEditHousehold && <button onClick={() => setHouseholdAdminMode(!householdAdminMode)} className="text-[#007AFF] p-1 flex items-center justify-center">{householdAdminMode ? <span className="text-[14px] font-semibold">Fertig</span> : <Icon name="Pencil" size={18} />}</button>}</div>
+                                {householdAdminMode ? (
+                                    <div className={STYLES.card + " p-5"}><h3 className="font-bold text-[18px] mb-4">Aufgaben verwalten</h3><div className="space-y-2 mb-6">{safeHouseholdChores.map(c => (<div key={c.id} className={STYLES.listItem}><span className="font-semibold text-[15px]">{c.name}</span><button onClick={() => handleDeleteChore(c.id)} className="text-[#FF3B30]"><Icon name="Trash2" size={16} /></button></div>))}<div className="flex gap-2 mt-2"><input type="text" placeholder="Neue Aufgabe" className={STYLES.input} value={newChoreName} onChange={e => setNewChoreName(e.target.value)} /><button onClick={handleAddChore} className="bg-[#007AFF] text-white px-4 py-3 rounded-[12px] font-semibold"><Icon name="Plus" size={20} /></button></div></div><h3 className="font-bold text-[18px] mb-4">Wer soll berücksichtigt werden?</h3><div className="space-y-2 mb-6">{activeMembersList.map(m => { const iI = safeHouseholdMembers.includes(m.name); return (<div key={m.name} onClick={() => toggleHouseholdMember(m.name)} className={`${STYLES.listItem} cursor-pointer ${iI ? 'bg-[#007AFF]/10 border border-[#007AFF]/30' : ''}`}><span className={`font-semibold ${iI ? 'text-[#007AFF]' : ''}`}>{m.name}</span>{iI && <Icon name="CheckCircle2" size={20} className="text-[#007AFF]" />}</div>); })}</div><h3 className="font-bold text-[18px] mb-4">Anstehende Aufgaben überschreiben</h3><div className="space-y-4">{householdTasks.filter(t => t.date === upcomingSatDate).map(t => (<div key={t.id} className="p-4 bg-[var(--app-bg)] dark:bg-[#2C2C2E] rounded-[16px]"><p className="font-semibold text-[15px] mb-2">{t.choreName}</p><div className="flex gap-2 overflow-x-auto pb-2"><button onClick={() => handleHouseholdAction(t.id, 'admin_reassign', null)} className={`px-4 py-2 rounded-full text-[14px] font-semibold flex-shrink-0 ${!t.assignedTo ? 'bg-[#FF9500] text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700'}`}>Offen</button>{activeMembersList.map(m => (<button key={m.name} onClick={() => handleHouseholdAction(t.id, 'admin_reassign', m.name)} className={`px-4 py-2 rounded-full text-[14px] font-semibold flex-shrink-0 ${t.assignedTo === m.name ? 'bg-[#007AFF] text-white' : 'bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A]'}`}>{m.name}</button>))}</div></div>))}</div></div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {householdTasks.filter(t => t.date === upcomingSatDate).length === 0 ? <div className="text-center text-[#8E8E93] font-medium mt-10">Lade Haushaltsplan...</div> : (
+                                            householdTasks.filter(t => t.date === upcomingSatDate).map(t => {
+                                                const iMT = t.assignedTo === currentUser.name; const iSR = t.swapRequestedWith === currentUser.name;
+                                                return (
+                                                    <div key={t.id} className={STYLES.card}><div onClick={() => setHouseholdHistoryModal(t.choreId)} className="p-5 cursor-pointer"><div className="flex justify-between items-start mb-1"><h3 className="font-bold text-[18px] leading-snug pr-4">{t.choreName}</h3><span className={`text-[11px] font-bold uppercase px-2.5 py-1 rounded-full shrink-0 ${t.status === 'completed' ? 'bg-[#34C759]/20 text-[#34C759]' : t.status === 'open' ? 'bg-[#FF9500]/20 text-[#FF9500]' : 'bg-[#007AFF]/20 text-[#007AFF]'}`}>{t.status === 'completed' ? 'Erledigt' : t.status === 'open' ? 'Offen' : 'Eingeteilt'}</span></div><div className="text-[15px] mt-2"><span className="text-[#8E8E93] mr-2">Zuständig:</span><span className="font-semibold">{t.assignedTo ? t.assignedTo : <span className="text-[#FF9500]">Jeder (Freiwillig)</span>}</span></div>{t.status === 'completed' && t.completedAt && <p className="text-[12px] text-[#34C759] mt-2 font-medium">Erledigt von {t.completedBy}</p>}</div>{t.status !== 'completed' && (<div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-4 border-t border-[#E5E5EA] dark:border-[#38383A] flex flex-col gap-2">{isExecutionWindow && iMT && <button onClick={() => handleHouseholdAction(t.id, 'complete')} className={STYLES.btnPrimary + " bg-[#34C759]"}>Als erledigt markieren</button>}{t.status === 'open' && <button onClick={() => handleHouseholdAction(t.id, 'takeover')} className={STYLES.btnPrimary}>Ich übernehme das!</button>}{iMT && t.status !== 'open' && (<div className="flex gap-3 w-full mt-2">{t.swapRequestedWith ? <div className="flex-1 py-3 px-2 text-center bg-[#FF9500]/10 text-[#FF9500] font-semibold text-[13px] rounded-[12px] flex items-center justify-center leading-tight border border-[#FF9500]/20">Anfrage an {t.swapRequestedWith}</div> : <button onClick={() => setHouseholdSwapModal(t.id)} className="flex-1 py-3 px-2 rounded-[12px] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-black dark:text-white font-bold text-[14px] active:scale-[0.98] transition-transform border border-[#E5E5EA] dark:border-[#38383A] shadow-sm">Vertretung</button>}<button onClick={() => handleHouseholdAction(t.id, 'absent')} className="flex-1 py-3 px-2 rounded-[12px] bg-[#FF3B30]/10 text-[#FF3B30] font-bold text-[14px] active:scale-[0.98] transition-transform border border-[#E5E5EA] dark:border-[#38383A] shadow-sm">Nicht da</button></div>)}{iSR && (<div className="flex flex-col gap-2"><p className="text-[13px] text-[#007AFF] font-medium text-center">Du wurdest um Vertretung gebeten!</p><div className="flex gap-3"><button onClick={() => handleHouseholdAction(t.id, 'accept_swap')} className={STYLES.btnPrimary + " !mt-0 !py-3 !text-[14px] flex-1"}>Akzeptieren</button><button onClick={() => handleHouseholdAction(t.id, 'reject_swap')} className={STYLES.btnSecondary + " !mt-0 !py-3 !text-[14px] text-[#FF3B30] flex-1"}>Ablehnen</button></div></div>)}</div>)}</div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'settings' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in pb-10">
+                                {isAdmin && (
+                                    <section className="md:col-span-2">
+                                        <h2 className={STYLES.subTitle + " flex items-center gap-2"}><Icon name="Calendar" size={14} /> Automatischer Kalender-Sync</h2>
+                                        <div className={STYLES.card + " p-5"}>
+                                            <p className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5] mb-4 leading-relaxed">Hier kannst du einen geteilten iCal/ICS Link (z.B. Apple Kalender) einfügen. FamilyConnect liest daraus automatisch die Geburtstage der Familie aus! (Erforderliches Titel-Format im Kalender: "Maxs Geburtstag" oder "Max Geburtstag")</p>
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <input type="url" placeholder="https://... oder webcal://..." className={STYLES.input + " sm:flex-1"} defaultValue={currentFamily?.calendarUrl || ''} onBlur={e => {
+                                                    const val = e.target.value.trim();
+                                                    getFamilyDocRef(currentFamily.id).update({ calendarUrl: val });
+                                                }} />
+                                                <button onClick={() => currentFamily?.calendarUrl ? syncCalendar(currentFamily.calendarUrl) : showAlert("Fehler", "Bitte zuerst einen Link eintragen.")} className={STYLES.btnSecondary + " !mt-0 sm:w-auto px-6 !bg-[#007AFF]/10 !text-[#007AFF] flex justify-center items-center gap-2 active:opacity-70 transition-opacity"}><Icon name="Sparkles" size={18} /> Jetzt scannen</button>
+                                            </div>
+                                            {currentFamily?.lastCalSync && <p className="text-[12px] text-[#8E8E93] mt-3">Letzter Sync: {new Date(currentFamily.lastCalSync).toLocaleString('de-DE')} Uhr</p>}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {isAdmin && (
+                                    <section className="md:col-span-2">
+                                        <h2 className={STYLES.subTitle}>Module konfigurieren (Max 3)</h2>
+                                        <div className={STYLES.card + " divide-y divide-[#E5E5EA] dark:divide-[#38383A]"}>
+                                            {Object.keys(ALL_MODULES).map(modId => {
+                                                const isActive = activeModIds.includes(modId);
+                                                return (
+                                                    <div key={modId} className="p-4 flex justify-between items-center">
+                                                        <div className="flex items-center gap-3"><Icon name={ALL_MODULES[modId].icon} size={20} className="text-[#007AFF]" /><span className="font-medium">{ALL_MODULES[modId].label}</span></div>
+                                                        <div className="relative inline-block w-12 mr-2 align-middle select-none">
+                                                            <input type="checkbox" id={`toggle-${modId}`} className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={isActive} onChange={async (e) => {
+                                                                let newMods = [...activeModIds];
+                                                                if (e.target.checked) {
+                                                                    if (newMods.length >= 3) { showAlert("Limit erreicht", "Es können maximal 3 Module gleichzeitig aktiv sein."); return; }
+                                                                    newMods.push(modId);
+                                                                } else {
+                                                                    newMods = newMods.filter(id => id !== modId);
+                                                                }
+                                                                await getFamilyDocRef(currentFamily.id).update({ activeModules: newMods });
+                                                            }}/>
+                                                            <label htmlFor={`toggle-${modId}`} className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out"></label>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        <p className="text-[12px] text-[#8E8E93] mt-2 px-2">Aktiviere genau drei Module für die untere Navigationsleiste.</p>
+                                    </section>
+                                )}
+
+                                <section>
+                                    <h2 className={STYLES.subTitle + " flex items-center gap-2"}><Icon name="BellOff" size={14} /> Nicht stören</h2>
+                                    <div className={STYLES.card + " p-5 h-[calc(100%-2rem)]"}>
+                                        {activeDND ? (
+                                            <div className="flex flex-col justify-center h-full gap-4 bg-[#FF9500]/10 p-5 rounded-[16px] border border-[#FF9500]/20 text-center"><div><p className="font-semibold text-[#FF9500] text-[17px]">Aktiviert bis</p><p className="text-[15px] text-[#FF9500]/80 font-medium">{currentUser?.dndUntil && !isNaN(new Date(currentUser.dndUntil).getTime()) ? new Date(currentUser.dndUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} Uhr</p></div><button onClick={() => setDND(0)} className="bg-[#FF9500] text-white font-semibold px-4 py-3 rounded-[12px] w-full">Beenden</button></div>
+                                        ) : (
+                                            <div className="flex flex-col h-full justify-between"><p className="text-[14px] font-medium text-[#8E8E93] mb-4">Stumm schalten für:</p><div className="grid grid-cols-2 gap-3 mb-4"><button onClick={() => setDND(0.25)} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px]">15 Min</button><button onClick={() => setDND(1)} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px]">1 Std</button><button onClick={() => setDND(8)} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px]">8 Std</button><button onClick={() => setDND(24)} className="bg-[var(--app-bg)] dark:bg-[#2C2C2E] text-[#007AFF] py-3.5 rounded-[14px] font-semibold text-[15px]">24 Std</button></div><p className="text-[12px] text-[#8E8E93] text-center">Hinweis: Die Alexa bleibt von 22 bis 7 Uhr automatisch immer stumm.</p></div>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h2 className={STYLES.subTitle}>Geräte Setup</h2>
+                                    <div className={STYLES.card}>
+                                        <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A] flex items-center justify-between"><div className="flex items-center space-x-3"><div className="bg-[#007AFF]/10 p-2.5 rounded-[12px]"><Icon name="Smartphone" size={20} className="text-[#007AFF]" /></div><div><p className="font-semibold text-[16px]">Apple Push</p><p className="text-[13px] text-[#8E8E93] font-normal">Status: <span className={currentUser?.fcmToken ? "text-[#34C759] font-medium" : "text-[#FF9500] font-medium"}>{pushStatus}</span></p></div></div><button onClick={() => requestPushPermission(false)} className="bg-[#007AFF]/10 text-[#007AFF] text-[14px] font-semibold px-4 py-2 rounded-full">{currentUser?.fcmToken ? 'Erneuern' : 'Aktivieren'}</button></div>
+                                        <div className="p-4 space-y-4"><div className="flex items-center space-x-3 mb-2"><div className="bg-[#AF52DE]/10 p-2.5 rounded-[12px]"><Icon name="Speaker" size={20} className="text-[#AF52DE]" /></div><p className="font-semibold text-[16px]">Alexa Voice Monkey Links</p></div><div><p className={STYLES.subTitle + " !ml-1"}>Für Mahlzeiten</p><input type="url" placeholder="https://api.voicemonkey.io/trigger..." className={STYLES.input} defaultValue={currentUser?.voiceMonkeyMeal} onBlur={e => saveSettings('voiceMonkeyMeal', e.target.value)} /></div><div><p className={STYLES.subTitle + " !ml-1"}>Für Aktivitäten</p><input type="url" placeholder="https://api.voicemonkey.io/trigger..." className={STYLES.input} defaultValue={currentUser?.voiceMonkeyOther} onBlur={e => saveSettings('voiceMonkeyOther', e.target.value)} /></div></div>
+                                    </div>
+                                </section>
+
+                                <section className="md:col-span-2">
+                                    <h2 className={STYLES.subTitle + " flex items-center gap-2"}><Icon name="Smartphone" size={14} /> Apple Kurzbefehle & Watch</h2>
+                                    <div className={STYLES.card + " p-5"}><p className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5] mb-5 leading-relaxed">Lade dir hier die fertigen Apple Kurzbefehle herunter, um FamilyConnect auf dem iPhone und der Apple Watch ganz einfach nutzen zu können!</p><div className="flex flex-col sm:flex-row gap-3"><button onClick={() => window.open(currentFamily?.shortcutLinks?.ruf || 'https://www.icloud.com/shortcuts/8cb9c9df77ad4767955b0ffdd167c673', '_blank')} className={STYLES.btnSecondary + " !mt-0 !bg-[#007AFF]/10 !text-[#007AFF] flex justify-center items-center gap-2 active:opacity-70 transition-opacity"}><Icon name="Bell" size={18} /> Ruf-Kurzbefehle</button><button onClick={() => window.open(currentFamily?.shortcutLinks?.scanner || 'https://www.icloud.com/shortcuts/455d20eddef14cb8bfcc9ff10d1c2ae7', '_blank')} className={STYLES.btnSecondary + " !mt-0 !bg-[#AF52DE]/10 !text-[#AF52DE] flex justify-center items-center gap-2 active:opacity-70 transition-opacity"}><Icon name="Sparkles" size={18} /> KI Einkaufs-Scanner</button><button onClick={() => window.open(currentFamily?.shortcutLinks?.film || '#', '_blank')} className={STYLES.btnSecondary + " !mt-0 !bg-[#FF3B30]/10 !text-[#FF3B30] flex justify-center items-center gap-2 active:opacity-70 transition-opacity"}><Icon name="Clapperboard" size={18} /> Film vorschlagen</button></div><p className="text-[12px] text-[#8E8E93] mt-4 text-center">Der KI Scanner benötigt ein iPhone 15 Pro oder neuer.</p></div>
+                                </section>
+
+                                <div className="md:col-span-2 pt-2 space-y-4">
+                                    <button onClick={handleLogout} className="w-full md:max-w-xs mx-auto py-3.5 bg-white dark:bg-[#1C1C1E] text-[#FF3B30] font-semibold rounded-[14px] shadow-sm flex items-center justify-center space-x-2 border border-[#E5E5EA] dark:border-[#38383A]"><Icon name="LogOut" size={20} /><span className="text-[17px]">App & Gerät abmelden</span></button>
+                                    
+                                    {isAdmin && (
+                                        <div className="w-full md:max-w-xs mx-auto">
+                                            <button onClick={() => setModal({ type: 'admin_login', onSubmit: handleMasterLoginSettings, onClose: () => setModal(null) })} className="w-full py-3.5 bg-[#1C1C1E] dark:bg-[#2C2C2E] text-white font-semibold rounded-[14px] shadow-sm flex items-center justify-center space-x-2 border border-[#38383A]">
+                                                <Icon name="ShieldCheck" size={18} /><span>Master Dashboard</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+                <LiquidTabBar activeTab={activeTab} setActiveTab={setActiveTab} activeModIds={activeModIds} isKeyboardOpen={isKeyboardOpen} />
+            </div>
+        );
+    }
+
+    function Root() {
+        const p = new URLSearchParams(window.location.search);
+        const act = p.get('action'); const iS = act === 'shortcut' || act === 'add_shopping';
+        const [cfg, setCfg] = useState(() => {
+            try {
+                const uC = p.get('cfg'); if (uC) { const d = JSON.parse(decodeURIComponent(escape(atob(uC)))); localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(d)); return d; }
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) return typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+                const s = localStorage.getItem(CONFIG_STORAGE_KEY) || localStorage.getItem('firebaseConfig'); if (s) return JSON.parse(s);
+            } catch (e) { } return null;
+        });
+        const [s, setS] = useState("booting"); const [eM, setEM] = useState("");
+
+        useEffect(() => {
+            if (!cfg) return setS("config-needed"); setS("booting");
+            try {
+                const fC = cfg.firebaseConfig ? cfg.firebaseConfig : cfg;
+                if (!firebase.apps.length) app = firebase.initializeApp(fC); else app = firebase.app();
+                db = firebase.firestore(); 
+                try { 
+                    db.enablePersistence({ synchronizeTabs: true }).catch(e => { console.warn("Persistence error", e); });
+                } catch (e) { }
+                auth = firebase.auth();
+                messaging = firebase.messaging();
+                setS("ready");
+            } catch (e) { setEM("Verbindungsfehler: " + e.message); setS("error"); }
+        }, [cfg]);
+
+        if (s === "config-needed") return <ConfigLoader onConfigLoaded={setCfg} />;
+        if (s === "error") return (<div className="h-full w-full bg-[var(--app-bg)] dark:bg-black text-black dark:text-white flex flex-col items-center justify-center p-8 text-center relative z-50"><Icon name="ShieldCheck" size={64} className="text-[#FF3B30] mb-4" /><h2 className="text-xl font-bold mb-2">Systemfehler</h2><p className="text-[#FF3B30] text-[15px] mb-8 font-mono bg-[#FF3B30]/10 p-4 rounded-[16px] border border-[#FF3B30]/20">{eM}</p><button onClick={() => { localStorage.removeItem(CONFIG_STORAGE_KEY); localStorage.removeItem('firebaseConfig'); setCfg(null); setS("config-needed"); }} className="w-full bg-[#007AFF] text-white py-3.5 rounded-[16px] font-bold text-[17px] active:scale-[0.98] transition-transform shadow-sm">Neue Config laden</button></div>);
+        if (s === "booting") return <div className="h-full w-full bg-[var(--app-bg)] dark:bg-black flex flex-col items-center justify-center relative z-50"><Icon name="ShieldCheck" size={64} className="text-[#007AFF] animate-pulse mb-4" /></div>;
+        return <App />;
+    }
+
+    if (!window.isFastMode) {
+        const root = createRoot(document.getElementById('root'));
+        root.render(<Root />);
+    }
+</script>
+</body>
+</html>
