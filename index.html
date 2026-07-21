@@ -1168,171 +1168,280 @@
             };
 
             const syncCalendar = async (url) => {
-                const rawUrl = (url || '').trim();
-                if (!rawUrl) {
-                    showAlert('Fehler', 'Bitte zuerst einen Kalender-Link eintragen.');
-                    return;
-                }
-
-                let finalUrl = rawUrl;
-                if (finalUrl.toLowerCase().startsWith('webcal://')) {
-                    finalUrl = 'https://' + finalUrl.substring('webcal://'.length);
-                }
-
-                const decodeIcsText = (text) => {
-                    return String(text || '')
-                        .replace(/\\n/g, '\n')
-                        .replace(/\\,/g, ',')
-                        .replace(/\\;/g, ';')
-                        .replace(/\\\\/g, '\\')
-                        .trim();
-                };
-
-                const unfoldIcs = (text) => String(text || '').replace(/\r?\n[ \t]/g, '');
-
-                const readIcs = async () => {
-                    const attempts = [
-                        finalUrl,
-                        `https://api.allorigins.win/raw?url=${encodeURIComponent(finalUrl)}`,
-                        `https://api.allorigins.win/get?url=${encodeURIComponent(finalUrl)}`
+            const rawUrl = (url || '').trim();
+        
+            if (!rawUrl) {
+                showAlert('Fehler', 'Bitte zuerst einen Kalender-Link eintragen.');
+                return;
+            }
+        
+            const normalizeUrlCandidates = (u) => {
+                const trimmed = String(u || '').trim();
+        
+                if (trimmed.toLowerCase().startsWith('webcal://')) {
+                    const withoutScheme = trimmed.substring('webcal://'.length);
+                    return [
+                        'https://' + withoutScheme,
+                        'http://' + withoutScheme
                     ];
-                    let lastErr = null;
+                }
+        
+                return [trimmed];
+            };
+        
+            const decodeIcsText = (text) => {
+                return String(text || '')
+                    .replace(/\\n/g, '\n')
+                    .replace(/\\,/g, ',')
+                    .replace(/\\;/g, ';')
+                    .replace(/\\\\/g, '\\')
+                    .trim();
+            };
+        
+            const unfoldIcs = (text) => String(text || '').replace(/\r?\n[ \t]/g, '');
+        
+            const buildAttempts = (calendarUrl) => {
+                const encoded = encodeURIComponent(calendarUrl);
+        
+                return [
+                    {
+                        url: calendarUrl,
+                        type: 'text'
+                    },
+                    {
+                        url: `https://api.allorigins.win/raw?url=${encoded}`,
+                        type: 'text'
+                    },
+                    {
+                        url: `https://api.allorigins.win/get?url=${encoded}`,
+                        type: 'allorigins-json'
+                    },
+                    {
+                        url: `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
+                        type: 'text'
+                    },
+                    {
+                        url: `https://corsproxy.io/?${encoded}`,
+                        type: 'text'
+                    }
+                ];
+            };
+        
+            const readIcs = async () => {
+                const urlCandidates = normalizeUrlCandidates(rawUrl);
+                let lastErr = null;
+        
+                for (const candidate of urlCandidates) {
+                    const attempts = buildAttempts(candidate);
+        
                     for (const attempt of attempts) {
                         try {
-                            const res = await fetch(attempt);
+                            const res = await fetch(attempt.url, {
+                                cache: 'no-store'
+                            });
+        
                             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                            if (attempt.includes('/get?url=')) {
+        
+                            if (attempt.type === 'allorigins-json') {
                                 const json = await res.json();
                                 if (json && json.contents) return json.contents;
                                 throw new Error('Leere Proxy-Antwort');
                             }
-                            return await res.text();
-                        } catch (err) { lastErr = err; }
-                    }
-                    throw lastErr || new Error('Kalender konnte nicht geladen werden');
-                };
-
-                const parseDateFromIcsValue = (value) => {
-                    if (!value) return '';
-                    const clean = String(value).trim();
-                    const m = clean.match(/^(\d{4})(\d{2})(\d{2})/);
-                    if (!m) return '';
-                    return `${m[1]}-${m[2]}-${m[3]}`;
-                };
-
-                const extractPersonAndType = (summaryRaw) => {
-                    const summary = decodeIcsText(summaryRaw).replace(/\s+/g, ' ').trim();
-                    if (!summary) return null;
-
-                    let match =
-                        summary.match(/^(.+?)s Geburtstag$/i) ||
-                        summary.match(/^(.+?) Geburtstag$/i) ||
-                        summary.match(/^Geburtstag von (.+)$/i);
-
-                    if (match) return { type: 'birthdate', name: match[1].trim() };
-
-                    match =
-                        summary.match(/^(.+?)'s Birthday$/i) ||
-                        summary.match(/^(.+?) Birthday$/i) ||
-                        summary.match(/^Birthday of (.+)$/i);
-
-                    if (match) return { type: 'birthdate', name: match[1].trim() };
-
-                    match =
-                        summary.match(/^(.+?) Namenstag$/i) ||
-                        summary.match(/^Namenstag von (.+)$/i);
-
-                    if (match) return { type: 'nameday', name: match[1].trim() };
-
-                    return null;
-                };
-
-                try {
-                    const icsRaw = await readIcs();
-                    const icsData = unfoldIcs(icsRaw);
-                    const lines = icsData.split(/\r?\n/);
-
-                    let inEvent = false;
-                    let summary = '';
-                    let dtstart = '';
-                    let newPersons = [...safeGiftPersons];
-                    let changed = false;
-                    let foundCount = 0;
-                    const memberNames = new Set(activeMembersList.map(m => m.name.toLowerCase()));
-
-                    const finishEvent = () => {
-                        if (!summary || !dtstart) return;
-                        const extracted = extractPersonAndType(summary);
-                        if (!extracted || !extracted.name) return;
-                        const dStr = parseDateFromIcsValue(dtstart);
-                        if (!dStr) return;
-                        foundCount++;
-
-                        const existingIndex = newPersons.findIndex(x => x.name && x.name.toLowerCase() === extracted.name.toLowerCase());
-                        if (existingIndex === -1) {
-                            newPersons.push({
-                                id: generateId(),
-                                name: extracted.name,
-                                type: memberNames.has(extracted.name.toLowerCase()) ? 'family' : 'custom',
-                                birthdate: extracted.type === 'birthdate' ? dStr : '',
-                                nameday: extracted.type === 'nameday' ? dStr : '',
-                                birthdayNeedsGift: true,
-                                namedayNeedsGift: false,
-                                christmasNeedsGift: true,
-                                easterNeedsGift: false
-                            });
-                            changed = true;
-                        } else {
-                            const p = { ...newPersons[existingIndex] };
-                            if (extracted.type === 'birthdate' && p.birthdate !== dStr) { p.birthdate = dStr; changed = true; }
-                            if (extracted.type === 'nameday' && p.nameday !== dStr) { p.nameday = dStr; changed = true; }
-                            newPersons[existingIndex] = p;
-                        }
-                    };
-
-                    for (let line of lines) {
-                        if (line.startsWith('BEGIN:VEVENT')) {
-                            inEvent = true;
-                            summary = '';
-                            dtstart = '';
-                            continue;
-                        }
-                        if (line.startsWith('END:VEVENT')) {
-                            finishEvent();
-                            inEvent = false;
-                            summary = '';
-                            dtstart = '';
-                            continue;
-                        }
-                        if (!inEvent) continue;
-                        if (line.startsWith('SUMMARY')) {
-                            const idx = line.indexOf(':');
-                            if (idx !== -1) summary = line.substring(idx + 1);
-                        }
-                        if (line.startsWith('DTSTART')) {
-                            const idx = line.indexOf(':');
-                            if (idx !== -1) dtstart = line.substring(idx + 1);
+        
+                            const txt = await res.text();
+        
+                            if (txt && (txt.includes('BEGIN:VCALENDAR') || txt.includes('BEGIN:VEVENT'))) {
+                                return txt;
+                            }
+        
+                            if (txt && txt.length > 50) {
+                                return txt;
+                            }
+        
+                            throw new Error('Keine ICS-Daten erhalten');
+                        } catch (err) {
+                            lastErr = err;
                         }
                     }
-
-                    const updatePayload = {
-                        calendarUrl: rawUrl,
-                        lastCalSync: new Date().toISOString()
-                    };
-                    if (changed) updatePayload.giftPersons = newPersons;
-
-                    await getFamilyDocRef(currentFamily.id).update(updatePayload);
-
-                    if (changed) {
-                        showAlert('Erfolg', `Kalender synchronisiert. ${foundCount} passende Einträge gefunden und Personen/Feste aktualisiert.`);
-                    } else {
-                        showAlert('Hinweis', foundCount > 0 ? `Kalender gescannt. ${foundCount} passende Einträge gefunden, aber keine neuen Änderungen nötig.` : 'Kalender gescannt, aber keine Geburtstage oder Namenstage erkannt.');
-                    }
-                } catch(e) { 
-                    showAlert('Fehler', 'Konnte Kalender nicht laden. Bitte prüfe den Link. webcal:// Links werden automatisch als https:// geladen.'); 
                 }
+        
+                throw lastErr || new Error('Kalender konnte nicht geladen werden');
             };
-
+        
+            const parseDateFromIcsValue = (value) => {
+                if (!value) return '';
+        
+                const clean = String(value).trim();
+                const m = clean.match(/^(\d{4})(\d{2})(\d{2})/);
+        
+                if (!m) return '';
+        
+                return `${m[1]}-${m[2]}-${m[3]}`;
+            };
+        
+            const extractPersonAndType = (summaryRaw) => {
+                const summary = decodeIcsText(summaryRaw)
+                    .replace(/\s+/g, ' ')
+                    .trim();
+        
+                if (!summary) return null;
+        
+                let match =
+                    summary.match(/^(.+?)s Geburtstag$/i) ||
+                    summary.match(/^(.+?) Geburtstag$/i) ||
+                    summary.match(/^Geburtstag von (.+)$/i);
+        
+                if (match) {
+                    return {
+                        type: 'birthdate',
+                        name: match[1].trim()
+                    };
+                }
+        
+                match =
+                    summary.match(/^(.+?)'s Birthday$/i) ||
+                    summary.match(/^(.+?) Birthday$/i) ||
+                    summary.match(/^Birthday of (.+)$/i);
+        
+                if (match) {
+                    return {
+                        type: 'birthdate',
+                        name: match[1].trim()
+                    };
+                }
+        
+                match =
+                    summary.match(/^(.+?) Namenstag$/i) ||
+                    summary.match(/^Namenstag von (.+)$/i);
+        
+                if (match) {
+                    return {
+                        type: 'nameday',
+                        name: match[1].trim()
+                    };
+                }
+        
+                return null;
+            };
+        
+            try {
+                const icsRaw = await readIcs();
+                const icsData = unfoldIcs(icsRaw);
+                const lines = icsData.split(/\r?\n/);
+        
+                let inEvent = false;
+                let summary = '';
+                let dtstart = '';
+        
+                let newPersons = [...safeGiftPersons];
+                let changed = false;
+                let foundCount = 0;
+        
+                const memberNames = new Set(activeMembersList.map(m => m.name.toLowerCase()));
+        
+                const finishEvent = () => {
+                    if (!summary || !dtstart) return;
+        
+                    const extracted = extractPersonAndType(summary);
+                    if (!extracted || !extracted.name) return;
+        
+                    const dStr = parseDateFromIcsValue(dtstart);
+                    if (!dStr) return;
+        
+                    foundCount++;
+        
+                    const existingIndex = newPersons.findIndex(x =>
+                        x.name && x.name.toLowerCase() === extracted.name.toLowerCase()
+                    );
+        
+                    if (existingIndex === -1) {
+                        newPersons.push({
+                            id: generateId(),
+                            name: extracted.name,
+                            type: memberNames.has(extracted.name.toLowerCase()) ? 'family' : 'custom',
+                            birthdate: extracted.type === 'birthdate' ? dStr : '',
+                            nameday: extracted.type === 'nameday' ? dStr : '',
+                            birthdayNeedsGift: true,
+                            namedayNeedsGift: false,
+                            christmasNeedsGift: true,
+                            easterNeedsGift: false
+                        });
+                        changed = true;
+                    } else {
+                        const p = { ...newPersons[existingIndex] };
+        
+                        if (extracted.type === 'birthdate' && p.birthdate !== dStr) {
+                            p.birthdate = dStr;
+                            changed = true;
+                        }
+        
+                        if (extracted.type === 'nameday' && p.nameday !== dStr) {
+                            p.nameday = dStr;
+                            changed = true;
+                        }
+        
+                        newPersons[existingIndex] = p;
+                    }
+                };
+        
+                for (let line of lines) {
+                    if (line.startsWith('BEGIN:VEVENT')) {
+                        inEvent = true;
+                        summary = '';
+                        dtstart = '';
+                        continue;
+                    }
+        
+                    if (line.startsWith('END:VEVENT')) {
+                        finishEvent();
+                        inEvent = false;
+                        summary = '';
+                        dtstart = '';
+                        continue;
+                    }
+        
+                    if (!inEvent) continue;
+        
+                    if (line.startsWith('SUMMARY')) {
+                        const idx = line.indexOf(':');
+                        if (idx !== -1) summary = line.substring(idx + 1);
+                    }
+        
+                    if (line.startsWith('DTSTART')) {
+                        const idx = line.indexOf(':');
+                        if (idx !== -1) dtstart = line.substring(idx + 1);
+                    }
+                }
+        
+                const updatePayload = {
+                    calendarUrl: rawUrl,
+                    lastCalSync: new Date().toISOString()
+                };
+        
+                if (changed) updatePayload.giftPersons = newPersons;
+        
+                await getFamilyDocRef(currentFamily.id).update(updatePayload);
+        
+                if (changed) {
+                    showAlert(
+                        'Erfolg',
+                        `Kalender synchronisiert. ${foundCount} passende Einträge gefunden und Personen/Feste aktualisiert.`
+                    );
+                } else {
+                    showAlert(
+                        'Hinweis',
+                        foundCount > 0
+                            ? `Kalender gescannt. ${foundCount} passende Einträge gefunden, aber keine neuen Änderungen nötig.`
+                            : 'Kalender geladen, aber keine Geburtstage oder Namenstage erkannt.'
+                    );
+                }
+            } catch (e) {
+                showAlert(
+                    'Fehler',
+                    `Konnte Kalender nicht laden. Der Kalenderanbieter blockiert möglicherweise den Zugriff. Technischer Hinweis: ${e?.message || e}`
+                );
+            }
+        };
             const renderGiftEventView = () => {
                 const e = safeGiftEvents.find(x => x.id === activeGiftEventId);
                 const p = safeGiftPersons.find(x => x.id === e?.personId);
@@ -2054,7 +2163,7 @@
                                             </div>
                                             
                                             <div className="space-y-4">
-                                                {safeGiftPersons.map(p => (
+                                                {safeGiftPersons.filter(p => p.name !== currentUser?.name).map(p => (
                                                     <div key={p.id} className={STYLES.card + " p-4"}>
                                                         <div className="flex justify-between items-center mb-4">
                                                             <h3 className="font-bold text-[18px] flex items-center gap-2">{p.name} {p.type === 'custom' && <span className="text-[10px] bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full uppercase">Extern</span>}</h3>
@@ -2073,7 +2182,7 @@
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <input type="date" className={STYLES.input + " gift-date-input !py-2 !text-[14px]"} value={p.birthdate || ''} onChange={e => saveGiftPerson(p.id, { birthdate: e.target.value })} />
+                                                                <input type="date" className={STYLES.input + " gift-date-input !py-2 !text-[14px] min-w-0 max-w-full"} value={p.birthdate || ''} onChange={e => saveGiftPerson(p.id, { birthdate: e.target.value })} />
                                                             </div>
                                                             
                                                             <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-3 rounded-[12px]">
@@ -2087,7 +2196,7 @@
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <input type="date" className={STYLES.input + " gift-date-input !py-2 !text-[14px]"} value={p.nameday || ''} onChange={e => saveGiftPerson(p.id, { nameday: e.target.value })} />
+                                                                <input type="date" className={STYLES.input + " gift-date-input !py-2 !text-[14px] min-w-0 max-w-full"} value={p.nameday || ''} onChange={e => saveGiftPerson(p.id, { nameday: e.target.value })} />
                                                             </div>
 
                                                             <div className="bg-[#F9F9F9] dark:bg-[#2C2C2E] p-3 rounded-[12px]">
