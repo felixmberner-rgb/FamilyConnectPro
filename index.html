@@ -570,7 +570,24 @@
             const nowGlobal = new Date();
             const isExecutionWindow = (nowGlobal.getDay() === 5 && nowGlobal.getHours() >= 16) || (nowGlobal.getDay() === 6);
             
-            const activeCallEvent = safeHistory.find(h => { if (h.isExpense || h.isResend || h.isSwapRequest || h.isRejectedSwap || h.isCustomPush || h.isSystemReminder || h.isPaymentVerification || h.isSettlement || h.reason === 'Erinnerung: Haushaltsdienst! 🧹') return false; return !isExpired(h.timestamp); });
+            const activeCallEvent = safeHistory.find(h => {
+    if (
+        h.isExpense ||
+        h.isHousehold ||
+        h.isGiftInvite ||
+        h.isResend ||
+        h.isSwapRequest ||
+        h.isSuccessfulSwap ||
+        h.isRejectedSwap ||
+        h.isCustomPush ||
+        h.isSystemReminder ||
+        h.isPaymentVerification ||
+        h.isSettlement ||
+        h.reason === 'Erinnerung: Haushaltsdienst! 🧹'
+    ) return false;
+
+    return !isExpired(h.timestamp);
+});
             const trackingEvent = trackingEventId ? safeHistory.find(h => h.id === trackingEventId) : null;
 
             const showConfirm = (t, m, oC, d = false) => setModal({ type: 'confirm', title: t, message: m, danger: d, onConfirm: () => { oC(); setModal(null); }, onCancel: () => setModal(null) });
