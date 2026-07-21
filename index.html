@@ -476,6 +476,7 @@
             const [newPoll, setNewPoll] = useState({ type: 'direct', question: '', options: ['', ''], collectionDeadline: getLocalIsoString(12), votingDeadline: getLocalIsoString(48), sharedWith: ['Alle'] });
             const [isCreatingPoll, setIsCreatingPoll] = useState(false);
             const [pollNewOptions, setPollNewOptions] = useState({});
+            const [isHomeNetwork, setIsHomeNetwork] = useState(false);
 
             const [giftsView, setGiftsView] = useState('list');
             const [activeGiftEventId, setActiveGiftEventId] = useState(null);
@@ -534,6 +535,16 @@
                     setActiveTab('home');
                 }
             }, [activeModIds, activeTab]);
+
+            useEffect(() => {
+                if (activeTab === 'settings') {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 1500);
+                    fetch('http://192.168.178.39:1880/ui/', { mode: 'no-cors', signal: controller.signal })
+                        .then(() => { clearTimeout(timeoutId); setIsHomeNetwork(true); })
+                        .catch(() => { clearTimeout(timeoutId); setIsHomeNetwork(false); });
+                }
+            }, [activeTab]);
 
             useEffect(() => {
                 const handleFocus = () => {
@@ -1457,9 +1468,9 @@
                                             return (
                                                 <div key={m.name} className={STYLES.card + " flex flex-col h-full"}><div className="p-4 flex justify-between items-center bg-[#F9F9F9] dark:bg-[#2C2C2E]"><div className="min-w-0 pr-2 cursor-pointer active:opacity-70" onClick={() => setExpenseHistoryModal(m.name)}><p className="font-bold text-[18px] truncate">{m.name}</p>
                                                     <p className={`text-[14px] font-semibold mt-0.5 truncate ${net > 0 ? 'text-[#34C759]' : net < 0 ? 'text-[#FF3B30]' : (hasPending && eWT.length === 0) ? 'text-[#FF9500]' : 'text-[#8E8E93]'}`}>{net > 0 ? `Schuldet dir: ${net.toFixed(2)}€` : net < 0 ? `Noch fällig: ${Math.abs(net).toFixed(2)}€` : (hasPending && eWT.length === 0) ? 'Wird geprüft.' : 'Alles beglichen'}</p>
-                                                </div><div className="flex gap-2">{eWT.length > 0 && <button onClick={() => net >= 0 ? handleSettleAll(m.name, eWT, Math.abs(net)) : openDebtorProofModal(m.name, Math.abs(net), eWT)} className="w-9 h-9 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="CheckCircle2" size={20} /></button>}<button onClick={() => openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Plus" size={20} /></button></div></div>{eWT.length > 0 && (<div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">{displayExpenses.map(e => { const iMC = e.creditor === currentUser?.name; return (<div key={e.id} className={`flex justify-between items-center bg-white dark:bg-[#1C1C1E] border p-3 rounded-[16px] ${iMC ? 'border-[#007AFF]/30' : 'border-[#E5E5EA] dark:border-[#38383A]'}`}><div className="pr-3 min-w-0 flex-1"><p className="text-[15px] font-semibold truncate">{e.reason}</p><p className="text-[12px] text-[#8E8E93] font-medium">{formatDate(e.date || e.timestamp)}</p></div><div className="flex flex-col items-end gap-2 flex-shrink-0"><span className={`font-semibold text-[16px] ${iMC ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{iMC ? '+' : '-'}{parseFloat(e.amount || 0).toFixed(2)}€</span>{iMC ? (<div className="flex gap-1.5 mt-1"><button onClick={() => openEditExpense(e)} className="Ich bin eine textbasierte KI und kann in diesem Fall nicht helfen.
-w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14} /></button><button onClick={() => handleMarkExpensePaid(e.id)} className="w-8 h-8 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center"><Icon name="Check" size={16} /></button><button onClick={() => handleDeleteExpense(e.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14} /></button></div>) : (<span className="text-[11px] uppercase font-bold text-[#8E8E93] bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-2.5 py-1 rounded-full mt-1">Offen</span>)}</div></div>) })}
-                                                {hasMore && <button onClick={() => setExpandedExpenses(p => ({ ...p, [m.name]: !isExpanded }))} className="w-full py-2.5 text-[13px] font-bold text-[#8E8E93] bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-[10px] active:opacity-70 flex justify-center items-center gap-1 mt-2">{isExpanded ? "Weniger anzeigen" : `Alle ${eWT.length} Auslagen anzeigen`}</button>}
+                                                </div><div className="flex gap-2">{eWT.length > 0 && <button onClick={() => net >= 0 ? handleSettleAll(m.name, eWT, Math.abs(net)) : openDebtorProofModal(m.name, Math.abs(net), eWT)} className="w-9 h-9 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="CheckCircle2" size={20} /></button>}<button onClick={() => openSingleExpense(m.name)} className="w-9 h-9 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center active:opacity-70 flex-shrink-0"><Icon name="Plus" size={20} /></button></div></div>{eWT.length > 0 && (<div className="border-t border-[#E5E5EA] dark:border-[#38383A] p-4 space-y-3 flex-1 overflow-y-auto">{displayExpenses.map(e => { const iMC = e.creditor === currentUser?.name; return (<div key={e.id} className={`flex justify-between items-center bg-white dark:bg-[#1C1C1E] border p-3 rounded-[16px] ${iMC ? 'border-[#007AFF]/30' : 'border-[#E5E5EA] dark:border-[#38383A]'}`}><div className="pr-3 min-w-0 flex-1"><p className="text-[15px] font-semibold truncate">{e.reason}</p><p className="text-[12px] text-[#8E8E93] font-medium">{formatDate(e.date || e.timestamp)}</p></div><div className="flex flex-col items-end gap-2 flex-shrink-0"><span className={`font-semibold text-[16px] ${iMC ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{iMC ? '+' : '-'}{parseFloat(e.amount || 0).toFixed(2)}€</span>{iMC ? (<div className="flex gap-1.5 mt-1"><button onClick={() => openEditExpense(e)} className="w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-center"><Icon name="Pencil" size={14} /></button><button onClick={() => handleMarkExpensePaid(e.id)} className="w-8 h-8 bg-[#34C759]/10 text-[#34C759] rounded-full flex justify-center items-center"><Icon name="Check" size={16} /></button><button onClick={() => handleDeleteExpense(e.id)} className="w-8 h-8 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex justify-center items-center"><Icon name="Trash2" size={14} /></button></div>) : (<span className="text-[11px] uppercase font-bold text-[#8E8E93] bg-[var(--app-bg)] dark:bg-[#2C2C2E] px-2.5 py-1 rounded-full mt-1">Offen</span>)}</div></div>) })}
+                                                {hasMore && <button onClick={() => setExpandedExpenses(p => ({ ...p, [m.name]: !isExpanded }))} className="w-full py-2.5 text-[13px] font-bold text-[#8E8E93] bg-[#F2F2F7] dark:bg-[#Ich wurde für solche Aufgaben nicht programmiert.
+                                                    2C2C2E] rounded-[10px] active:opacity-70 flex justify-center items-center gap-1 mt-2">{isExpanded ? "Weniger anzeigen" : `Alle ${eWT.length} Auslagen anzeigen`}</button>}
                                                 </div>)}</div>
                                             );
                                         })}
@@ -1661,6 +1672,16 @@ w-8 h-8 bg-[#007AFF]/10 text-[#007AFF] rounded-full flex justify-center items-ce
 
                         {activeTab === 'settings' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in pb-10">
+                                {isHomeNetwork && (
+                                    <section className="md:col-span-2">
+                                        <h2 className={STYLES.subTitle + " flex items-center gap-2"}><Icon name="ShieldCheck" size={14} /> Familienalarmanlage</h2>
+                                        <div className={STYLES.card + " p-5"}>
+                                            <p className="text-[14px] text-[#3C3C43] dark:text-[#EBEBF5] mb-4 leading-relaxed">Darüber kann die Alarmanlage gesteuert oder in den Partymodus versetzt werden, die die Gartentür zwischen Kaminzimmer und Garten überwacht.</p>
+                                            <button onClick={() => window.open('http://192.168.178.39:1880/ui/', '_blank')} className={STYLES.btnPrimary + " flex justify-center items-center gap-2 !bg-[#FF3B30] text-white"}><Icon name="ShieldCheck" size={18} /> Alarmanlage öffnen</button>
+                                        </div>
+                                    </section>
+                                )}
+                                
                                 {isAdmin && (
                                     <section className="md:col-span-2">
                                         <h2 className={STYLES.subTitle + " flex items-center gap-2"}><Icon name="Calendar" size={14} /> Automatischer Kalender-Sync</h2>
