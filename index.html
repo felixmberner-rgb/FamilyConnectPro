@@ -177,19 +177,27 @@
         input[type="file"] { display: none; }
         input[type="date"]::-webkit-calendar-picker-indicator, input[type="datetime-local"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
         input[type="datetime-local"] { max-width: 100%; box-sizing: border-box; display: block; width: 100%; }
-
-        /* Änderung: Geschenk-Datumspicker rechts sauber abrunden und mit Abstand */
         .gift-date-input {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            display: block !important;
             border-radius: 12px !important;
-            padding-right: 14px !important;
-            overflow: hidden;
+            padding-right: 10px !important;
+            overflow: hidden !important;
+            -webkit-appearance: none;
+            appearance: none;
         }
+        
         .gift-date-input::-webkit-date-and-time-value {
             text-align: left;
+            min-width: 0;
         }
+        
         .gift-date-input::-webkit-calendar-picker-indicator {
             margin-right: 0;
-            padding: 4px;
+            padding: 0;
         }
 
         @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
