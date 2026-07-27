@@ -378,7 +378,6 @@
                 );
             }
 
-            /* Änderung: Mitschenker-Auswahl repariert. Eigener Nutzer und beschenkte Person werden nicht angezeigt. Auswahl funktioniert lokal per State. */
             if (data.type === 'gift_invite_sel') {
                 const [sel, setSel] = useState(Array.isArray(data.selected) ? data.selected : []);
                 const selectableMembers = (data.activeMembersList || []).filter(m => m && m.name && m.name !== data.currentUser?.name && m.name !== data.excludeName);
@@ -604,7 +603,6 @@
 
             const handleLogout = () => { localStorage.removeItem('familyId'); localStorage.removeItem('userName'); localStorage.removeItem('userPassword'); setLocalFamilyId(null); setLocalUserName(null); setLocalUserPassword(null); setCurrentFamily(null); setCurrentUser(null); };
 
-            /* Änderung: Geschenk-Helper für einmalige/dauerhafte Aktivierung und saubere Navigation. */
             const getGiftNeedField = (type) => {
                 if (type === 'birthdate') return 'birthdayNeedsGift';
                 if (type === 'nameday') return 'namedayNeedsGift';
@@ -729,12 +727,16 @@
                     
                     const updateEvent = (p, type, yr, dateStr) => {
                         const eid = `${p.id}_${type}_${yr}`;
-                        if (!ce.find(e => e.id === eid)) {
+                        const existing = ce.find(e => e.id === eid);
+                        if (!existing) {
                             const dTest = new Date(dateStr);
                             if (!isNaN(dTest.getTime())) {
                                 ce.push({ id: eid, personId: p.id, type: type, date: dateStr, status: 'planning', participants: [], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null });
                                 changed = true;
                             }
+                        } else if (existing.date !== dateStr) {
+                            existing.date = dateStr;
+                            changed = true;
                         }
                     };
 
@@ -1281,46 +1283,24 @@
             };
         
             const extractPersonAndType = (summaryRaw) => {
-                const summary = decodeIcsText(summaryRaw)
-                    .replace(/\s+/g, ' ')
-                    .trim();
-        
+                const summary = decodeIcsText(summaryRaw).replace(/\s+/g, ' ').trim();
                 if (!summary) return null;
         
                 let match =
-                    summary.match(/^(.+?)s Geburtstag$/i) ||
-                    summary.match(/^(.+?) Geburtstag$/i) ||
-                    summary.match(/^Geburtstag von (.+)$/i);
+                    summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+(?:\d+\.\s+)?Geburtstag/i) ||
+                    summary.match(/Geburtstag\s+(?:von\s+)?(.+)/i) ||
+                    summary.match(/^(.+?)\s*\(\s*Geburtstag\s*\)/i) ||
+                    summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+(?:\d+(?:th|st|nd|rd)\s+)?Birthday/i) ||
+                    summary.match(/Birthday\s+(?:of\s+)?(.+)/i);
         
-                if (match) {
-                    return {
-                        type: 'birthdate',
-                        name: match[1].trim()
-                    };
-                }
+                if (match) return { type: 'birthdate', name: match[1].trim() };
         
                 match =
-                    summary.match(/^(.+?)'s Birthday$/i) ||
-                    summary.match(/^(.+?) Birthday$/i) ||
-                    summary.match(/^Birthday of (.+)$/i);
+                    summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+Namenstag/i) ||
+                    summary.match(/Namenstag\s+(?:von\s+)?(.+)/i) ||
+                    summary.match(/^(.+?)\s*\(\s*Namenstag\s*\)/i);
         
-                if (match) {
-                    return {
-                        type: 'birthdate',
-                        name: match[1].trim()
-                    };
-                }
-        
-                match =
-                    summary.match(/^(.+?) Namenstag$/i) ||
-                    summary.match(/^Namenstag von (.+)$/i);
-        
-                if (match) {
-                    return {
-                        type: 'nameday',
-                        name: match[1].trim()
-                    };
-                }
+                if (match) return { type: 'nameday', name: match[1].trim() };
         
                 return null;
             };
@@ -1530,7 +1510,16 @@
                 const isNeedGift = getGiftNeedValue(e, p);
                 
                 let titleStr = '';
-                if(e.type === 'birthdate') titleStr = `Geburtstag`;
+                if(e.type === 'birthdate') {
+                    titleStr = `Geburtstag`;
+                    if (p.birthdate) {
+                        const bYear = parseInt(p.birthdate.split('-')[0], 10);
+                        const eYear = parseInt(e.date.split('-')[0], 10);
+                        if (!isNaN(bYear) && !isNaN(eYear) && bYear > 1800 && bYear <= eYear) {
+                            titleStr = `${eYear - bYear}. Geburtstag`;
+                        }
+                    }
+                }
                 if(e.type === 'nameday') titleStr = `Namenstag`;
                 if(e.type === 'christmas') titleStr = `Weihnachten`;
                 if(e.type === 'easter') titleStr = `Ostern`;
