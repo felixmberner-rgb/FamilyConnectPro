@@ -189,12 +189,22 @@
             -webkit-appearance: none;
             appearance: none;
         }
-        .gift-date-input::-webkit-date-and-time-value { text-align: left; min-width: 0; }
-        .gift-date-input::-webkit-calendar-picker-indicator { margin-right: 0; padding: 0; }
+        
+        .gift-date-input::-webkit-date-and-time-value {
+            text-align: left;
+            min-width: 0;
+        }
+        
+        .gift-date-input::-webkit-calendar-picker-indicator {
+            margin-right: 0;
+            padding: 0;
+        }
+
         @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .animate-action-sheet { animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .custom-checkbox:checked+div { background-color: #34C759; border-color: #34C759; }
         .custom-checkbox:checked+div svg { opacity: 1; }
+        /* Switch */
         .toggle-checkbox:checked { right: 0; border-color: #34C759; }
         .toggle-checkbox:checked + .toggle-label { background-color: #34C759; }
         .toggle-checkbox:checked + .toggle-label:after { transform: translateX(100%); border-color: white; }
@@ -286,7 +296,7 @@
         window.addEventListener('error', () => { });
         window.addEventListener('unhandledrejection', (e) => { if (e.reason && e.reason.toString().includes('Database deleted')) e.preventDefault(); });
 
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
 
         const CONFIG_STORAGE_KEY = "familyConnectAppConfig";
@@ -298,7 +308,7 @@
         const ICONS = {
             Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
             BellOff: '<path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" x2="23" y1="1" y2="23"/>',
-            Settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+            Settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
             Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/>',
             Utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
             UtensilsCrossed: '<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>',
@@ -537,7 +547,6 @@
             const [giftBuyerExtCount, setGiftBuyerExtCount] = useState('0');
             const [calendarUrlDraft, setCalendarUrlDraft] = useState('');
             const [expandedExpenses, setExpandedExpenses] = useState({});
-            
             const activeModIds = currentFamily?.activeModules || ['shopping', 'household', 'expenses'];
             const safeMembers = Array.isArray(currentFamily?.members) ? currentFamily.members.filter(m => m && typeof m === 'object' && m.name) : [];
             const activeMembersList = safeMembers.filter(m => m.status !== 'pending');
@@ -596,9 +605,9 @@
                 return Boolean(event?.needsGiftOverride || person[field]);
             };
 
-            const openGiftEvent = (id) => {
+            const openGiftEvent = (eventId) => {
                 if (navigator.vibrate) navigator.vibrate(10);
-                setActiveGiftEventId(id);
+                setActiveGiftEventId(eventId);
                 setGiftsView('detail');
             };
 
@@ -608,21 +617,6 @@
                 setNewGiftIdea('');
                 setGiftBuyerAmount('');
                 setGiftBuyerExtCount('0');
-            };
-
-            const openGiftInviteModalVirtual = (occ) => {
-                setModal({
-                    type: 'gift_invite_sel',
-                    activeMembersList,
-                    currentUser,
-                    excludeName: occ.p.name,
-                    selected: [],
-                    onConfirm: (sel, mode) => {
-                        handleGiftAction(occ.occId, 'create_group_invite', { occ, sel, mode });
-                        setModal(null);
-                    },
-                    onClose: () => setModal(null)
-                });
             };
 
             const openGiftInviteModal = (eventId, personName) => {
@@ -715,8 +709,50 @@
                         }
                     });
 
+                    let ce = [...safeGiftEvents];
+                    const now = new Date();
+                    const cy = now.getFullYear();
+                    
+                    const updateEvent = (p, type, yr, dateStr) => {
+                        const eid = `${p.id}_${type}_${yr}`;
+                        const existing = ce.find(e => e.id === eid);
+                        if (!existing) {
+                            const dTest = new Date(dateStr);
+                            if (!isNaN(dTest.getTime())) {
+                                ce.push({ id: eid, personId: p.id, type: type, date: dateStr, status: 'planning', participants: [], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null });
+                                changed = true;
+                            }
+                        } else if (existing.date !== dateStr) {
+                            existing.date = dateStr;
+                            changed = true;
+                        }
+                    };
+
+                    fp.forEach(p => {
+                        ['birthdate', 'nameday'].forEach(type => {
+                            if (p[type]) {
+                                const pts = p[type].split('-');
+                                if (pts.length === 3) {
+                                    [cy, cy+1].forEach(yr => {
+                                        updateEvent(p, type, yr, `${yr}-${pts[1]}-${pts[2]}`);
+                                    });
+                                }
+                            }
+                        });
+                        
+                        [cy, cy+1].forEach(yr => {
+                            updateEvent(p, 'christmas', yr, `${yr}-12-24`);
+                        });
+                        
+                        [cy, cy+1].forEach(yr => {
+                            const Y = yr, a = Y % 19, b = Math.floor(Y / 100), c = Y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+                            const easterDateStr = `${yr}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                            updateEvent(p, 'easter', yr, easterDateStr);
+                        });
+                    });
+
                     if (changed) {
-                        getFamilyDocRef(currentFamily.id).update({ giftPersons: fp }).catch(()=>{});
+                        getFamilyDocRef(currentFamily.id).update({ giftPersons: fp, giftEvents: ce }).catch(()=>{});
                     }
                 }
             }, [appLoaded, currentFamily?.id, safeGiftPersons.length, safeMembers.length, activeModIds]);
@@ -785,28 +821,10 @@
                                 sessionStorage.setItem(`prompted_${lE.id}`, 'true');
                                 if (lE.isGiftInvite) {
                                     setModal({
-                                        type: 'confirm', title: 'Geschenk planen', message: lE.reason, confirmText: 'Akzeptieren', cancelText: 'Ablehnen',
+                                        type: 'confirm', title: 'Geschenk planen', message: `${lE.sender} lädt dich ein, ein Geschenk für ${lE.personName} zu planen. Bist du dabei?`, confirmText: 'Mitschenken', cancelText: 'Nein, danke',
                                         onConfirm: async () => {
-                                            const targetEvent = safeGiftEvents.find(e => e.id === lE.eventId);
-                                            if (!targetEvent) return;
-                                            const occId = targetEvent.occasionId || targetEvent.id;
-                                            
-                                            let updatedEvents = safeGiftEvents.map(e => {
-                                                if ((e.occasionId || e.id) === occId && e.id !== lE.eventId) {
-                                                    return { ...e, participants: (e.participants||[]).filter(x => x !== currentUser.name) };
-                                                }
-                                                if (e.id === lE.eventId) {
-                                                    return { ...e, participants: [...new Set([...(e.participants || []), currentUser.name])], pendingParticipants: (e.pendingParticipants || []).filter(x => x !== currentUser.name) };
-                                                }
-                                                return e;
-                                            }).filter(e => {
-                                                if ((e.occasionId || e.id) === occId && e.id !== lE.eventId) {
-                                                    if ((e.participants||[]).length === 0 && (e.pendingParticipants||[]).length === 0) return false;
-                                                }
-                                                return true;
-                                            });
-                                            
-                                            await getFamilyDocRef(currentFamily.id).update({ giftEvents: updatedEvents });
+                                            const updated = safeGiftEvents.map(e => e.id === lE.eventId ? { ...e, participants: [...new Set([...(e.participants || []), currentUser.name])], pendingParticipants: (e.pendingParticipants || []).filter(x => x !== currentUser.name) } : e);
+                                            await getFamilyDocRef(currentFamily.id).update({ giftEvents: updated });
                                             handleAcknowledge(lE.id, 'Zugefügt'); setActiveTab('gifts'); setGiftsView('list'); setModal(null);
                                         },
                                         onCancel: async () => {
@@ -1050,53 +1068,15 @@
             };
             
             const handleGiftAction = async (eId, action, payload) => {
-                const ev = safeGiftEvents.find(x => x.id === eId);
-                const occIdForEvent = ev ? (ev.occasionId || ev.id) : eId; 
+                const ev = safeGiftEvents.find(x => x.id === eId); if (!ev) return;
+                const p = safeGiftPersons.find(x => x.id === ev.personId);
                 let uE = [...safeGiftEvents];
                 let hUpd = [];
 
-                if (action === 'create_solo') {
-                    const nId = generateId();
-                    const nE = { id: nId, occasionId: payload.occId, personId: payload.p.id, type: payload.type, date: payload.dateStr, status: 'planning', participants: [currentUser.name], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null };
-                    uE.push(nE);
-                    setTimeout(() => setActiveGiftEventId(nId), 100);
-                } else if (action === 'create_group_invite') {
-                    const nId = generateId();
-                    const nE = { id: nId, occasionId: payload.occ.occId, personId: payload.occ.p.id, type: payload.occ.type, date: payload.occ.dateStr, status: 'planning', participants: [currentUser.name], pendingParticipants: [], declinedParticipants: [], ideas: [], buyer: null, cost: null };
-                    uE.push(nE);
-                    
-                    const sel = Array.isArray(payload.sel) ? payload.sel : [];
-                    if (payload.mode === 'add_direct') {
-                        const otherEvents = safeGiftEvents.filter(x => (x.occasionId || x.id) === payload.occ.occId);
-                        const actuallyDirect = [];
-                        const forcedInvite = [];
-                        sel.forEach(name => {
-                            if (otherEvents.some(x => (x.participants || []).includes(name))) forcedInvite.push(name);
-                            else actuallyDirect.push(name);
-                        });
-                        nE.participants.push(...actuallyDirect);
-                        nE.pendingParticipants.push(...forcedInvite);
-                        
-                        forcedInvite.forEach(t => hUpd.push({
-                            id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name,
-                            reason: `${currentUser.name} möchte dich zu einem gemeinsamen Geschenk für ${payload.occ.p.name} hinzufügen (Du planst bereits selbst).`,
-                            targets: [t], acknowledgedBy: [], isGiftInvite: true, eventId: nId, personName: payload.occ.p.name
-                        }));
-                        if (forcedInvite.length > 0) alert(`Achtung: ${forcedInvite.join(', ')} plant/planen bereits selbst und wurden stattdessen eingeladen.`);
-                    } else {
-                        nE.pendingParticipants.push(...sel);
-                        sel.forEach(t => hUpd.push({
-                            id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name,
-                            reason: `${currentUser.name} lädt dich ein, ein Geschenk für ${payload.occ.p.name} zu planen.`,
-                            targets: [t], acknowledgedBy: [], isGiftInvite: true, eventId: nId, personName: payload.occ.p.name
-                        }));
-                    }
-                    setTimeout(() => setActiveGiftEventId(nId), 100);
-                } else if (!ev) {
-                    return; 
+                if (action === 'join_alone') {
+                    uE = uE.map(e => e.id === eId ? { ...e, participants: [currentUser.name] } : e);
                 } else if (action === 'invite') {
                     const rawSel = Array.isArray(payload) ? payload : [];
-                    const p = safeGiftPersons.find(x => x.id === ev.personId);
                     const sel = rawSel.filter(name =>
                         name &&
                         name !== currentUser.name &&
@@ -1108,45 +1088,37 @@
 
                     uE = uE.map(e => {
                         if (e.id !== eId) return e;
+                        const participants = Array.isArray(e.participants) ? e.participants : [];
+                        const pendingParticipants = Array.isArray(e.pendingParticipants) ? e.pendingParticipants : [];
                         return {
                             ...e,
-                            pendingParticipants: [...new Set([...(e.pendingParticipants || []), ...sel])]
+                            participants: participants.includes(currentUser.name) ? participants : [...participants, currentUser.name],
+                            pendingParticipants: [...new Set([...pendingParticipants, ...sel])]
                         };
                     });
 
                     sel.forEach(t => hUpd.push({
-                        id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name,
-                        reason: `${currentUser.name} lädt dich ein, ein Geschenk für ${p?.name} zu planen.`,
-                        targets: [t], acknowledgedBy: [], isGiftInvite: true, eventId: eId, personName: p?.name
+                        id: generateId(),
+                        timestamp: new Date().toISOString(),
+                        sender: currentUser.name,
+                        reason: `${currentUser.name} lädt dich ein, ein Geschenk für ${p.name} zu planen.`,
+                        targets: [t],
+                        acknowledgedBy: [],
+                        isGiftInvite: true,
+                        eventId: eId,
+                        personName: p.name
                     }));
                 } else if (action === 'add_direct') {
                     const sel = Array.isArray(payload) ? payload : [];
                     if (sel.length === 0) return;
-                    const p = safeGiftPersons.find(x => x.id === ev.personId);
-                    
-                    const otherEvents = safeGiftEvents.filter(x => (x.occasionId || x.id) === occIdForEvent && x.id !== eId);
-                    const actuallyDirect = [];
-                    const forcedInvite = [];
-                    sel.forEach(name => {
-                        if (otherEvents.some(x => (x.participants || []).includes(name))) forcedInvite.push(name);
-                        else actuallyDirect.push(name);
-                    });
-
                     uE = uE.map(e => {
                         if (e.id !== eId) return e;
+                        const participants = Array.isArray(e.participants) ? e.participants : [];
                         return {
                             ...e,
-                            participants: [...new Set([...(e.participants || []), currentUser.name, ...actuallyDirect])],
-                            pendingParticipants: [...new Set([...(e.pendingParticipants || []), ...forcedInvite])]
+                            participants: [...new Set([...participants, currentUser.name, ...sel])]
                         };
                     });
-                    
-                    forcedInvite.forEach(t => hUpd.push({
-                        id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name,
-                        reason: `${currentUser.name} möchte dich zu einem gemeinsamen Geschenk für ${p?.name} hinzufügen (Du planst bereits selbst).`,
-                        targets: [t], acknowledgedBy: [], isGiftInvite: true, eventId: eId, personName: p?.name
-                    }));
-                    if (forcedInvite.length > 0) alert(`Achtung: ${forcedInvite.join(', ')} plant/planen bereits selbst und wurden stattdessen eingeladen.`);
                 } else if (action === 'enable_once') {
                     uE = uE.map(e => e.id === eId ? { ...e, needsGiftOverride: true, status: e.status || 'planning' } : e);
                 } else if (action === 'remove_participant') {
@@ -1160,32 +1132,21 @@
                     if(!newText || !newText.trim()) return;
                     uE = uE.map(e => e.id === eId ? { ...e, ideas: (e.ideas || []).map(i => i.id === payload ? { ...i, text: newText.trim() } : i) } : e);
                 } else if (action === 'start_vote') {
-                    const p = safeGiftPersons.find(x => x.id === ev.personId);
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'voting', voteDeadline: payload } : e);
-                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Die Abstimmung für das Geschenk von ${p?.name} läuft!`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Die Abstimmung für das Geschenk von ${p.name} läuft!`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'vote') {
                     uE = uE.map(e => e.id === eId ? { ...e, ideas: (e.ideas || []).map(i => i.id === payload ? { ...i, votes: (i.votes || []).includes(currentUser.name) ? (i.votes || []).filter(x => x !== currentUser.name) : [...(i.votes || []), currentUser.name] } : i) } : e);
-                } else if (action === 'solo_select_idea') {
-                    uE = uE.map(e => e.id === eId ? { 
-                        ...e, 
-                        status: 'buying', 
-                        buyer: currentUser.name,
-                        ideas: (e.ideas || []).map(i => i.id === payload ? { ...i, votes: [currentUser.name] } : { ...i, votes: [] }) 
-                    } : e);
                 } else if (action === 'end_vote') {
-                    const p = safeGiftPersons.find(x => x.id === ev.personId);
                     let maxV = -1; let win = '';
                     (ev.ideas || []).forEach(i => { if ((i.votes || []).length > maxV) { maxV = (i.votes || []).length; win = i.text; } });
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'buying' } : e);
-                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `Abstimmung beendet! Favorit für ${p?.name}: ${win || 'Keine'}. Wer besorgt es?`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `Abstimmung beendet! Favorit für ${p.name}: ${win || 'Keine'}. Wer besorgt es?`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'claim_buy') {
-                    const p = safeGiftPersons.find(x => x.id === ev.personId);
                     uE = uE.map(e => e.id === eId ? { ...e, buyer: currentUser.name } : e);
-                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `${currentUser.name} besorgt das Geschenk für ${p?.name}!`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `${currentUser.name} besorgt das Geschenk für ${p.name}!`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'reset_gift') {
-                    uE = uE.map(e => e.id === eId ? { ...e, status: 'planning', cost: null, buyer: null, settled: false, ideas: [] } : e);
+                    uE = uE.map(e => e.id === eId ? { ...e, status: 'buying', cost: null, buyer: null, settled: false } : e);
                 } else if (action === 'settle') {
-                    const p = safeGiftPersons.find(x => x.id === ev.personId);
                     const amt = parseFloat(String(payload.amount || '0').replace(',', '.'));
                     const extCount = parseInt(payload.extCount || '0', 10);
                     const participants = ev.participants || [];
@@ -1195,8 +1156,8 @@
                     let nE = [...safeExpenses];
                     participants.forEach(mem => {
                         if (mem !== currentUser.name && amt > 0) {
-                            nE.unshift({ id: generateId(), creditor: currentUser.name, debtor: mem, amount: perP, reason: `Geschenk für ${p?.name}`, date: getLocalTodayString(), timestamp: new Date().toISOString(), isPaid: false });
-                            hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p?.name}: ${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
+                            nE.unshift({ id: generateId(), creditor: currentUser.name, debtor: mem, amount: perP, reason: `Geschenk für ${p.name}`, date: getLocalTodayString(), timestamp: new Date().toISOString(), isPaid: false });
+                            hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p.name}: ${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
                         }
                     });
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'settled', cost: amt, buyer: e.buyer || currentUser.name } : e);
@@ -1464,51 +1425,23 @@
             }
         };
 
-            const upcomingOccasions = useMemo(() => {
-                if (!currentFamily || !currentUser) return [];
-                const occs = [];
-                const now = new Date();
-                const cy = now.getFullYear();
-                
-                safeGiftPersons.forEach(p => {
-                    if (p.name === currentUser.name) return;
-                    const isMyCustom = p.createdBy === currentUser.name;
-                    if (p.type === 'custom' && !p.isShared && !isMyCustom) return;
-
-                    const addOcc = (type, dateStr) => {
-                        const dTest = new Date(dateStr);
-                        if (isNaN(dTest.getTime())) return;
-                        dTest.setHours(0,0,0,0);
-                        const t = new Date(nowGlobal); t.setHours(0,0,0,0);
-                        const diffDays = Math.ceil((dTest - t) / (1000 * 60 * 60 * 24));
-                        if (diffDays >= 0 && diffDays <= 365) {
-                            const occId = `${p.id}_${type}_${dateStr.substring(0,4)}`;
-                            occs.push({ p, type, dateStr, diffDays, occId });
-                        }
-                    };
-                    
-                    ['birthdate', 'nameday'].forEach(type => {
-                        if (p[type]) {
-                            const pts = p[type].split('-');
-                            if (pts.length === 3) {
-                                [cy, cy+1, cy+2].forEach(yr => addOcc(type, `${yr}-${pts[1]}-${pts[2]}`));
-                            }
-                        }
-                    });
-                    [cy, cy+1].forEach(yr => addOcc('christmas', `${yr}-12-24`));
-                    [cy, cy+1].forEach(yr => {
-                        const Y = yr, a = Y % 19, b = Math.floor(Y / 100), c = Y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
-                        addOcc('easter', `${yr}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`);
-                    });
-                });
-                
-                const unique = Array.from(new Map(occs.map(o => [o.occId, o])).values());
-                unique.sort((a, b) => new Date(a.dateStr) - new Date(b.dateStr));
-                return unique;
-            }, [safeGiftPersons, currentUser, nowGlobal]);
-
             const renderGiftHolidayGroupView = () => {
                 if (!activeGiftHolidayGroup) return null;
+            
+                const groupEvents = safeGiftEvents
+                    .filter(e =>
+                        e.type === activeGiftHolidayGroup.type &&
+                        e.date === activeGiftHolidayGroup.date
+                    )
+                    .map(e => ({
+                        event: e,
+                        person: safeGiftPersons.find(p => p.id === e.personId)
+                    }))
+                    .filter(x => {
+                        if(x.person && x.person.type === 'custom' && !x.person.isShared && x.person.createdBy !== currentUser?.name) return false;
+                        return x.person && x.person.name !== currentUser?.name;
+                    })
+                    .sort((a, b) => a.person.name.localeCompare(b.person.name));
             
                 const title = activeGiftHolidayGroup.type === 'christmas' ? 'Weihnachten' : 'Ostern';
                 const color = activeGiftHolidayGroup.type === 'christmas' ? '#34C759' : '#007AFF';
@@ -1525,48 +1458,46 @@
             
                         <main className="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
                             <div className="text-center mb-2">
-                                <p className="text-[20px] font-bold">{formatDate(activeGiftHolidayGroup.dateStr)}</p>
+                                <p className="text-[20px] font-bold">{formatDate(activeGiftHolidayGroup.date)}</p>
                                 <p className="text-[#8E8E93] text-[15px] font-medium">
-                                    {activeGiftHolidayGroup.diffDays === 0 ? 'Heute!' : `in ${activeGiftHolidayGroup.diffDays} Tagen`}
+                                    {getDaysLeft(activeGiftHolidayGroup.date) === 0 ? 'Heute!' : `in ${getDaysLeft(activeGiftHolidayGroup.date)} Tagen`}
                                 </p>
                             </div>
             
-                            {activeGiftHolidayGroup.occs.length === 0 ? (
+                            {groupEvents.length === 0 ? (
                                 <div className="text-center text-[#8E8E93] py-8 italic">
                                     Keine Personen für dieses Fest.
                                 </div>
-                            ) : activeGiftHolidayGroup.occs.map(occ => {
-                                const eventsForOcc = safeGiftEvents.filter(x => (x.occasionId || x.id) === occ.occId || x.id === `${occ.p.id}_${occ.type}_${occ.dateStr.split('-')[0]}`);
-                                let myEvent = eventsForOcc.find(x => (x.participants || []).includes(currentUser.name) || (x.pendingParticipants || []).includes(currentUser.name));
-                                
-                                const isNeedGift = getGiftNeedValue(myEvent, occ.p);
+                            ) : groupEvents.map(({ event, person }) => {
+                                const isPart = (event.participants || []).includes(currentUser.name);
+                                const isNeedGift = getGiftNeedValue(event, person);
             
                                 let statusBadge = null;
                                 if (!isNeedGift) statusBadge = <span className="text-[11px] font-bold bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full">Kein Geschenk</span>;
-                                else if (!myEvent) statusBadge = <span className="text-[11px] font-bold bg-[#FF3B30]/20 text-[#FF3B30] px-2 py-0.5 rounded-full">Ungelöst</span>;
-                                else if (myEvent.status === 'settled') statusBadge = <span className="text-[11px] font-bold bg-[#34C759]/20 text-[#34C759] px-2 py-0.5 rounded-full">Erledigt</span>;
-                                else if (myEvent.status === 'planning') statusBadge = <span className="text-[11px] font-bold bg-[#FF9500]/20 text-[#FF9500] px-2 py-0.5 rounded-full">Planung</span>;
-                                else if (myEvent.status === 'voting') statusBadge = <span className="text-[11px] font-bold bg-[#007AFF]/20 text-[#007AFF] px-2 py-0.5 rounded-full">Abstimmung</span>;
-                                else if (myEvent.status === 'buying') statusBadge = <span className="text-[11px] font-bold bg-[#AF52DE]/20 text-[#AF52DE] px-2 py-0.5 rounded-full">Besorgung</span>;
+                                else if (event.status === 'settled') statusBadge = <span className="text-[11px] font-bold bg-[#34C759]/20 text-[#34C759] px-2 py-0.5 rounded-full">Erledigt</span>;
+                                else if (event.status === 'planning' && (event.participants || []).length === 0) statusBadge = <span className="text-[11px] font-bold bg-[#FF3B30]/20 text-[#FF3B30] px-2 py-0.5 rounded-full">Ungelöst</span>;
+                                else if (event.status === 'planning') statusBadge = <span className="text-[11px] font-bold bg-[#FF9500]/20 text-[#FF9500] px-2 py-0.5 rounded-full">Planung</span>;
+                                else if (event.status === 'voting') statusBadge = <span className="text-[11px] font-bold bg-[#007AFF]/20 text-[#007AFF] px-2 py-0.5 rounded-full">Abstimmung</span>;
+                                else if (event.status === 'buying') statusBadge = <span className="text-[11px] font-bold bg-[#AF52DE]/20 text-[#AF52DE] px-2 py-0.5 rounded-full">Besorgung</span>;
             
                                 return (
                                     <div
-                                        key={occ.occId}
+                                        key={event.id}
                                         onClick={() => {
                                             setActiveGiftHolidayGroup(null);
-                                            openGiftEvent(myEvent ? myEvent.id : occ.occId);
+                                            openGiftEvent(event.id);
                                         }}
                                         className={STYLES.card + " p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform"}
                                         style={{ borderLeftWidth: 4, borderLeftColor: color }}
                                     >
                                         <div className="min-w-0 pr-3">
-                                            <h3 className="font-bold text-[17px] truncate">{occ.p.name}</h3>
+                                            <h3 className="font-bold text-[17px] truncate">{person.name}</h3>
                                             <p className="text-[12px] text-[#8E8E93] truncate">{title}</p>
                                         </div>
             
                                         <div className="flex flex-col items-end gap-2 shrink-0">
                                             {statusBadge}
-                                            {myEvent && (myEvent.participants || []).length > 1 && <Icon name="Users" size={14} className="text-[#007AFF]" />}
+                                            {isPart && <Icon name="Users" size={14} className="text-[#007AFF]" />}
                                         </div>
                                     </div>
                                 );
@@ -1575,40 +1506,28 @@
                     </div>
                 );
             };
-
             const renderGiftEventView = () => {
-                let e = safeGiftEvents.find(x => x.id === activeGiftEventId);
-                let p, occ;
-                
-                if (e) {
-                    p = safeGiftPersons.find(x => x.id === e.personId);
-                    const occId = e.occasionId || e.id;
-                    occ = upcomingOccasions.find(o => o.occId === occId);
-                } else {
-                    occ = upcomingOccasions.find(o => o.occId === activeGiftEventId);
-                    if (occ) p = occ.p;
-                }
-                
-                if (!p || !occ) return null;
-                
-                const isSolo = e ? (e.participants || []).length === 1 : false;
-                const isPart = e ? (e.participants || []).includes(currentUser.name) : false;
+                const e = safeGiftEvents.find(x => x.id === activeGiftEventId);
+                const p = safeGiftPersons.find(x => x.id === e?.personId);
+                if (!e || !p) return null;
+                const isSolo = (e.participants || []).length === 1;
+                const isPart = (e.participants || []).includes(currentUser.name);
                 const isNeedGift = getGiftNeedValue(e, p);
                 
                 let titleStr = '';
-                if(occ.type === 'birthdate') {
+                if(e.type === 'birthdate') {
                     titleStr = `Geburtstag`;
                     if (p.birthdate) {
                         const bYear = parseInt(p.birthdate.split('-')[0], 10);
-                        const eYear = parseInt(occ.dateStr.split('-')[0], 10);
+                        const eYear = parseInt(e.date.split('-')[0], 10);
                         if (!isNaN(bYear) && !isNaN(eYear) && bYear > 1800 && bYear <= eYear) {
                             titleStr = `${eYear - bYear}. Geburtstag`;
                         }
                     }
                 }
-                if(occ.type === 'nameday') titleStr = `Namenstag`;
-                if(occ.type === 'christmas') titleStr = `Weihnachten`;
-                if(occ.type === 'easter') titleStr = `Ostern`;
+                if(e.type === 'nameday') titleStr = `Namenstag`;
+                if(e.type === 'christmas') titleStr = `Weihnachten`;
+                if(e.type === 'easter') titleStr = `Ostern`;
 
                 return (
                     <div className="absolute inset-0 bg-[var(--app-bg)] dark:bg-black z-50 flex flex-col animate-in slide-in-from-right duration-300">
@@ -1619,9 +1538,9 @@
                         </header>
                         <main className="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
                             <div className="text-center">
-                                <Icon name={occ.type==='birthdate'?'Cake':occ.type==='christmas'?'Gift':'Sparkles'} size={48} className={`mx-auto mb-2 ${occ.type==='birthdate'?'text-[#AF52DE]':occ.type==='christmas'?'text-[#34C759]':occ.type==='easter'?'text-[#007AFF]':'text-[#FF9500]'}`} />
-                                <p className="text-[20px] font-bold">{formatDate(occ.dateStr)}</p>
-                                <p className="text-[#8E8E93] text-[15px] font-medium">{occ.diffDays === 0 ? 'Heute!' : `in ${occ.diffDays} Tagen`}</p>
+                                <Icon name={e.type==='birthdate'?'Cake':e.type==='christmas'?'Gift':'Sparkles'} size={48} className={`mx-auto mb-2 ${e.type==='birthdate'?'text-[#AF52DE]':e.type==='christmas'?'text-[#34C759]':e.type==='easter'?'text-[#007AFF]':'text-[#FF9500]'}`} />
+                                <p className="text-[20px] font-bold">{formatDate(e.date)}</p>
+                                <p className="text-[#8E8E93] text-[15px] font-medium">{getDaysLeft(e.date) === 0 ? 'Heute!' : `in ${getDaysLeft(e.date)} Tagen`}</p>
                             </div>
 
                             {!isNeedGift ? (
@@ -1629,32 +1548,29 @@
                                     <Icon name="Bell" size={24} className="text-[#007AFF] mx-auto mb-2" />
                                     <p className="text-[#007AFF] font-medium mb-5">Dies ist nur eine Erinnerung. Es ist aktuell kein Geschenk geplant.</p>
                                     <div className="flex flex-col gap-3">
-                                        <button onClick={() => {
-                                            if (!e) handleGiftAction(occ.occId, 'create_solo', occ);
-                                            setTimeout(() => handleGiftAction(activeGiftEventId, 'enable_once'), 200);
-                                        }} className={STYLES.btnPrimary}>Geschenkfunktion einmal aktivieren</button>
+                                        <button onClick={() => handleGiftAction(e.id, 'enable_once')} className={STYLES.btnPrimary}>Geschenkfunktion einmal aktivieren</button>
                                         <button onClick={async () => {
-                                            const field = getGiftNeedField(occ.type);
+                                            const field = getGiftNeedField(e.type);
                                             if (!field) return;
                                             await saveGiftPerson(p.id, { [field]: true });
-                                            if (!e) handleGiftAction(occ.occId, 'create_solo', occ);
-                                            setTimeout(() => handleGiftAction(activeGiftEventId, 'enable_once'), 200);
+                                            await handleGiftAction(e.id, 'enable_once');
                                         }} className={STYLES.btnSecondary + " !bg-[#AF52DE]/10 !text-[#AF52DE]"}>Für dieses Fest dauerhaft aktivieren</button>
-                                    </div>
-                                </div>
-                            ) : !e ? (
-                                <div className={STYLES.card + " p-5 text-center"}>
-                                    <h3 className="font-bold text-[18px] mb-4">Geschenk planen</h3>
-                                    <div className="flex flex-col gap-3">
-                                        <button onClick={() => handleGiftAction(occ.occId, 'create_solo', occ)} className={STYLES.btnPrimary}>Allein schenken</button>
-                                        <button onClick={() => openGiftInviteModalVirtual(occ)} className={STYLES.btnSecondary + " !bg-[#AF52DE]/10 !text-[#AF52DE]"}>Zusammen schenken</button>
                                     </div>
                                 </div>
                             ) : (
                                 <>
+                                    {(!isPart && (e.participants || []).length === 0) && (
+                                        <div className={STYLES.card + " p-5 text-center"}>
+                                            <h3 className="font-bold text-[18px] mb-4">Geschenk planen</h3>
+                                            <div className="flex flex-col gap-3">
+                                                <button onClick={() => handleGiftAction(e.id, 'join_alone')} className={STYLES.btnPrimary}>Allein schenken</button>
+                                                <button onClick={() => openGiftInviteModal(e.id, p.name)} className={STYLES.btnSecondary + " !bg-[#AF52DE]/10 !text-[#AF52DE]"}>Zusammen schenken</button>
+                                            </div>
+                                        </div>
+                                    )}
                                     {(!isPart && (e.participants || []).length > 0) && (
                                         <div className={STYLES.card + " p-5 text-center"}>
-                                            <p className="mb-4 text-[#8E8E93]">Eingeladen von: {(e.participants || []).join(', ')}</p>
+                                            <p className="mb-4 text-[#8E8E93]">Geplant von: {(e.participants || []).join(', ')}</p>
                                             {(e.pendingParticipants || []).includes(currentUser.name) ? (
                                                 <button onClick={() => {
                                                     const uE = safeGiftEvents.map(x => x.id === e.id ? { ...x, participants: [...new Set([...(x.participants || []), currentUser.name])], pendingParticipants: (x.pendingParticipants || []).filter(y => y !== currentUser.name) } : x);
@@ -1714,7 +1630,7 @@
                                                         {(e.ideas || []).length === 0 ? <p className="text-[#8E8E93] text-[14px] italic">Noch keine Ideen.</p> : (e.ideas || []).map(i => {
                                                             const mV = (i.votes || []).includes(currentUser.name);
                                                             return (
-                                                                <div key={i.id} onClick={() => handleGiftAction(e.id, 'solo_select_idea', i.id)} className={`flex justify-between items-center p-3 rounded-[12px] border cursor-pointer ${mV ? 'bg-[#007AFF]/10 border-[#007AFF]' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] border-transparent'}`}>
+                                                                <div key={i.id} onClick={() => handleGiftAction(e.id, 'vote', i.id)} className={`flex justify-between items-center p-3 rounded-[12px] border cursor-pointer ${mV ? 'bg-[#007AFF]/10 border-[#007AFF]' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] border-transparent'}`}>
                                                                     <div className="flex-1 min-w-0 pr-2">
                                                                         <p className="font-semibold text-[15px] truncate">{urlify(i.text)}</p>
                                                                     </div>
@@ -1735,6 +1651,63 @@
                                                         <p className="font-bold mb-3">Kosten (optional)</p>
                                                         <div className="space-y-3">
                                                             <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
+                                                            <button onClick={() => handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: 0 })} className={STYLES.btnPrimary}>Als erledigt markieren</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {e.status === 'voting' && !isSolo && (
+                                                <div className={STYLES.card + " p-5 border-[#007AFF] border-2"}>
+                                                    <h3 className="font-bold text-[18px] mb-4 text-[#007AFF]">Abstimmung läuft</h3>
+                                                    <div className="space-y-3 mb-5">
+                                                        {(e.ideas || []).map(i => {
+                                                            const mV = (i.votes || []).includes(currentUser.name);
+                                                            return (
+                                                                <div key={i.id} onClick={() => handleGiftAction(e.id, 'vote', i.id)} className={`flex justify-between items-center p-3 rounded-[12px] border cursor-pointer ${mV ? 'bg-[#007AFF]/10 border-[#007AFF]' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] border-transparent'}`}>
+                                                                    <div><p className="font-semibold">{urlify(i.text)}</p><p className="text-[12px] text-[#8E8E93]">{(i.votes || []).length} Stimme(n)</p></div>
+                                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${mV ? 'border-[#007AFF] bg-[#007AFF]' : 'border-[#C6C6C8]'}`}>{mV && <Icon name="Check" size={14} className="text-white" />}</div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                    <button onClick={() => handleGiftAction(e.id, 'end_vote')} className="w-full py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF] text-white shadow-sm">Abstimmung beenden</button>
+                                                </div>
+                                            )}
+
+                                            {(e.status === 'buying' || e.status === 'settled') && (
+                                                <div className={STYLES.card + " p-5"}>
+                                                    <h3 className="font-bold text-[18px] mb-4">{e.status === 'settled' ? 'Abgeschlossen' : 'Besorgung'}</h3>
+                                                    
+                                                    {(e.ideas || []).length > 0 && (
+                                                        <div className="mb-4 p-3 bg-[#34C759]/10 rounded-[12px] border border-[#34C759]/30">
+                                                            <p className="text-[12px] text-[#34C759] font-bold uppercase mb-1">{isSolo ? 'Gewählte Idee' : 'Favoriten'}</p>
+                                                            {(() => {
+                                                                let mx = -1; (e.ideas || []).forEach(i => { if((i.votes || []).length > mx) mx = (i.votes || []).length; });
+                                                                const favs = (e.ideas || []).filter(i => (i.votes || []).length === mx);
+                                                                return favs.length > 0 
+                                                                    ? favs.map(f => <p key={f.id} className="font-semibold">{urlify(f.text)}</p>)
+                                                                    : <p className="text-[#8E8E93] text-[13px] italic">Keine Auswahl getroffen.</p>;
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {!e.buyer && !isSolo && e.status !== 'settled' ? (
+                                                        <button onClick={() => handleGiftAction(e.id, 'claim_buy')} className="w-full py-4 rounded-[14px] bg-[#AF52DE] text-white font-bold text-[17px] shadow-sm">Ich besorge es!</button>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            {e.status !== 'settled' && (
+                                                                <>
+                                                                    <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
+                                                                    <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
+                                                                </>
+                                                            )}
+                                                            
+                                                            {e.buyer === currentUser.name && !isSolo && e.status !== 'settled' && (
+                                                                <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left">
+                                                                    <p className="font-bold mb-3">Kosten eintragen</p>
+                                                                    <div className="space-y-3">
+                                                                        <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
                                                                         <div>
                                                                             <p className={STYLES.subTitle + " !ml-1"}>Zahlen externe Personen mit? (Anzahl)</p>
                                                                             <input type="number" min="0" className={STYLES.input} value={giftBuyerExtCount} onChange={ev => setGiftBuyerExtCount(ev.target.value)} />
@@ -1798,7 +1771,8 @@
                         </div>
                     </div>
                 );
-            } 
+            }
+
             if (!currentFamily || !currentUser) {
                 return (
                     <div className="h-full w-full bg-[#000000] text-white flex flex-col items-center justify-center p-6 relative z-40"><div className="bg-white/10 backdrop-blur-3xl border border-white/20 p-8 rounded-[32px] shadow-2xl w-full max-w-sm relative z-10 my-auto"><h1 className="text-[34px] font-bold text-center mb-8">FamilyConnect</h1><div className="flex bg-black/40 p-1 rounded-xl mb-8"><button className={`flex-1 py-2 text-[15px] font-semibold rounded-[8px] ${authMode === 'login' ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93]'}`} onClick={() => { setAuthMode('login'); setAuthError(''); }}>Anmelden</button><button className={`flex-1 py-2 text-[15px] font-semibold rounded-[8px] ${authMode === 'join' ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93]'}`} onClick={() => { setAuthMode('join'); setAuthError(''); }}>Beitreten</button><button className={`flex-1 py-2 text-[15px] font-semibold rounded-[8px] ${authMode === 'admin' ? 'bg-white/20 text-white shadow-sm' : 'text-[#8E8E93]'}`} onClick={() => { setAuthMode('admin'); setAuthError(''); }}>Admin</button></div><div className="space-y-3">{authMode === 'admin' ? (<><input type="password" placeholder="Master-Passwort" className="w-full bg-white/10 px-4 py-3.5 rounded-xl text-white box-border" value={formInput.password} onChange={e => setFormInput({ ...formInput, password: e.target.value })} />{authError && <p className="text-[#FF3B30] text-[13px] text-center">{authError}</p>}<button onClick={handleAdminAuth} className="w-full bg-[#007AFF] text-white font-semibold py-3.5 rounded-xl mt-4">Admin Login</button></>) : (<><input type="text" placeholder="Familien-ID" className="w-full bg-white/10 px-4 py-3.5 rounded-xl text-white box-border" value={formInput.familyId} onChange={e => setFormInput({ ...formInput, familyId: e.target.value })} /><input type="text" placeholder="Vorname" className="w-full bg-white/10 px-4 py-3.5 rounded-xl text-white box-border" value={formInput.name} onChange={e => setFormInput({ ...formInput, name: e.target.value })} /><input type="password" placeholder="Passwort" className="w-full bg-white/10 px-4 py-3.5 rounded-xl text-white box-border" value={formInput.password} onChange={e => setFormInput({ ...formInput, password: e.target.value })} />{authError && <p className="text-[#FF3B30] text-[13px] text-center">{authError}</p>}<button onClick={() => authMode === 'login' ? handleLogin() : handleJoinFamily()} className="w-full bg-[#007AFF] text-white font-semibold py-3.5 rounded-xl mt-4">{authMode === 'login' ? 'Anmelden' : 'Beitreten'}</button></>)}</div></div></div>
@@ -1915,7 +1889,7 @@
                                     <button disabled={!selectedReason || selectedMembers.length === 0 || isSending} onClick={() => handleSendNotification()} className={`w-full py-4 rounded-[14px] font-semibold text-[17px] ${!selectedReason || selectedMembers.length === 0 ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#8E8E93]' : 'bg-[#007AFF] text-white'}`}>{isSending ? 'Wird gesendet...' : 'Jetzt rufen'}</button>
                                 </div>
                             )}
-                            {activeTab === 'shopping' && (
+                          {activeTab === 'shopping' && (
                                 <div className={`animate-in fade-in duration-500 ${isShoppingMode ? 'pb-0 h-full flex flex-col' : 'pb-10 space-y-6'}`}>
                                     {shoppingSubTab === 'list' && (
                                         <>
@@ -2206,48 +2180,60 @@
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 
                                             {(() => {
-                                            const upcomingEventsAll = safeGiftEvents
+                                            const upcomingEvents = safeGiftEvents
                                                 .filter(e => {
                                                     const p = safeGiftPersons.find(x => x.id === e.personId);
                                                     if (!p) return false;
-                                                    if (p.type === 'custom') {
-                                                        const isLegacy = p.isShared === undefined && p.createdBy === undefined;
-                                                        if (!isLegacy && !p.isShared && p.createdBy !== currentUser?.name) return false;
+                                                    if (p.type === 'custom' && !p.isShared && p.createdBy !== currentUser?.name) {
+                                                        return false; 
                                                     }
                                                     return p.name !== currentUser?.name;
                                                 })
                                                 .filter(e => {
                                                     const d = new Date(e.date); d.setHours(0,0,0,0);
                                                     const t = new Date(nowGlobal); t.setHours(0,0,0,0);
-                                                    const diffDays = Math.ceil((d - t) / (1000 * 60 * 60 * 24));
+                                                    const diffTime = d - t;
+                                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                    
                                                     return diffDays >= 0 && diffDays <= 365;
-                                                });
-                                        
-                                            const occasionMap = new Map();
-                                            upcomingEventsAll.forEach(e => {
-                                                const key = `${e.personId}_${e.type}_${e.date}`;
-                                                if (!occasionMap.has(key)) occasionMap.set(key, []);
-                                                occasionMap.get(key).push(e);
-                                            });
+                                                })
+                                                .sort((a,b) => new Date(a.date) - new Date(b.date));
                                         
                                             const displayItems = [];
-                                            const holidayGroups = {};
                                         
-                                            occasionMap.forEach(list => {
-                                                let best = list.find(x => (x.participants || []).includes(currentUser?.name));
-                                                if (!best) best = list.find(x => (x.pendingParticipants || []).includes(currentUser?.name));
-                                                if (!best) best = list[0];
-                                                
-                                                if (best.type === 'christmas' || best.type === 'easter') {
-                                                    const hKey = `${best.type}_${best.date}`;
-                                                    if (!holidayGroups[hKey]) holidayGroups[hKey] = { kind: 'holidayGroup', type: best.type, date: best.date, events: [] };
-                                                    holidayGroups[hKey].events.push(best);
-                                                } else {
-                                                    displayItems.push({ kind: 'event', date: best.date, event: best });
-                                                }
-                                            });
+                                            const seenNormalKeys = new Set();
+                                            upcomingEvents
+                                                .filter(e => e.type !== 'christmas' && e.type !== 'easter')
+                                                .forEach(e => {
+                                                    const key = `${e.personId}_${e.type}`;
+                                                    if (!seenNormalKeys.has(key)) {
+                                                        seenNormalKeys.add(key);
+                                                        displayItems.push({
+                                                            kind: 'event',
+                                                            date: e.date,
+                                                            event: e
+                                                        });
+                                                    }
+                                                });
+                                        
+                                            const holidayGroups = {};
+                                            upcomingEvents
+                                                .filter(e => e.type === 'christmas' || e.type === 'easter')
+                                                .forEach(e => {
+                                                    const key = `${e.type}_${e.date}`;
+                                                    if (!holidayGroups[key]) {
+                                                        holidayGroups[key] = {
+                                                            kind: 'holidayGroup',
+                                                            type: e.type,
+                                                            date: e.date,
+                                                            events: []
+                                                        };
+                                                    }
+                                                    holidayGroups[key].events.push(e);
+                                                });
                                         
                                             Object.values(holidayGroups).forEach(g => displayItems.push(g));
+                                        
                                             displayItems.sort((a, b) => new Date(a.date) - new Date(b.date));
                                         
                                             if (displayItems.length === 0) {
@@ -2279,7 +2265,10 @@
                                                     const borderColor = item.type === 'christmas' ? '#34C759' : '#007AFF';
                                                     const dL = getDaysLeft(item.date);
                                         
-                                                    const personsCount = item.events.length;
+                                                    const personsCount = item.events
+                                                        .map(e => safeGiftPersons.find(p => p.id === e.personId))
+                                                        .filter(p => p && p.name !== currentUser?.name)
+                                                        .length;
                                         
                                                     const unresolvedCount = item.events.filter(e => {
                                                         const p = safeGiftPersons.find(x => x.id === e.personId);
@@ -2399,10 +2388,7 @@
                                                 {safeGiftPersons
                                                     .filter(p => p.name !== currentUser?.name)
                                                     .filter(p => {
-                                                        if (p.type === 'custom') {
-                                                            const isLegacy = p.isShared === undefined && p.createdBy === undefined;
-                                                            if (!isLegacy && !p.isShared && p.createdBy !== currentUser?.name) return false;
-                                                        }
+                                                        if (p.type === 'custom' && !p.isShared && p.createdBy !== currentUser?.name) return false;
                                                         return true;
                                                     })
                                                     .map(p => (
