@@ -127,10 +127,10 @@
                                 
                                 if (trailMatch) {
                                     itemName = t.substring(0, t.length - trailMatch[0].length).trim();
-                                    itemAmount = `${trailMatch[1]} ${trailMatch[2] || ''}`.trim();
+                                    itemAmount = `${trailMatch[1]}${trailMatch[2] || ''}`.trim();
                                 } else if (leadMatch) {
                                     itemName = leadMatch[3].trim();
-                                    itemAmount = `${leadMatch[1]} ${leadMatch[2] || ''}`.trim();
+                                    itemAmount = `${leadMatch[1]}${leadMatch[2] || ''}`.trim();
                                 }
                                 
                                 newItems.push({ id: generateId(), name: itemName, amount: itemAmount, notes: '', category: getCat(itemName.toLowerCase()), addedBy: tUser, checked: false, timestamp: new Date().toISOString() });
@@ -270,7 +270,7 @@
             const d = new Date(dateStr); d.setHours(0,0,0,0);
             return Math.round((d - today) / (1000 * 60 * 60 * 24)); 
         }
-        function safeFormatDateTime(ts) { if (!ts) return ''; const d = new Date(ts); if (isNaN(d.getTime())) return ''; return `am ${d.toLocaleDateString('de-DE')} um ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Uhr`; }
+        function safeFormatDateTime(ts) { if (!ts) return ''; const d = new Date(ts); if (isNaN(d.getTime())) return ''; return `am ${d.toLocaleDateString('de-DE')} um${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Uhr`; }
 
         const urlify = (text) => {
             const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -412,7 +412,10 @@
                                     );
                                 })}
                             </div>
-                            <button onClick={() => data.onConfirm(sel)} disabled={sel.length === 0} className={STYLES.btnPrimary + " mt-6"}>Einladen</button>
+                            <div className="flex flex-col gap-3 mt-6">
+                                <button onClick={() => data.onConfirm(sel, 'invite')} disabled={sel.length === 0} className={STYLES.btnPrimary}>Anfragen / Einladen</button>
+                                <button onClick={() => data.onConfirm(sel, 'add_direct')} disabled={sel.length === 0} className={STYLES.btnSecondary + " !text-[#AF52DE]"}>Direkt hinzufügen</button>
+                            </div>
                         </div>
                     </div>
                 );
@@ -638,8 +641,8 @@
                     currentUser,
                     excludeName: personName,
                     selected: [],
-                    onConfirm: (sel) => {
-                        handleGiftAction(eventId, 'invite', sel);
+                    onConfirm: (sel, mode) => {
+                        handleGiftAction(eventId, mode, sel);
                         setModal(null);
                     },
                     onClose: () => setModal(null)
@@ -926,7 +929,7 @@
             const handleAddChore = async () => { if (!newChoreName.trim()) return; await updateHouseholdConfig(safeHouseholdMembers, [...safeHouseholdChores, { id: generateId(), name: newChoreName.trim() }]); setNewChoreName(""); };
             const handleDeleteChore = async (id) => { await updateHouseholdConfig(safeHouseholdMembers, safeHouseholdChores.filter(c => c.id !== id)); };
 
-            const requestPushPermission = async (slnt = false) => { if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return !slnt && showAlert("Fehler", "Push nicht unterstützt."); try { let s = {}; let f = {}; try { const r = localStorage.getItem('firebaseConfig') || localStorage.getItem('familyConnectAppConfig'); if (r) { const p = JSON.parse(r); s = p.vapidKey ? p : (p.firebaseConfig || {}); f = p.firebaseConfig || p; } } catch (e) { } const v = currentFamily?.vapidKey || s.vapidKey; if (!v) return !slnt && showAlert("Fehler", "Kein VAPID-Key!"); let w = await navigator.serviceWorker.getRegistration(); if (!w) { w = await navigator.serviceWorker.register(`./firebase-messaging-sw.js?apiKey=${f.apiKey || ''}&projectId=${f.projectId || ''}&senderId=${f.messagingSenderId || ''}&appId=${f.appId || ''}`); } else { await w.update(); } if (slnt && Notification.permission !== 'granted') return; if (!slnt) setPushStatus('Wird angefragt...'); const p = slnt ? Notification.permission : await Notification.requestPermission(); if (p !== 'granted') { if (!slnt) setPushStatus('Abgelehnt ❌'); return; } const t = await messaging.getToken({ vapidKey: v.trim(), serviceWorkerRegistration: w }); if (!t) { if (!slnt) { setPushStatus('Fehler'); showAlert("Fehler", "Kein Token."); } return; } if (currentUser?.fcmToken !== t) await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: t } : m) }); setPushStatus('Aktiviert ✅'); if (!slnt) showAlert("Erfolg", "Push aktiviert!"); } catch (e) { if (!slnt) { setPushStatus('Fehler'); showAlert("Token Fehler: " + e.message); } } };
+            const requestPushPermission = async (slnt = false) => { if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return !slnt && showAlert("Fehler", "Push nicht unterstützt."); try { let s = {}; let f = {}; try { const r = localStorage.getItem('firebaseConfig') || localStorage.getItem('familyConnectAppConfig'); if (r) { const p = JSON.parse(r); s = p.vapidKey ? p : (p.firebaseConfig || {}); f = p.firebaseConfig || p; } } catch (e) { } const v = currentFamily?.vapidKey || s.vapidKey; if (!v) return !slnt && showAlert("Fehler", "Kein VAPID-Key!"); let w = await navigator.serviceWorker.getRegistration(); if (!w) { w = await navigator.serviceWorker.register(`./firebase-messaging-sw.js?apiKey=${f.apiKey \vert{}\vert{} ''}&projectId=${f.projectId || ''}&senderId=${f.messagingSenderId \vert{}\vert{} ''}&appId=${f.appId || ''}`); } else { await w.update(); } if (slnt && Notification.permission !== 'granted') return; if (!slnt) setPushStatus('Wird angefragt...'); const p = slnt ? Notification.permission : await Notification.requestPermission(); if (p !== 'granted') { if (!slnt) setPushStatus('Abgelehnt ❌'); return; } const t = await messaging.getToken({ vapidKey: v.trim(), serviceWorkerRegistration: w }); if (!t) { if (!slnt) { setPushStatus('Fehler'); showAlert("Fehler", "Kein Token."); } return; } if (currentUser?.fcmToken !== t) await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: t } : m) }); setPushStatus('Aktiviert ✅'); if (!slnt) showAlert("Erfolg", "Push aktiviert!"); } catch (e) { if (!slnt) { setPushStatus('Fehler'); showAlert("Token Fehler: " + e.message); } } };
 
             const handleSendNotification = async (cRO = null, cT = null, iR = false) => { const rO = cRO || REASONS.find(r => r.id === selectedReason); const tL = cT || selectedMembers; if (!rO || tL.length === 0) return; if (safeHistory.filter(h => h?.sender === currentUser.name && h?.timestamp && new Date(h.timestamp).toDateString() === new Date().toDateString()).length >= 20) return showAlert("Limit", "Tageslimit erreicht."); setIsSending(true); if (navigator.vibrate) navigator.vibrate(10); const n = new Date(); const iN = n.getHours() >= 22 || n.getHours() < 7; const aT = []; safeMembers.forEach(m => { if (m && tL.includes(m.name) && m.status !== 'pending') { if (!(m.dndUntil && new Date(m.dndUntil) > n)) { aT.push(m.name); if (!iN && rO.category !== 'push_only') { const u = rO.category === 'meal' ? m.voiceMonkeyMeal : m.voiceMonkeyOther; if (u && u.trim() !== '') fetch(u).catch(e => { }); } } } }); if (aT.length === 0) { setIsSending(false); return showAlert("Hinweis", "Alle auf DND."); } const nH = { id: Date.now().toString(), timestamp: n.toISOString(), sender: currentUser.name, reason: rO.sentence, targets: aT, acknowledgedBy: [], isExpense: false, isResend: iR, category: rO.category }; try { await getFamilyDocRef(currentFamily.id).update({ history: [nH, ...getCleanHistory(safeHistory)] }); if (navigator.vibrate) navigator.vibrate([30, 50, 30]); if (!cRO && rO.category !== 'push_only' && !iR) setTrackingEventId(nH.id); setSelectedReason(null); setSelectedMembers([]); } catch (e) { } setTimeout(() => setIsSending(false), 800); };
 
@@ -941,13 +944,13 @@
             const performDeleteList = async (id) => { if (selectedShoppingListId === id) setSelectedShoppingListId(null); try { await getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.filter(l => l.id !== id) }); } catch (e) { } };
             const handleDeleteList = async (id) => showConfirm("Löschen", "Liste löschen?", async () => await performDeleteList(id), true);
 
-            const handleAddShoppingItem = async () => { if (!newShoppingItem.name.trim() || !activeList) return; const c = `${newShoppingItem.amountValue} ${newShoppingItem.amountUnit}`.trim(); const nI = { id: generateId(), name: newShoppingItem.name.trim(), amount: c, notes: newShoppingItem.notes.trim(), category: getAutoCategory(newShoppingItem.name), addedBy: currentUser.name, checked: false, timestamp: new Date().toISOString() }; try { getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.map(l => l.id === activeList.id ? { ...l, items: [...(l.items || []), nI] } : l) }).catch(e => { }); setNewShoppingItem({ name: '', amountValue: '1', amountUnit: '', notes: '' }); if (navigator.vibrate) navigator.vibrate(10); } catch (e) { } };
+            const handleAddShoppingItem = async () => { if (!newShoppingItem.name.trim() || !activeList) return; const c = `${newShoppingItem.amountValue}${newShoppingItem.amountUnit}`.trim(); const nI = { id: generateId(), name: newShoppingItem.name.trim(), amount: c, notes: newShoppingItem.notes.trim(), category: getAutoCategory(newShoppingItem.name), addedBy: currentUser.name, checked: false, timestamp: new Date().toISOString() }; try { getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.map(l => l.id === activeList.id ? { ...l, items: [...(l.items || []), nI] } : l) }).catch(e => { }); setNewShoppingItem({ name: '', amountValue: '1', amountUnit: '', notes: '' }); if (navigator.vibrate) navigator.vibrate(10); } catch (e) { } };
 
             const handleToggleShoppingItem = async (id, c) => { if (isShoppingMode && navigator.vibrate) navigator.vibrate([15, 25]); try { getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.map(l => l.id === activeList.id ? { ...l, items: (l.items || []).map(i => i.id === id ? { ...i, checked: c } : i) } : l) }).catch(e => { }); } catch (e) { } };
 
             const handleDeleteShoppingItem = async (id) => { try { getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.map(l => l.id === activeList.id ? { ...l, items: (l.items || []).filter(i => i.id !== id) } : l) }).catch(e => { }); } catch (e) { } };
 
-            const handleSaveEditedShoppingItem = async (eI) => { try { const c = `${eI.amountValue || ''} ${eI.amountUnit || ''}`.trim(); getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.map(l => l.id === activeList.id ? { ...l, items: (l.items || []).map(i => i.id === eI.id ? { ...i, ...eI, amount: c, category: getAutoCategory(eI.name) } : i) } : l) }).catch(e => { }); setModal(null); } catch (e) { } };
+            const handleSaveEditedShoppingItem = async (eI) => { try { const c = `${eI.amountValue \vert{}\vert{} ''}${eI.amountUnit || ''}`.trim(); getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.map(l => l.id === activeList.id ? { ...l, items: (l.items || []).map(i => i.id === eI.id ? { ...i, ...eI, amount: c, category: getAutoCategory(eI.name) } : i) } : l) }).catch(e => { }); setModal(null); } catch (e) { } };
 
             const handleDeleteAllCheckedItems = async () => showConfirm("Aufräumen", "Erledigte Artikel löschen?", async () => { try { getFamilyDocRef(currentFamily.id).update({ shoppingLists: safeShoppingLists.map(l => l.id === activeList.id ? { ...l, items: (l.items || []).filter(i => !i.checked) } : l) }).catch(e => { }); } catch (e) { } }, true);
 
@@ -995,7 +998,7 @@
                 if (!eTarget) return;
                 const tN = eTarget.creditor === currentUser.name ? eTarget.debtor : eTarget.creditor;
                 const nE = safeExpenses.map(e => e.id === id ? { ...e, isPaid: true, paidAt: new Date().toISOString(), paymentPending: false } : e);
-                const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [tN], acknowledgedBy: [], isSettlement: true, isCustomPush: true, category: 'other', amount: parseFloat(eTarget.amount), expenseIds: [id], details: [{ id: eTarget.id, reason: eTarget.reason, amount: eTarget.amount, creditor: eTarget.creditor, debtor: eTarget.debtor }], reason: `${currentUser.name} hat den Erhalt der Auslagen i.H.v. ${parseFloat(eTarget.amount).toFixed(2)}€ bestätigt.` };
+                const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [tN], acknowledgedBy: [], isSettlement: true, isCustomPush: true, category: 'other', amount: parseFloat(eTarget.amount), expenseIds: [id], details: [{ id: eTarget.id, reason: eTarget.reason, amount: eTarget.amount, creditor: eTarget.creditor, debtor: eTarget.debtor }], reason: `${currentUser.name} hat den Erhalt der Auslagen i.H.v.${parseFloat(eTarget.amount).toFixed(2)}€ bestätigt.` };
                 await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: [nH, ...getCleanHistory(safeHistory)] });
             };
 
@@ -1003,7 +1006,7 @@
                 const expenseIds = eWT.map(e => e.id);
                 const details = eWT.map(e => ({ id: e.id, reason: e.reason, amount: e.amount, creditor: e.creditor, debtor: e.debtor }));
                 const nE = safeExpenses.map(e => expenseIds.includes(e.id) ? { ...e, isPaid: true, paidAt: new Date().toISOString(), paymentPending: false } : e);
-                const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [tN], acknowledgedBy: [], isSettlement: true, isCustomPush: true, category: 'other', amount: netAmount, expenseIds: expenseIds, details: details, reason: `${currentUser.name} hat den Erhalt der Auslagen i.H.v. ${netAmount.toFixed(2)}€ bestätigt.` };
+                const nH = { id: Date.now().toString(), timestamp: new Date().toISOString(), sender: currentUser.name, targets: [tN], acknowledgedBy: [], isSettlement: true, isCustomPush: true, category: 'other', amount: netAmount, expenseIds: expenseIds, details: details, reason: `${currentUser.name} hat den Erhalt der Auslagen i.H.v.${netAmount.toFixed(2)}€ bestätigt.` };
                 await getFamilyDocRef(currentFamily.id).update({ expenses: nE, history: [nH, ...getCleanHistory(safeHistory)] }); 
             }, false);
 
@@ -1065,7 +1068,7 @@
 
             const setDND = async (h) => { let t = null; if (h > 0) { const d = new Date(); d.setMinutes(d.getMinutes() + Math.round(h * 60)); t = d.toISOString(); } await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, dndUntil: t } : m) }); };
             const handleDeleteMember = (n) => { if (n === currentUser.name) return; showConfirm("Löschen", `${n} entfernen?`, async () => await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.filter(m => m?.name !== n) }), true); };
-            const saveSettings = async (k, v) => await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, [k]: v ? String(v).trim() : '' } : m) });
+            const saveSettings = async (k, v) => await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m?.name === currentUser.name ? { ...m, [k]: v } : m) });
 
             const saveGiftPerson = async (pId, updates) => {
                 const uP = safeGiftPersons.map(p => p.id === pId ? { ...p, ...updates } : p);
@@ -1075,7 +1078,7 @@
             const addCustomGiftPerson = async () => {
                 const n = prompt("Name der Person:");
                 if (!n || !n.trim()) return;
-                const uP = [...safeGiftPersons, { id: generateId(), name: n.trim(), type: 'custom', birthdate: '', nameday: '', birthdayNeedsGift: true, namedayNeedsGift: false, christmasNeedsGift: true, easterNeedsGift: false }];
+                const uP = [...safeGiftPersons, { id: generateId(), name: n.trim(), type: 'custom', isShared: false, createdBy: currentUser.name, birthdate: '', nameday: '', birthdayNeedsGift: true, namedayNeedsGift: false, christmasNeedsGift: true, easterNeedsGift: false }];
                 await getFamilyDocRef(currentFamily.id).update({ giftPersons: uP });
             };
             
@@ -1120,6 +1123,17 @@
                         eventId: eId,
                         personName: p.name
                     }));
+                } else if (action === 'add_direct') {
+                    const sel = Array.isArray(payload) ? payload : [];
+                    if (sel.length === 0) return;
+                    uE = uE.map(e => {
+                        if (e.id !== eId) return e;
+                        const participants = Array.isArray(e.participants) ? e.participants : [];
+                        return {
+                            ...e,
+                            participants: [...new Set([...participants, currentUser.name, ...sel])]
+                        };
+                    });
                 } else if (action === 'enable_once') {
                     uE = uE.map(e => e.id === eId ? { ...e, needsGiftOverride: true, status: e.status || 'planning' } : e);
                 } else if (action === 'remove_participant') {
@@ -1141,10 +1155,12 @@
                     let maxV = -1; let win = '';
                     (ev.ideas || []).forEach(i => { if ((i.votes || []).length > maxV) { maxV = (i.votes || []).length; win = i.text; } });
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'buying' } : e);
-                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `Abstimmung beendet! Favorit für ${p.name}: ${win || 'Keine'}. Wer besorgt es?`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `Abstimmung beendet! Favorit für ${p.name}:${win || 'Keine'}. Wer besorgt es?`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'claim_buy') {
                     uE = uE.map(e => e.id === eId ? { ...e, buyer: currentUser.name } : e);
                     hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `${currentUser.name} besorgt das Geschenk für ${p.name}!`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                } else if (action === 'reset_gift') {
+                    uE = uE.map(e => e.id === eId ? { ...e, status: 'buying', cost: null, buyer: null, settled: false } : e);
                 } else if (action === 'settle') {
                     const amt = parseFloat(String(payload.amount || '0').replace(',', '.'));
                     const extCount = parseInt(payload.extCount || '0', 10);
@@ -1156,7 +1172,7 @@
                     participants.forEach(mem => {
                         if (mem !== currentUser.name && amt > 0) {
                             nE.unshift({ id: generateId(), creditor: currentUser.name, debtor: mem, amount: perP, reason: `Geschenk für ${p.name}`, date: getLocalTodayString(), timestamp: new Date().toISOString(), isPaid: false });
-                            hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p.name}: ${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
+                            hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p.name}:${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
                         }
                     });
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'settled', cost: amt } : e);
@@ -1430,14 +1446,16 @@
                 const groupEvents = safeGiftEvents
                     .filter(e =>
                         e.type === activeGiftHolidayGroup.type &&
-                        e.date === activeGiftHolidayGroup.date &&
-                        e.status !== 'settled'
+                        e.date === activeGiftHolidayGroup.date
                     )
                     .map(e => ({
                         event: e,
                         person: safeGiftPersons.find(p => p.id === e.personId)
                     }))
-                    .filter(x => x.person && x.person.name !== currentUser?.name)
+                    .filter(x => {
+                        if(x.person && x.person.type === 'custom' && !x.person.isShared && x.person.createdBy !== currentUser?.name) return false;
+                        return x.person && x.person.name !== currentUser?.name;
+                    })
                     .sort((a, b) => a.person.name.localeCompare(b.person.name));
             
                 const title = activeGiftHolidayGroup.type === 'christmas' ? 'Weihnachten' : 'Ostern';
@@ -1471,6 +1489,7 @@
             
                                 let statusBadge = null;
                                 if (!isNeedGift) statusBadge = <span className="text-[11px] font-bold bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full">Kein Geschenk</span>;
+                                else if (event.status === 'settled') statusBadge = <span className="text-[11px] font-bold bg-[#34C759]/20 text-[#34C759] px-2 py-0.5 rounded-full">Erledigt</span>;
                                 else if (event.status === 'planning' && (event.participants || []).length === 0) statusBadge = <span className="text-[11px] font-bold bg-[#FF3B30]/20 text-[#FF3B30] px-2 py-0.5 rounded-full">Ungelöst</span>;
                                 else if (event.status === 'planning') statusBadge = <span className="text-[11px] font-bold bg-[#FF9500]/20 text-[#FF9500] px-2 py-0.5 rounded-full">Planung</span>;
                                 else if (event.status === 'voting') statusBadge = <span className="text-[11px] font-bold bg-[#007AFF]/20 text-[#007AFF] px-2 py-0.5 rounded-full">Abstimmung</span>;
@@ -1581,7 +1600,7 @@
                                             <div className="bg-white dark:bg-[#1C1C1E] p-4 rounded-[16px] border border-[#E5E5EA] dark:border-[#38383A]">
                                                 <div className="flex justify-between items-center mb-2">
                                                     <h3 className="font-bold text-[16px] flex items-center gap-2"><Icon name="Users" size={16} /> Beteiligte</h3>
-                                                    <button onClick={() => openGiftInviteModal(e.id, p.name)} className="text-[#007AFF] text-[12px] font-bold">Einladen</button>
+                                                    <button onClick={() => openGiftInviteModal(e.id, p.name)} className="text-[#007AFF] text-[12px] font-bold">Personen</button>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {(e.participants || []).map(pm => (
@@ -1675,7 +1694,10 @@
                                                                 </div>
                                                             )}
                                                             {e.status === 'settled' && (
-                                                                <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1"><Icon name="CheckCircle2" size={18} /> Erledigt {e.cost > 0 && `(${e.cost}€)`}</p>
+                                                                <div className="flex flex-col items-center">
+                                                                    <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1"><Icon name="CheckCircle2" size={18} /> Erledigt {e.cost > 0 && `(${e.cost}€)`}</p>
+                                                                    <button onClick={() => handleGiftAction(e.id, 'reset_gift')} className="mt-4 text-[13px] font-bold text-[#FF9500] bg-[#FF9500]/10 px-4 py-2 rounded-full">Zurücksetzen</button>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     )}
@@ -1843,7 +1865,7 @@
                                 </div>
                             )}
                             {activeTab === 'shopping' && (
-                                <div className={`animate-in fade-in duration-500 ${isShoppingMode ? 'pb-0 h-full flex flex-col' : 'pb-10 space-y-6'}`}>
+                                <div className={`animate-in fade-in duration-500 ${isShoppingMode ? 'pb-0h-full flex flex-col' : 'pb-10 space-y-6'}`}>
                                     {shoppingSubTab === 'list' && (
                                         <>
                                             {!isShoppingMode && (
@@ -2137,12 +2159,18 @@
                                                 .filter(e => e.status !== 'settled')
                                                 .filter(e => {
                                                     const p = safeGiftPersons.find(x => x.id === e.personId);
+                                                    if (p && p.type === 'custom' && !p.isShared && e.createdBy !== currentUser?.name) {
+                                                        return false; 
+                                                    }
                                                     return p && p.name !== currentUser?.name;
                                                 })
                                                 .filter(e => {
                                                     const d = new Date(e.date); d.setHours(0,0,0,0);
                                                     const t = new Date(nowGlobal); t.setHours(0,0,0,0);
-                                                    return d >= t;
+                                                    const diffTime = d - t;
+                                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                    
+                                                    return diffDays >= 0 && diffDays <= 365;
                                                 })
                                                 .sort((a,b) => new Date(a.date) - new Date(b.date));
                                         
@@ -2184,7 +2212,7 @@
                                             displayItems.sort((a, b) => new Date(a.date) - new Date(b.date));
                                         
                                             if (displayItems.length === 0) {
-                                                return <p className="col-span-full text-center text-[#8E8E93] py-8 italic">Keine anstehenden Feste.</p>;
+                                                return <p className="col-span-full text-center text-[#8E8E93] py-8 italic">Keine anstehenden Feste in den nächsten 365 Tagen.</p>;
                                             }
                                         
                                             const eventElements = [];
@@ -2334,8 +2362,26 @@
                                                 {safeGiftPersons.filter(p => p.name !== currentUser?.name).map(p => (
                                                     <div key={p.id} className={STYLES.card + " p-4"}>
                                                         <div className="flex justify-between items-center mb-4">
-                                                            <h3 className="font-bold text-[18px] flex items-center gap-2">{p.name} {p.type === 'custom' && <span className="text-[10px] bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full uppercase">Extern</span>}</h3>
-                                                            {p.type === 'custom' && <button onClick={async () => { await getFamilyDocRef(currentFamily.id).update({ giftPersons: safeGiftPersons.filter(x => x.id !== p.id) }); }} className="text-[#FF3B30] p-1"><Icon name="Trash2" size={16} /></button>}
+                                                            <div className="flex items-center gap-3">
+                                                                <h3 className="font-bold text-[18px] flex items-center gap-2">{p.name} {p.type === 'custom' && <span className="text-[10px] bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full uppercase">Extern</span>}</h3>
+                                                                <button onClick={() => {
+                                                                    const newName = prompt("Neuer Name:", p.name);
+                                                                    if(newName && newName.trim()) saveGiftPerson(p.id, { name: newName.trim() });
+                                                                }} className="text-[#007AFF]"><Icon name="Pencil" size={16} /></button>
+                                                            </div>
+                                                            {p.type === 'custom' && (
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[12px] text-[#8E8E93] font-medium hidden sm:inline">Familie sehen lassen?</span>
+                                                                        <span className="text-[12px] text-[#8E8E93] font-medium sm:hidden">Teilen?</span>
+                                                                        <div className="relative inline-block w-10 align-middle select-none">
+                                                                            <input type="checkbox" id={`sh-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.isShared} onChange={e => saveGiftPerson(p.id, { isShared: e.target.checked })}/>
+                                                                            <label htmlFor={`sh-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button onClick={async () => { await getFamilyDocRef(currentFamily.id).update({ giftPersons: safeGiftPersons.filter(x => x.id !== p.id) }); }} className="text-[#FF3B30] p-1"><Icon name="Trash2" size={16} /></button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         
                                                         <div className="space-y-4">
@@ -2511,6 +2557,7 @@
                                         <div className={STYLES.card}>
                                             <div className="p-4 border-b border-[#E5E5EA] dark:border-[#38383A] flex items-center justify-between"><div className="flex items-center space-x-3"><div className="bg-[#007AFF]/10 p-2.5 rounded-[12px]"><Icon name="Smartphone" size={20} className="text-[#007AFF]" /></div><div><p className="font-semibold text-[16px]">Apple Push</p><p className="text-[13px] text-[#8E8E93] font-normal">Status: <span className={currentUser?.fcmToken ? "text-[#34C759] font-medium" : "text-[#FF9500] font-medium"}>{pushStatus}</span></p></div></div><button onClick={() => requestPushPermission(false)} className="bg-[#007AFF]/10 text-[#007AFF] text-[14px] font-semibold px-4 py-2 rounded-full">{currentUser?.fcmToken ? 'Erneuern' : 'Aktivieren'}</button></div>
                                             <div className="p-4 space-y-4"><div className="flex items-center space-x-3 mb-2"><div className="bg-[#AF52DE]/10 p-2.5 rounded-[12px]"><Icon name="Speaker" size={20} className="text-[#AF52DE]" /></div><p className="font-semibold text-[16px]">Alexa Voice Monkey Links</p></div><div><p className={STYLES.subTitle + " !ml-1"}>Für Mahlzeiten</p><input type="url" placeholder="https://api.voicemonkey.io/trigger..." className={STYLES.input} defaultValue={currentUser?.voiceMonkeyMeal} onBlur={e => saveSettings('voiceMonkeyMeal', e.target.value)} /></div><div><p className={STYLES.subTitle + " !ml-1"}>Für Aktivitäten</p><input type="url" placeholder="https://api.voicemonkey.io/trigger..." className={STYLES.input} defaultValue={currentUser?.voiceMonkeyOther} onBlur={e => saveSettings('voiceMonkeyOther', e.target.value)} /></div></div>
+                                            <div className="p-4 border-t border-[#E5E5EA] dark:border-[#38383A] flex items-center justify-between"><div className="flex items-center space-x-3"><div className="bg-[#AF52DE]/10 p-2.5 rounded-[12px]"><Icon name="Gift" size={20} className="text-[#AF52DE]" /></div><div><p className="font-semibold text-[16px]">Geschenke-Erinnerungen</p><p className="text-[13px] text-[#8E8E93] font-normal">Push-Mitteilung vor Festen</p></div></div><div className="relative inline-block w-12 mr-2 align-middle select-none"><input type="checkbox" id="toggle-reminders" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={!currentUser?.disableGiftReminders} onChange={e => saveSettings('disableGiftReminders', !e.target.checked)}/><label htmlFor="toggle-reminders" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out"></label></div></div>
                                         </div>
                                     </section>
 
