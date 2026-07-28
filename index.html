@@ -1160,7 +1160,7 @@
                             hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p.name}: ${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
                         }
                     });
-                    uE = uE.map(e => e.id === eId ? { ...e, status: 'settled', cost: amt, buyer: e.buyer || currentUser.name } : e);
+                    uE = uE.map(e => e.id === eId ? { ...e, status: 'settled', cost: amt } : e);
                     await getFamilyDocRef(currentFamily.id).update({ giftEvents: uE, expenses: nE, history: [...hUpd, ...getCleanHistory(safeHistory)] });
                     closeGiftEvent();
                     return;
@@ -1510,7 +1510,6 @@
                 const e = safeGiftEvents.find(x => x.id === activeGiftEventId);
                 const p = safeGiftPersons.find(x => x.id === e?.personId);
                 if (!e || !p) return null;
-                const isSolo = (e.participants || []).length === 1;
                 const isPart = (e.participants || []).includes(currentUser.name);
                 const isNeedGift = getGiftNeedValue(e, p);
                 
@@ -1598,7 +1597,7 @@
                                                 </div>
                                             </div>
 
-                                            {e.status === 'planning' && !isSolo && (
+                                            {e.status === 'planning' && (
                                                 <div className={STYLES.card + " p-5"}>
                                                     <h3 className="font-bold text-[18px] mb-4">Ideen Sammlung</h3>
                                                     <div className="space-y-3 mb-5">
@@ -1620,46 +1619,15 @@
                                                     {(e.ideas || []).length > 0 && (e.participants || []).length > 1 && (
                                                         <button onClick={() => handleGiftAction(e.id, 'start_vote', null)} className="w-full mt-5 py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF]/10 text-[#007AFF]">Abstimmung starten</button>
                                                     )}
+                                                    {(e.ideas || []).length > 0 && (e.participants || []).length === 1 && (
+                                                        <button onClick={() => handleGiftAction(e.id, 'start_vote', null)} className="w-full mt-5 py-3 rounded-[12px] font-bold text-[15px] bg-[#AF52DE]/10 text-[#AF52DE]">Zur Besorgung übergehen</button>
+                                                    )}
                                                 </div>
                                             )}
 
-                                            {e.status === 'planning' && isSolo && (
-                                                <div className={STYLES.card + " p-5"}>
-                                                    <h3 className="font-bold text-[18px] mb-4">Ideen Sammlung & Abschluss</h3>
-                                                    <div className="space-y-3 mb-5">
-                                                        {(e.ideas || []).length === 0 ? <p className="text-[#8E8E93] text-[14px] italic">Noch keine Ideen.</p> : (e.ideas || []).map(i => {
-                                                            const mV = (i.votes || []).includes(currentUser.name);
-                                                            return (
-                                                                <div key={i.id} onClick={() => handleGiftAction(e.id, 'vote', i.id)} className={`flex justify-between items-center p-3 rounded-[12px] border cursor-pointer ${mV ? 'bg-[#007AFF]/10 border-[#007AFF]' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] border-transparent'}`}>
-                                                                    <div className="flex-1 min-w-0 pr-2">
-                                                                        <p className="font-semibold text-[15px] truncate">{urlify(i.text)}</p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${mV ? 'border-[#007AFF] bg-[#007AFF]' : 'border-[#C6C6C8]'}`}>{mV && <Icon name="Check" size={14} className="text-white" />}</div>
-                                                                        <button onClick={(ev) => { ev.stopPropagation(); setModal({ type: 'confirm', title: 'Idee bearbeiten', message: 'Möchtest du die Idee bearbeiten oder löschen?', confirmText: 'Bearbeiten', cancelText: 'Löschen', onConfirm: () => { setModal(null); handleGiftAction(e.id, 'edit_idea', i.id); }, onCancel: () => { setModal(null); handleGiftAction(e.id, 'delete_idea', i.id); } }); }} className="text-[#8E8E93]"><Icon name="Pencil" size={16} /></button>
-                                                                    </div>
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <input type="text" placeholder="Neue Idee (auch Links)..." className={STYLES.input} value={newGiftIdea} onChange={ev => setNewGiftIdea(ev.target.value)} />
-                                                        <button onClick={() => { if (newGiftIdea.trim()) { handleGiftAction(e.id, 'add_idea', newGiftIdea.trim()); setNewGiftIdea(''); } }} className="bg-[#AF52DE] text-white px-4 rounded-[12px]"><Icon name="Plus" size={20} /></button>
-                                                    </div>
-
-                                                    <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left mt-6">
-                                                        <p className="font-bold mb-3">Kosten (optional)</p>
-                                                        <div className="space-y-3">
-                                                            <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
-                                                            <button onClick={() => handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: 0 })} className={STYLES.btnPrimary}>Als erledigt markieren</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {e.status === 'voting' && !isSolo && (
+                                            {e.status === 'voting' && (
                                                 <div className={STYLES.card + " p-5 border-[#007AFF] border-2"}>
-                                                    <h3 className="font-bold text-[18px] mb-4 text-[#007AFF]">Abstimmung läuft</h3>
+                                                    <h3 className="font-bold text-[18px] mb-4 text-[#007AFF]">{(e.participants || []).length === 1 ? 'Auswahl' : 'Abstimmung läuft'}</h3>
                                                     <div className="space-y-3 mb-5">
                                                         {(e.ideas || []).map(i => {
                                                             const mV = (i.votes || []).includes(currentUser.name);
@@ -1671,57 +1639,49 @@
                                                             )
                                                         })}
                                                     </div>
-                                                    <button onClick={() => handleGiftAction(e.id, 'end_vote')} className="w-full py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF] text-white shadow-sm">Abstimmung beenden</button>
+                                                    <button onClick={() => handleGiftAction(e.id, 'end_vote')} className="w-full py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF] text-white shadow-sm">{(e.participants || []).length === 1 ? 'Auswahl bestätigen' : 'Abstimmung beenden'}</button>
                                                 </div>
                                             )}
 
                                             {(e.status === 'buying' || e.status === 'settled') && (
                                                 <div className={STYLES.card + " p-5"}>
-                                                    <h3 className="font-bold text-[18px] mb-4">{e.status === 'settled' ? 'Abgeschlossen' : 'Besorgung'}</h3>
-                                                    
+                                                    <h3 className="font-bold text-[18px] mb-4">Besorgung</h3>
                                                     {(e.ideas || []).length > 0 && (
                                                         <div className="mb-4 p-3 bg-[#34C759]/10 rounded-[12px] border border-[#34C759]/30">
-                                                            <p className="text-[12px] text-[#34C759] font-bold uppercase mb-1">{isSolo ? 'Gewählte Idee' : 'Favoriten'}</p>
+                                                            <p className="text-[12px] text-[#34C759] font-bold uppercase mb-1">Favoriten</p>
                                                             {(() => {
                                                                 let mx = -1; (e.ideas || []).forEach(i => { if((i.votes || []).length > mx) mx = (i.votes || []).length; });
                                                                 const favs = (e.ideas || []).filter(i => (i.votes || []).length === mx);
-                                                                return favs.length > 0 
-                                                                    ? favs.map(f => <p key={f.id} className="font-semibold">{urlify(f.text)}</p>)
-                                                                    : <p className="text-[#8E8E93] text-[13px] italic">Keine Auswahl getroffen.</p>;
+                                                                return favs.map(f => <p key={f.id} className="font-semibold">{urlify(f.text)}</p>);
                                                             })()}
                                                         </div>
                                                     )}
-                                                    
-                                                    {!e.buyer && !isSolo && e.status !== 'settled' ? (
+                                                    {!e.buyer ? (
                                                         <button onClick={() => handleGiftAction(e.id, 'claim_buy')} className="w-full py-4 rounded-[14px] bg-[#AF52DE] text-white font-bold text-[17px] shadow-sm">Ich besorge es!</button>
                                                     ) : (
                                                         <div className="text-center">
-                                                            {e.status !== 'settled' && (
-                                                                <>
-                                                                    <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
-                                                                    <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
-                                                                </>
-                                                            )}
+                                                            <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
+                                                            <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
                                                             
-                                                            {e.buyer === currentUser.name && !isSolo && e.status !== 'settled' && (
+                                                            {e.buyer === currentUser.name && !e.settled && e.status !== 'settled' && (
                                                                 <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left">
-                                                                    <p className="font-bold mb-3">Kosten eintragen</p>
+                                                                    <p className="font-bold mb-3">{(e.participants || []).length > 1 ? 'Kosten eintragen' : 'Kosten (optional)'}</p>
                                                                     <div className="space-y-3">
                                                                         <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
-                                                                        <div>
-                                                                            <p className={STYLES.subTitle + " !ml-1"}>Zahlen externe Personen mit? (Anzahl)</p>
-                                                                            <input type="number" min="0" className={STYLES.input} value={giftBuyerExtCount} onChange={ev => setGiftBuyerExtCount(ev.target.value)} />
-                                                                        </div>
-                                                                        <button onClick={() => { if(giftBuyerAmount || (e.participants || []).length===1) handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: giftBuyerExtCount }) }} className={STYLES.btnPrimary}>Kosten aufteilen & buchen</button>
+                                                                        {(e.participants || []).length > 1 && (
+                                                                            <div>
+                                                                                <p className={STYLES.subTitle + " !ml-1"}>Zahlen externe Personen mit? (Anzahl)</p>
+                                                                                <input type="number" min="0" className={STYLES.input} value={giftBuyerExtCount} onChange={ev => setGiftBuyerExtCount(ev.target.value)} />
+                                                                            </div>
+                                                                        )}
+                                                                        <button onClick={() => { if(giftBuyerAmount || (e.participants || []).length===1) handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: giftBuyerExtCount }) }} className={STYLES.btnPrimary}>{(e.participants || []).length > 1 ? 'Kosten aufteilen & buchen' : 'Als erledigt markieren'}</button>
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            
                                                             {e.status === 'settled' && (
                                                                 <div className="flex flex-col items-center">
-                                                                    <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1 text-[18px]"><Icon name="CheckCircle2" size={24} /> Erledigt {e.cost > 0 && `(${e.cost}€)`}</p>
-                                                                    {(!isSolo && e.buyer) && <p className="text-[13px] text-[#8E8E93] mt-1">Besorgt von {e.buyer}</p>}
-                                                                    <button onClick={() => handleGiftAction(e.id, 'reset_gift')} className="mt-6 text-[14px] font-bold text-[#FF9500] bg-[#FF9500]/10 px-5 py-2.5 rounded-full active:scale-95 transition-transform">Zurücksetzen</button>
+                                                                    <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1"><Icon name="CheckCircle2" size={18} /> Erledigt {e.cost > 0 && `(${e.cost}€)`}</p>
+                                                                    <button onClick={() => handleGiftAction(e.id, 'reset_gift')} className="mt-4 text-[13px] font-bold text-[#FF9500] bg-[#FF9500]/10 px-4 py-2 rounded-full">Zurücksetzen</button>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1889,7 +1849,7 @@
                                     <button disabled={!selectedReason || selectedMembers.length === 0 || isSending} onClick={() => handleSendNotification()} className={`w-full py-4 rounded-[14px] font-semibold text-[17px] ${!selectedReason || selectedMembers.length === 0 ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#8E8E93]' : 'bg-[#007AFF] text-white'}`}>{isSending ? 'Wird gesendet...' : 'Jetzt rufen'}</button>
                                 </div>
                             )}
-                          {activeTab === 'shopping' && (
+                            {activeTab === 'shopping' && (
                                 <div className={`animate-in fade-in duration-500 ${isShoppingMode ? 'pb-0 h-full flex flex-col' : 'pb-10 space-y-6'}`}>
                                     {shoppingSubTab === 'list' && (
                                         <>
@@ -2180,60 +2140,48 @@
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 
                                             {(() => {
-                                            const upcomingEvents = safeGiftEvents
+                                            const upcomingEventsAll = safeGiftEvents
                                                 .filter(e => {
                                                     const p = safeGiftPersons.find(x => x.id === e.personId);
                                                     if (!p) return false;
-                                                    if (p.type === 'custom' && !p.isShared && p.createdBy !== currentUser?.name) {
-                                                        return false; 
+                                                    if (p.type === 'custom') {
+                                                        const isLegacy = p.isShared === undefined && p.createdBy === undefined;
+                                                        if (!isLegacy && !p.isShared && p.createdBy !== currentUser?.name) return false;
                                                     }
                                                     return p.name !== currentUser?.name;
                                                 })
                                                 .filter(e => {
                                                     const d = new Date(e.date); d.setHours(0,0,0,0);
                                                     const t = new Date(nowGlobal); t.setHours(0,0,0,0);
-                                                    const diffTime = d - t;
-                                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                                    
+                                                    const diffDays = Math.ceil((d - t) / (1000 * 60 * 60 * 24));
                                                     return diffDays >= 0 && diffDays <= 365;
-                                                })
-                                                .sort((a,b) => new Date(a.date) - new Date(b.date));
+                                                });
+                                        
+                                            const occasionMap = new Map();
+                                            upcomingEventsAll.forEach(e => {
+                                                const key = `${e.personId}_${e.type}_${e.date}`;
+                                                if (!occasionMap.has(key)) occasionMap.set(key, []);
+                                                occasionMap.get(key).push(e);
+                                            });
                                         
                                             const displayItems = [];
-                                        
-                                            const seenNormalKeys = new Set();
-                                            upcomingEvents
-                                                .filter(e => e.type !== 'christmas' && e.type !== 'easter')
-                                                .forEach(e => {
-                                                    const key = `${e.personId}_${e.type}`;
-                                                    if (!seenNormalKeys.has(key)) {
-                                                        seenNormalKeys.add(key);
-                                                        displayItems.push({
-                                                            kind: 'event',
-                                                            date: e.date,
-                                                            event: e
-                                                        });
-                                                    }
-                                                });
-                                        
                                             const holidayGroups = {};
-                                            upcomingEvents
-                                                .filter(e => e.type === 'christmas' || e.type === 'easter')
-                                                .forEach(e => {
-                                                    const key = `${e.type}_${e.date}`;
-                                                    if (!holidayGroups[key]) {
-                                                        holidayGroups[key] = {
-                                                            kind: 'holidayGroup',
-                                                            type: e.type,
-                                                            date: e.date,
-                                                            events: []
-                                                        };
-                                                    }
-                                                    holidayGroups[key].events.push(e);
-                                                });
+                                        
+                                            occasionMap.forEach(list => {
+                                                let best = list.find(x => (x.participants || []).includes(currentUser?.name));
+                                                if (!best) best = list.find(x => (x.pendingParticipants || []).includes(currentUser?.name));
+                                                if (!best) best = list[0];
+                                                
+                                                if (best.type === 'christmas' || best.type === 'easter') {
+                                                    const hKey = `${best.type}_${best.date}`;
+                                                    if (!holidayGroups[hKey]) holidayGroups[hKey] = { kind: 'holidayGroup', type: best.type, date: best.date, events: [] };
+                                                    holidayGroups[hKey].events.push(best);
+                                                } else {
+                                                    displayItems.push({ kind: 'event', date: best.date, event: best });
+                                                }
+                                            });
                                         
                                             Object.values(holidayGroups).forEach(g => displayItems.push(g));
-                                        
                                             displayItems.sort((a, b) => new Date(a.date) - new Date(b.date));
                                         
                                             if (displayItems.length === 0) {
@@ -2265,10 +2213,7 @@
                                                     const borderColor = item.type === 'christmas' ? '#34C759' : '#007AFF';
                                                     const dL = getDaysLeft(item.date);
                                         
-                                                    const personsCount = item.events
-                                                        .map(e => safeGiftPersons.find(p => p.id === e.personId))
-                                                        .filter(p => p && p.name !== currentUser?.name)
-                                                        .length;
+                                                    const personsCount = item.events.length;
                                         
                                                     const unresolvedCount = item.events.filter(e => {
                                                         const p = safeGiftPersons.find(x => x.id === e.personId);
@@ -2388,7 +2333,10 @@
                                                 {safeGiftPersons
                                                     .filter(p => p.name !== currentUser?.name)
                                                     .filter(p => {
-                                                        if (p.type === 'custom' && !p.isShared && p.createdBy !== currentUser?.name) return false;
+                                                        if (p.type === 'custom') {
+                                                            const isLegacy = p.isShared === undefined && p.createdBy === undefined;
+                                                            if (!isLegacy && !p.isShared && p.createdBy !== currentUser?.name) return false;
+                                                        }
                                                         return true;
                                                     })
                                                     .map(p => (
