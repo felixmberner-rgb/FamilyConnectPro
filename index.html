@@ -1160,7 +1160,7 @@
                             hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: currentUser.name, reason: `Geschenk-Anteil für ${p.name}: ${perP}€`, targets: [mem], acknowledgedBy: [], isExpense: true });
                         }
                     });
-                    uE = uE.map(e => e.id === eId ? { ...e, status: 'settled', cost: amt } : e);
+                    uE = uE.map(e => e.id === eId ? { ...e, status: 'settled', cost: amt, buyer: e.buyer || currentUser.name } : e);
                     await getFamilyDocRef(currentFamily.id).update({ giftEvents: uE, expenses: nE, history: [...hUpd, ...getCleanHistory(safeHistory)] });
                     closeGiftEvent();
                     return;
@@ -1510,6 +1510,7 @@
                 const e = safeGiftEvents.find(x => x.id === activeGiftEventId);
                 const p = safeGiftPersons.find(x => x.id === e?.personId);
                 if (!e || !p) return null;
+                const isSolo = (e.participants || []).length === 1;
                 const isPart = (e.participants || []).includes(currentUser.name);
                 const isNeedGift = getGiftNeedValue(e, p);
                 
@@ -1597,7 +1598,7 @@
                                                 </div>
                                             </div>
 
-                                            {e.status === 'planning' && (
+                                            {e.status === 'planning' && !isSolo && (
                                                 <div className={STYLES.card + " p-5"}>
                                                     <h3 className="font-bold text-[18px] mb-4">Ideen Sammlung</h3>
                                                     <div className="space-y-3 mb-5">
@@ -1619,15 +1620,46 @@
                                                     {(e.ideas || []).length > 0 && (e.participants || []).length > 1 && (
                                                         <button onClick={() => handleGiftAction(e.id, 'start_vote', null)} className="w-full mt-5 py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF]/10 text-[#007AFF]">Abstimmung starten</button>
                                                     )}
-                                                    {(e.ideas || []).length > 0 && (e.participants || []).length === 1 && (
-                                                        <button onClick={() => handleGiftAction(e.id, 'start_vote', null)} className="w-full mt-5 py-3 rounded-[12px] font-bold text-[15px] bg-[#AF52DE]/10 text-[#AF52DE]">Zur Besorgung übergehen</button>
-                                                    )}
                                                 </div>
                                             )}
 
-                                            {e.status === 'voting' && (
+                                            {e.status === 'planning' && isSolo && (
+                                                <div className={STYLES.card + " p-5"}>
+                                                    <h3 className="font-bold text-[18px] mb-4">Ideen Sammlung & Abschluss</h3>
+                                                    <div className="space-y-3 mb-5">
+                                                        {(e.ideas || []).length === 0 ? <p className="text-[#8E8E93] text-[14px] italic">Noch keine Ideen.</p> : (e.ideas || []).map(i => {
+                                                            const mV = (i.votes || []).includes(currentUser.name);
+                                                            return (
+                                                                <div key={i.id} onClick={() => handleGiftAction(e.id, 'vote', i.id)} className={`flex justify-between items-center p-3 rounded-[12px] border cursor-pointer ${mV ? 'bg-[#007AFF]/10 border-[#007AFF]' : 'bg-[var(--app-bg)] dark:bg-[#2C2C2E] border-transparent'}`}>
+                                                                    <div className="flex-1 min-w-0 pr-2">
+                                                                        <p className="font-semibold text-[15px] truncate">{urlify(i.text)}</p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${mV ? 'border-[#007AFF] bg-[#007AFF]' : 'border-[#C6C6C8]'}`}>{mV && <Icon name="Check" size={14} className="text-white" />}</div>
+                                                                        <button onClick={(ev) => { ev.stopPropagation(); setModal({ type: 'confirm', title: 'Idee bearbeiten', message: 'Möchtest du die Idee bearbeiten oder löschen?', confirmText: 'Bearbeiten', cancelText: 'Löschen', onConfirm: () => { setModal(null); handleGiftAction(e.id, 'edit_idea', i.id); }, onCancel: () => { setModal(null); handleGiftAction(e.id, 'delete_idea', i.id); } }); }} className="text-[#8E8E93]"><Icon name="Pencil" size={16} /></button>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <input type="text" placeholder="Neue Idee (auch Links)..." className={STYLES.input} value={newGiftIdea} onChange={ev => setNewGiftIdea(ev.target.value)} />
+                                                        <button onClick={() => { if (newGiftIdea.trim()) { handleGiftAction(e.id, 'add_idea', newGiftIdea.trim()); setNewGiftIdea(''); } }} className="bg-[#AF52DE] text-white px-4 rounded-[12px]"><Icon name="Plus" size={20} /></button>
+                                                    </div>
+
+                                                    <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left mt-6">
+                                                        <p className="font-bold mb-3">Kosten (optional)</p>
+                                                        <div className="space-y-3">
+                                                            <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
+                                                            <button onClick={() => handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: 0 })} className={STYLES.btnPrimary}>Als erledigt markieren</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {e.status === 'voting' && !isSolo && (
                                                 <div className={STYLES.card + " p-5 border-[#007AFF] border-2"}>
-                                                    <h3 className="font-bold text-[18px] mb-4 text-[#007AFF]">{(e.participants || []).length === 1 ? 'Auswahl' : 'Abstimmung läuft'}</h3>
+                                                    <h3 className="font-bold text-[18px] mb-4 text-[#007AFF]">Abstimmung läuft</h3>
                                                     <div className="space-y-3 mb-5">
                                                         {(e.ideas || []).map(i => {
                                                             const mV = (i.votes || []).includes(currentUser.name);
@@ -1639,49 +1671,57 @@
                                                             )
                                                         })}
                                                     </div>
-                                                    <button onClick={() => handleGiftAction(e.id, 'end_vote')} className="w-full py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF] text-white shadow-sm">{(e.participants || []).length === 1 ? 'Auswahl bestätigen' : 'Abstimmung beenden'}</button>
+                                                    <button onClick={() => handleGiftAction(e.id, 'end_vote')} className="w-full py-3 rounded-[12px] font-bold text-[15px] bg-[#007AFF] text-white shadow-sm">Abstimmung beenden</button>
                                                 </div>
                                             )}
 
                                             {(e.status === 'buying' || e.status === 'settled') && (
                                                 <div className={STYLES.card + " p-5"}>
-                                                    <h3 className="font-bold text-[18px] mb-4">Besorgung</h3>
+                                                    <h3 className="font-bold text-[18px] mb-4">{e.status === 'settled' ? 'Abgeschlossen' : 'Besorgung'}</h3>
+                                                    
                                                     {(e.ideas || []).length > 0 && (
                                                         <div className="mb-4 p-3 bg-[#34C759]/10 rounded-[12px] border border-[#34C759]/30">
-                                                            <p className="text-[12px] text-[#34C759] font-bold uppercase mb-1">Favoriten</p>
+                                                            <p className="text-[12px] text-[#34C759] font-bold uppercase mb-1">{isSolo ? 'Gewählte Idee' : 'Favoriten'}</p>
                                                             {(() => {
                                                                 let mx = -1; (e.ideas || []).forEach(i => { if((i.votes || []).length > mx) mx = (i.votes || []).length; });
                                                                 const favs = (e.ideas || []).filter(i => (i.votes || []).length === mx);
-                                                                return favs.map(f => <p key={f.id} className="font-semibold">{urlify(f.text)}</p>);
+                                                                return favs.length > 0 
+                                                                    ? favs.map(f => <p key={f.id} className="font-semibold">{urlify(f.text)}</p>)
+                                                                    : <p className="text-[#8E8E93] text-[13px] italic">Keine Auswahl getroffen.</p>;
                                                             })()}
                                                         </div>
                                                     )}
-                                                    {!e.buyer ? (
+                                                    
+                                                    {!e.buyer && !isSolo && e.status !== 'settled' ? (
                                                         <button onClick={() => handleGiftAction(e.id, 'claim_buy')} className="w-full py-4 rounded-[14px] bg-[#AF52DE] text-white font-bold text-[17px] shadow-sm">Ich besorge es!</button>
                                                     ) : (
                                                         <div className="text-center">
-                                                            <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
-                                                            <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
+                                                            {e.status !== 'settled' && (
+                                                                <>
+                                                                    <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
+                                                                    <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
+                                                                </>
+                                                            )}
                                                             
-                                                            {e.buyer === currentUser.name && !e.settled && e.status !== 'settled' && (
+                                                            {e.buyer === currentUser.name && !isSolo && e.status !== 'settled' && (
                                                                 <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-4 rounded-[16px] text-left">
-                                                                    <p className="font-bold mb-3">{(e.participants || []).length > 1 ? 'Kosten eintragen' : 'Kosten (optional)'}</p>
+                                                                    <p className="font-bold mb-3">Kosten eintragen</p>
                                                                     <div className="space-y-3">
                                                                         <input type="text" inputMode="decimal" placeholder="Gesamtpreis in €" className={STYLES.input} value={giftBuyerAmount} onChange={ev => setGiftBuyerAmount(ev.target.value.replace(/[^0-9.,]/g, ''))} />
-                                                                        {(e.participants || []).length > 1 && (
-                                                                            <div>
-                                                                                <p className={STYLES.subTitle + " !ml-1"}>Zahlen externe Personen mit? (Anzahl)</p>
-                                                                                <input type="number" min="0" className={STYLES.input} value={giftBuyerExtCount} onChange={ev => setGiftBuyerExtCount(ev.target.value)} />
-                                                                            </div>
-                                                                        )}
-                                                                        <button onClick={() => { if(giftBuyerAmount || (e.participants || []).length===1) handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: giftBuyerExtCount }) }} className={STYLES.btnPrimary}>{(e.participants || []).length > 1 ? 'Kosten aufteilen & buchen' : 'Als erledigt markieren'}</button>
+                                                                        <div>
+                                                                            <p className={STYLES.subTitle + " !ml-1"}>Zahlen externe Personen mit? (Anzahl)</p>
+                                                                            <input type="number" min="0" className={STYLES.input} value={giftBuyerExtCount} onChange={ev => setGiftBuyerExtCount(ev.target.value)} />
+                                                                        </div>
+                                                                        <button onClick={() => { if(giftBuyerAmount || (e.participants || []).length===1) handleGiftAction(e.id, 'settle', { amount: giftBuyerAmount||'0', extCount: giftBuyerExtCount }) }} className={STYLES.btnPrimary}>Kosten aufteilen & buchen</button>
                                                                     </div>
                                                                 </div>
                                                             )}
+                                                            
                                                             {e.status === 'settled' && (
                                                                 <div className="flex flex-col items-center">
-                                                                    <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1"><Icon name="CheckCircle2" size={18} /> Erledigt {e.cost > 0 && `(${e.cost}€)`}</p>
-                                                                    <button onClick={() => handleGiftAction(e.id, 'reset_gift')} className="mt-4 text-[13px] font-bold text-[#FF9500] bg-[#FF9500]/10 px-4 py-2 rounded-full">Zurücksetzen</button>
+                                                                    <p className="text-[#34C759] font-bold mt-2 flex justify-center items-center gap-1 text-[18px]"><Icon name="CheckCircle2" size={24} /> Erledigt {e.cost > 0 && `(${e.cost}€)`}</p>
+                                                                    {(!isSolo && e.buyer) && <p className="text-[13px] text-[#8E8E93] mt-1">Besorgt von {e.buyer}</p>}
+                                                                    <button onClick={() => handleGiftAction(e.id, 'reset_gift')} className="mt-6 text-[14px] font-bold text-[#FF9500] bg-[#FF9500]/10 px-5 py-2.5 rounded-full active:scale-95 transition-transform">Zurücksetzen</button>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1846,10 +1886,10 @@
                                         <div className="flex justify-between items-end mb-2 px-2"><h2 className={STYLES.subTitle + " !mb-0 !ml-0"}>Empfänger</h2><button className="text-[14px] text-[#007AFF] font-semibold active:opacity-70" onClick={() => { if (navigator.vibrate) navigator.vibrate(10); const o = activeMembersList.filter(m => m?.name !== currentUser?.name && !(m?.dndUntil && new Date(m.dndUntil) > new Date())).map(m => m.name); setSelectedMembers(selectedMembers.length === o.length ? [] : o); }}>{selectedMembers.length >= (activeMembersList.length - 1) ? 'Keine' : 'Alle'}</button></div>
                                         <div className={STYLES.card}>{activeMembersList.filter(m => m?.name !== currentUser?.name).map((m, i, a) => { const iS = selectedMembers.includes(m.name); const iD = m.dndUntil && new Date(m.dndUntil) > new Date(); return (<div key={m.name} onClick={() => { if (iD) return; if (navigator.vibrate) navigator.vibrate(10); setSelectedMembers(p => iS ? p.filter(x => x !== m.name) : [...p, m.name]); }} className={`flex justify-between p-4 ${i !== a.length - 1 ? 'border-b border-[#E5E5EA] dark:border-[#38383A]' : ''} ${iD ? 'opacity-40 grayscale' : ''}`}><div className="flex items-center gap-2"><span className="font-medium text-[17px] truncate">{m.name}</span>{iD && <Icon name="BellOff" size={16} className="text-[#FF9500]" />}</div><div className={`w-[51px] h-[31px] rounded-full relative flex-shrink-0 transition-colors ${iS ? 'bg-[#34C759]' : iD ? 'bg-gray-200' : 'bg-[#E9E9EB] dark:bg-[#38383A]'}`}><div className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] bg-white rounded-full transition-transform ${iS ? 'translate-x-[20px]' : 'translate-x-0'}`} /></div></div>); })}</div>
                                     </section>
-                                    <button disabled={!selectedReason || selectedMembers.length === 0 || isSending} onClick={() => handleSendNotification()} className={`w-full py-4 rounded-[14px] font-semibold text-[17px] ${!selectedReason || selectedMembers.length === 0 ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#8E8E93]' : 'bg-[#007AFF] text-white'}`}>{isSending? 'Wird gesendet...' : 'Jetzt rufen'}</button>
+                                    <button disabled={!selectedReason || selectedMembers.length === 0 || isSending} onClick={() => handleSendNotification()} className={`w-full py-4 rounded-[14px] font-semibold text-[17px] ${!selectedReason || selectedMembers.length === 0 ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#8E8E93]' : 'bg-[#007AFF] text-white'}`}>{isSending ? 'Wird gesendet...' : 'Jetzt rufen'}</button>
                                 </div>
                             )}
-                            {activeTab === 'shopping' && (
+                          {activeTab === 'shopping' && (
                                 <div className={`animate-in fade-in duration-500 ${isShoppingMode ? 'pb-0 h-full flex flex-col' : 'pb-10 space-y-6'}`}>
                                     {shoppingSubTab === 'list' && (
                                         <>
@@ -2141,13 +2181,13 @@
                                                 
                                             {(() => {
                                             const upcomingEvents = safeGiftEvents
-                                                .filter(e => e.status !== 'settled')
                                                 .filter(e => {
                                                     const p = safeGiftPersons.find(x => x.id === e.personId);
-                                                    if (p && p.type === 'custom' && !p.isShared && e.createdBy !== currentUser?.name) {
+                                                    if (!p) return false;
+                                                    if (p.type === 'custom' && !p.isShared && p.createdBy !== currentUser?.name) {
                                                         return false; 
                                                     }
-                                                    return p && p.name !== currentUser?.name;
+                                                    return p.name !== currentUser?.name;
                                                 })
                                                 .filter(e => {
                                                     const d = new Date(e.date); d.setHours(0,0,0,0);
@@ -2286,6 +2326,7 @@
                                         
                                                 let statusBadge = null;
                                                 if (!isNeedGift) statusBadge = <span className="text-[11px] font-bold bg-[#8E8E93]/20 text-[#8E8E93] px-2 py-0.5 rounded-full">Kein Geschenk</span>;
+                                                else if (e.status === 'settled') statusBadge = <span className="text-[11px] font-bold bg-[#34C759]/20 text-[#34C759] px-2 py-0.5 rounded-full">Erledigt</span>;
                                                 else if (e.status === 'planning' && (e.participants || []).length === 0) statusBadge = <span className="text-[11px] font-bold bg-[#FF3B30]/20 text-[#FF3B30] px-2 py-0.5 rounded-full">Ungelöst</span>;
                                                 else if (e.status === 'planning') statusBadge = <span className="text-[11px] font-bold bg-[#FF9500]/20 text-[#FF9500] px-2 py-0.5 rounded-full">Planung</span>;
                                                 else if (e.status === 'voting') statusBadge = <span className="text-[11px] font-bold bg-[#007AFF]/20 text-[#007AFF] px-2 py-0.5 rounded-full">Abstimmung</span>;
@@ -2344,7 +2385,13 @@
                                             </div>
                                             
                                             <div className="space-y-4">
-                                                {safeGiftPersons.filter(p => p.name !== currentUser?.name).map(p => (
+                                                {safeGiftPersons
+                                                    .filter(p => p.name !== currentUser?.name)
+                                                    .filter(p => {
+                                                        if (p.type === 'custom' && !p.isShared && p.createdBy !== currentUser?.name) return false;
+                                                        return true;
+                                                    })
+                                                    .map(p => (
                                                     <div key={p.id} className={STYLES.card + " p-4"}>
                                                         <div className="flex justify-between items-center mb-4">
                                                             <div className="flex items-center gap-3">
