@@ -88,12 +88,13 @@
                             await docRef.update({ history: [newHistoryItem, ...cleanHistory] });
                             await Promise.all(fetchPromises);
 
-                            /* NEU: Node-RED Klingel-Trigger für Kurzbefehle */
+                           /* NEU: Node-RED Klingel-Trigger für Kurzbefehle */
                             if (rObj.category === 'meal') {
                                 fetch('http://192.168.178.66:1880/klingel', {
                                     method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ aktion: rObj.sentence, ausloeser: 'Kurzbefehl' })
+                                    mode: 'no-cors',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: 'ausloeser=kurzbefehl'
                                 }).catch(e => {});
                             }
 
@@ -926,8 +927,14 @@
             const requestPushPermission = async (slnt = false) => { if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return !slnt && showAlert("Fehler", "Push nicht unterstützt."); try { let s = {}; let f = {}; try { const r = localStorage.getItem('firebaseConfig') || localStorage.getItem('familyConnectAppConfig'); if (r) { const p = JSON.parse(r); s = p.vapidKey ? p : (p.firebaseConfig || {}); f = p.firebaseConfig || p; } } catch (e) { } const v = currentFamily?.vapidKey || s.vapidKey; if (!v) return !slnt && showAlert("Fehler", "Kein VAPID-Key!"); let w = await navigator.serviceWorker.getRegistration(); if (!w) { w = await navigator.serviceWorker.register(`./firebase-messaging-sw.js?apiKey=${f.apiKey || ''}&projectId=${f.projectId || ''}&senderId=${f.messagingSenderId || ''}&appId=${f.appId || ''}`); } else { await w.update(); } if (slnt && Notification.permission !== 'granted') return; if (!slnt) setPushStatus('Wird angefragt...'); const p = slnt ? Notification.permission : await Notification.requestPermission(); if (p !== 'granted') { if (!slnt) setPushStatus('Abgelehnt ❌'); return; } const t = await messaging.getToken({ vapidKey: v.trim(), serviceWorkerRegistration: w }); if (!t) { if (!slnt) { setPushStatus('Fehler'); showAlert("Fehler", "Kein Token."); } return; } if (currentUser?.fcmToken !== t) await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: t } : m) }); setPushStatus('Aktiviert ✅'); if (!slnt) showAlert("Erfolg", "Push aktiviert!"); } catch (e) { if (!slnt) { setPushStatus('Fehler'); showAlert("Token Fehler: " + e.message); } } };
 
             const handleSendNotification = async (cRO = null, cT = null, iR = false) => { const rO = cRO || REASONS.find(r => r.id === selectedReason); const tL = cT || selectedMembers; if (!rO || tL.length === 0) return; if (safeHistory.filter(h => h?.sender === currentUser.name && h?.timestamp && new Date(h.timestamp).toDateString() === new Date().toDateString()).length >= 20) return showAlert("Limit", "Tageslimit erreicht."); setIsSending(true); if (navigator.vibrate) navigator.vibrate(10); const n = new Date(); const iN = n.getHours() >= 22 || n.getHours() < 7; const aT = []; safeMembers.forEach(m => { if (m && tL.includes(m.name) && m.status !== 'pending') { if (!(m.dndUntil && new Date(m.dndUntil) > n)) { aT.push(m.name); if (!iN && rO.category !== 'push_only') { const u = rO.category === 'meal' ? m.voiceMonkeyMeal : m.voiceMonkeyOther; if (u && u.trim() !== '') fetch(u).catch(e => { }); } } } }); if (aT.length === 0) { setIsSending(false); return showAlert("Hinweis", "Alle auf DND."); } const nH = { id: Date.now().toString(), timestamp: n.toISOString(), sender: currentUser.name, reason: rO.sentence, targets: aT, acknowledgedBy: [], isExpense: false, isResend: iR, category: rO.category }; try { await getFamilyDocRef(currentFamily.id).update({ history: [nH, ...getCleanHistory(safeHistory)] }); if (navigator.vibrate) navigator.vibrate([30, 50, 30]); if (!cRO && rO.category !== 'push_only' && !iR) setTrackingEventId(nH.id); 
-            if (rO.category === 'meal') { fetch('http://192.168.178.66:1880/klingel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: rO.sentence, ausloeser: currentUser.name }) }).catch(e => {}); }
-            setSelectedReason(null); setSelectedMembers([]); } catch (e) { } setTimeout(() => setIsSending(false), 800); };
+            if (rO.category === 'meal') { 
+                fetch('http://192.168.178.39:1880/klingel', { 
+                    method: 'POST', 
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+                    body: 'ausloeser=app' 
+                }).catch(e => {}); 
+            };
 
             const handleAcknowledge = async (hId, rT = 'Bestätigt') => { if (navigator.vibrate) navigator.vibrate([20, 30]); const rS = `${currentUser.name}:${rT}`; try { const r = getFamilyDocRef(currentFamily.id); const s = await r.get(); if (!s.exists) return; let c = false; const u = (s.data().history || []).map(i => { if (i.id === hId) { const a = Array.isArray(i.acknowledgedBy) ? i.acknowledgedBy : []; if (!a.some(x => x === currentUser.name || x.startsWith(currentUser.name + ':'))) { c = true; return { ...i, acknowledgedBy: [...a, rS] }; } } return i; }); if (c) await r.update({ history: getCleanHistory(u) }); } catch (e) { } };
 
