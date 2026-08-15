@@ -934,7 +934,7 @@
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
                     body: 'ausloeser=app' 
                 }).catch(e => {}); 
-            };
+            }
 
             const handleAcknowledge = async (hId, rT = 'Bestätigt') => { if (navigator.vibrate) navigator.vibrate([20, 30]); const rS = `${currentUser.name}:${rT}`; try { const r = getFamilyDocRef(currentFamily.id); const s = await r.get(); if (!s.exists) return; let c = false; const u = (s.data().history || []).map(i => { if (i.id === hId) { const a = Array.isArray(i.acknowledgedBy) ? i.acknowledgedBy : []; if (!a.some(x => x === currentUser.name || x.startsWith(currentUser.name + ':'))) { c = true; return { ...i, acknowledgedBy: [...a, rS] }; } } return i; }); if (c) await r.update({ history: getCleanHistory(u) }); } catch (e) { } };
 
