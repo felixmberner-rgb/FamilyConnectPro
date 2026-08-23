@@ -88,7 +88,7 @@
                             await docRef.update({ history: [newHistoryItem, ...cleanHistory] });
                             await Promise.all(fetchPromises);
 
-                           /* NEU: Node-RED Klingel-Trigger für Kurzbefehle */
+                            /* Node-RED Klingel-Trigger für Kurzbefehle */
                             if (rObj.category === 'meal') {
                                 fetch('http://192.168.178.66:1880/klingel', {
                                     method: 'POST',
@@ -277,7 +277,15 @@
         function getWeekNumber(d) { d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7)); const ys = new Date(Date.UTC(d.getUTCFullYear(), 0, 1)); return Math.ceil((((d - ys) / 86400000) + 1) / 7); }
         function getDaysLeft(dateStr) { 
             const today = new Date(); today.setHours(0,0,0,0); 
-            const d = new Date(dateStr); d.setHours(0,0,0,0);
+            if (!dateStr) return 0;
+            const parts = dateStr.split('-');
+            let d;
+            if (parts.length === 3) {
+                d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            } else {
+                d = new Date(dateStr);
+            }
+            d.setHours(0,0,0,0);
             return Math.round((d - today) / (1000 * 60 * 60 * 24)); 
         }
 
@@ -611,8 +619,11 @@
 
             const getGiftNeedValue = (event, person) => {
                 const field = getGiftNeedField(event?.type);
+                if (event?.needsGiftOverride === true) return true;
                 if (!field || !person) return true;
-                return Boolean(event?.needsGiftOverride || person[field]);
+                if (person[field] !== undefined) return Boolean(person[field]);
+                if (event?.type === 'birthdate' || event?.type === 'christmas') return true;
+                return false;
             };
 
             const openGiftEvent = (eventId) => {
@@ -714,7 +725,7 @@
                     let changed = false;
                     safeMembers.forEach(m => {
                         if (!fp.find(p => p.name === m.name && p.type === 'family')) {
-                            fp.push({ id: generateId(), name: m.name, type: 'family', birthdate: '', nameday: '', birthdayNeedsGift: true, namedayNeedsGift: false, christmasNeedsGift: true, easterNeedsGift: false });
+                            fp.push({ id: generateId(), name: m.name, type: 'family', isShared: true, createdBy: m.name, birthdate: '', nameday: '', birthdayNeedsGift: true, namedayNeedsGift: false, christmasNeedsGift: true, easterNeedsGift: false });
                             changed = true;
                         }
                     });
@@ -742,19 +753,24 @@
                         ['birthdate', 'nameday'].forEach(type => {
                             if (p[type]) {
                                 const pts = p[type].split('-');
-                                if (pts.length === 3) {
-                                    [cy, cy+1].forEach(yr => {
-                                        updateEvent(p, type, yr, `${yr}-${pts[1]}-${pts[2]}`);
+                                let mStr = '', dStr = '';
+                                if (pts.length === 3) { mStr = pts[1]; dStr = pts[2]; }
+                                else if (pts.length === 2) { mStr = pts[0]; dStr = pts[1]; }
+                                if (mStr && dStr) {
+                                    const mP = mStr.padStart(2, '0');
+                                    const dP = dStr.padStart(2, '0');
+                                    [cy, cy+1, cy+2].forEach(yr => {
+                                        updateEvent(p, type, yr, `${yr}-${mP}-${dP}`);
                                     });
                                 }
                             }
                         });
                         
-                        [cy, cy+1].forEach(yr => {
+                        [cy, cy+1, cy+2].forEach(yr => {
                             updateEvent(p, 'christmas', yr, `${yr}-12-24`);
                         });
                         
-                        [cy, cy+1].forEach(yr => {
+                        [cy, cy+1, cy+2].forEach(yr => {
                             const Y = yr, a = Y % 19, b = Math.floor(Y / 100), c = Y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
                             const easterDateStr = `${yr}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
                             updateEvent(p, 'easter', yr, easterDateStr);
@@ -765,7 +781,7 @@
                         getFamilyDocRef(currentFamily.id).update({ giftPersons: fp, giftEvents: ce }).catch(()=>{});
                     }
                 }
-            }, [appLoaded, currentFamily?.id, safeGiftPersons.length, safeMembers.length, activeModIds]);
+            }, [appLoaded, currentFamily?.id, JSON.stringify(safeGiftPersons), safeMembers.length, activeModIds]);
 
             useEffect(() => {
                 if (appLoaded && currentFamily && safeHouseholdMembers.length > 0 && safeHouseholdChores.length > 0) {
@@ -926,7 +942,7 @@
 
             const requestPushPermission = async (slnt = false) => { if (!window.isSecureContext || !('Notification' in window) || !('serviceWorker' in navigator)) return !slnt && showAlert("Fehler", "Push nicht unterstützt."); try { let s = {}; let f = {}; try { const r = localStorage.getItem('firebaseConfig') || localStorage.getItem('familyConnectAppConfig'); if (r) { const p = JSON.parse(r); s = p.vapidKey ? p : (p.firebaseConfig || {}); f = p.firebaseConfig || p; } } catch (e) { } const v = currentFamily?.vapidKey || s.vapidKey; if (!v) return !slnt && showAlert("Fehler", "Kein VAPID-Key!"); let w = await navigator.serviceWorker.getRegistration(); if (!w) { w = await navigator.serviceWorker.register(`./firebase-messaging-sw.js?apiKey=${f.apiKey || ''}&projectId=${f.projectId || ''}&senderId=${f.messagingSenderId || ''}&appId=${f.appId || ''}`); } else { await w.update(); } if (slnt && Notification.permission !== 'granted') return; if (!slnt) setPushStatus('Wird angefragt...'); const p = slnt ? Notification.permission : await Notification.requestPermission(); if (p !== 'granted') { if (!slnt) setPushStatus('Abgelehnt ❌'); return; } const t = await messaging.getToken({ vapidKey: v.trim(), serviceWorkerRegistration: w }); if (!t) { if (!slnt) { setPushStatus('Fehler'); showAlert("Fehler", "Kein Token."); } return; } if (currentUser?.fcmToken !== t) await getFamilyDocRef(currentFamily.id).update({ members: safeMembers.map(m => m.name === currentUser?.name ? { ...m, fcmToken: t } : m) }); setPushStatus('Aktiviert ✅'); if (!slnt) showAlert("Erfolg", "Push aktiviert!"); } catch (e) { if (!slnt) { setPushStatus('Fehler'); showAlert("Token Fehler: " + e.message); } } };
 
-           const handleSendNotification = async (cRO = null, cT = null, iR = false) => { const rO = cRO || REASONS.find(r => r.id === selectedReason); const tL = cT || selectedMembers; if (!rO || tL.length === 0) return; if (safeHistory.filter(h => h?.sender === currentUser.name && h?.timestamp && new Date(h.timestamp).toDateString() === new Date().toDateString()).length >= 20) return showAlert("Limit", "Tageslimit erreicht."); setIsSending(true); if (navigator.vibrate) navigator.vibrate(10); const n = new Date(); const iN = n.getHours() >= 22 || n.getHours() < 7; const aT = []; safeMembers.forEach(m => { if (m && tL.includes(m.name) && m.status !== 'pending') { if (!(m.dndUntil && new Date(m.dndUntil) > n)) { aT.push(m.name); if (!iN && rO.category !== 'push_only') { const u = rO.category === 'meal' ? m.voiceMonkeyMeal : m.voiceMonkeyOther; if (u && u.trim() !== '') fetch(u).catch(e => { }); } } } }); if (aT.length === 0) { setIsSending(false); return showAlert("Hinweis", "Alle auf DND."); } const nH = { id: Date.now().toString(), timestamp: n.toISOString(), sender: currentUser.name, reason: rO.sentence, targets: aT, acknowledgedBy: [], isExpense: false, isResend: iR, category: rO.category }; try { await getFamilyDocRef(currentFamily.id).update({ history: [nH, ...getCleanHistory(safeHistory)] }); if (navigator.vibrate) navigator.vibrate([30, 50, 30]); if (!cRO && rO.category !== 'push_only' && !iR) setTrackingEventId(nH.id); 
+            const handleSendNotification = async (cRO = null, cT = null, iR = false) => { const rO = cRO || REASONS.find(r => r.id === selectedReason); const tL = cT || selectedMembers; if (!rO || tL.length === 0) return; if (safeHistory.filter(h => h?.sender === currentUser.name && h?.timestamp && new Date(h.timestamp).toDateString() === new Date().toDateString()).length >= 20) return showAlert("Limit", "Tageslimit erreicht."); setIsSending(true); if (navigator.vibrate) navigator.vibrate(10); const n = new Date(); const iN = n.getHours() >= 22 || n.getHours() < 7; const aT = []; safeMembers.forEach(m => { if (m && tL.includes(m.name) && m.status !== 'pending') { if (!(m.dndUntil && new Date(m.dndUntil) > n)) { aT.push(m.name); if (!iN && rO.category !== 'push_only') { const u = rO.category === 'meal' ? m.voiceMonkeyMeal : m.voiceMonkeyOther; if (u && u.trim() !== '') fetch(u).catch(e => { }); } } } }); if (aT.length === 0) { setIsSending(false); return showAlert("Hinweis", "Alle auf DND."); } const nH = { id: Date.now().toString(), timestamp: n.toISOString(), sender: currentUser.name, reason: rO.sentence, targets: aT, acknowledgedBy: [], isExpense: false, isResend: iR, category: rO.category }; try { await getFamilyDocRef(currentFamily.id).update({ history: [nH, ...getCleanHistory(safeHistory)] }); if (navigator.vibrate) navigator.vibrate([30, 50, 30]); if (!cRO && rO.category !== 'push_only' && !iR) setTrackingEventId(nH.id); 
             
             if (rO.category === 'meal') { 
                 fetch('http://192.168.178.66:1880/klingel', { 
@@ -1084,7 +1100,7 @@
             const addCustomGiftPerson = async () => {
                 const n = prompt("Name der Person:");
                 if (!n || !n.trim()) return;
-                const uP = [...safeGiftPersons, { id: generateId(), name: n.trim(), type: 'custom', isShared: false, createdBy: currentUser.name, birthdate: '', nameday: '', birthdayNeedsGift: true, namedayNeedsGift: false, christmasNeedsGift: true, easterNeedsGift: false }];
+                const uP = [...safeGiftPersons, { id: generateId(), name: n.trim(), type: 'custom', isShared: true, createdBy: currentUser.name, birthdate: '', nameday: '', birthdayNeedsGift: true, namedayNeedsGift: false, christmasNeedsGift: true, easterNeedsGift: false }];
                 await getFamilyDocRef(currentFamily.id).update({ giftPersons: uP });
             };
             
@@ -1163,10 +1179,14 @@
                     uE = uE.map(e => e.id === eId ? { ...e, status: 'buying' } : e);
                     hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `Abstimmung beendet! Favorit für ${p.name}: ${win || 'Keine'}. Wer besorgt es?`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'claim_buy') {
-                    uE = uE.map(e => e.id === eId ? { ...e, buyer: currentUser.name } : e);
+                    uE = uE.map(e => e.id === eId ? { ...e, buyer: currentUser.name, status: 'buying' } : e);
                     hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `${currentUser.name} besorgt das Geschenk für ${p.name}!`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
+                } else if (action === 'unclaim_buy') {
+                    uE = uE.map(e => e.id === eId ? { ...e, buyer: null, status: 'buying' } : e);
+                    hUpd.push({ id: generateId(), timestamp: new Date().toISOString(), sender: 'System', reason: `${currentUser.name} hat die Besorgung für ${p.name} abgegeben. Wer übernimmt?`, targets: (ev.participants || []).filter(x => x !== currentUser.name), acknowledgedBy: [], isCustomPush: true, category: 'other' });
                 } else if (action === 'reset_gift') {
-                    uE = uE.map(e => e.id === eId ? { ...e, status: 'buying', cost: null, buyer: null, settled: false } : e);
+                    const isSoloEvent = (ev.participants || []).length <= 1;
+                    uE = uE.map(e => e.id === eId ? { ...e, status: isSoloEvent ? 'planning' : ((e.ideas || []).length > 0 ? 'buying' : 'planning'), cost: null, buyer: null, settled: false } : e);
                 } else if (action === 'settle') {
                     const amt = parseFloat(String(payload.amount || '0').replace(',', '.'));
                     const extCount = parseInt(payload.extCount || '0', 10);
@@ -1193,258 +1213,262 @@
             };
 
             const syncCalendar = async (url) => {
-            const rawUrl = (url || '').trim();
-        
-            if (!rawUrl) {
-                showAlert('Fehler', 'Bitte zuerst einen Kalender-Link eintragen.');
-                return;
-            }
-        
-            const normalizeUrlCandidates = (u) => {
-                const trimmed = String(u || '').trim();
-        
-                if (trimmed.toLowerCase().startsWith('webcal://')) {
-                    const withoutScheme = trimmed.substring('webcal://'.length);
+                const rawUrl = (url || '').trim();
+            
+                if (!rawUrl) {
+                    showAlert('Fehler', 'Bitte zuerst einen Kalender-Link eintragen.');
+                    return;
+                }
+            
+                const normalizeUrlCandidates = (u) => {
+                    const trimmed = String(u || '').trim();
+            
+                    if (trimmed.toLowerCase().startsWith('webcal://')) {
+                        const withoutScheme = trimmed.substring('webcal://'.length);
+                        return [
+                            'https://' + withoutScheme,
+                            'http://' + withoutScheme
+                        ];
+                    }
+            
+                    return [trimmed];
+                };
+            
+                const decodeIcsText = (text) => {
+                    return String(text || '')
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\,/g, ',')
+                        .replace(/\\;/g, ';')
+                        .replace(/\\\\/g, '\\')
+                        .trim();
+                };
+            
+                const unfoldIcs = (text) => String(text || '').replace(/\r?\n[ \t]/g, '');
+            
+                const buildAttempts = (calendarUrl) => {
+                    const encoded = encodeURIComponent(calendarUrl);
+            
                     return [
-                        'https://' + withoutScheme,
-                        'http://' + withoutScheme
+                        {
+                            url: calendarUrl,
+                            type: 'text'
+                        },
+                        {
+                            url: `https://api.allorigins.win/raw?url=${encoded}`,
+                            type: 'text'
+                        },
+                        {
+                            url: `https://api.allorigins.win/get?url=${encoded}`,
+                            type: 'allorigins-json'
+                        },
+                        {
+                            url: `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
+                            type: 'text'
+                        },
+                        {
+                            url: `https://corsproxy.io/?${encoded}`,
+                            type: 'text'
+                        }
                     ];
-                }
-        
-                return [trimmed];
-            };
-        
-            const decodeIcsText = (text) => {
-                return String(text || '')
-                    .replace(/\\n/g, '\n')
-                    .replace(/\\,/g, ',')
-                    .replace(/\\;/g, ';')
-                    .replace(/\\\\/g, '\\')
-                    .trim();
-            };
-        
-            const unfoldIcs = (text) => String(text || '').replace(/\r?\n[ \t]/g, '');
-        
-            const buildAttempts = (calendarUrl) => {
-                const encoded = encodeURIComponent(calendarUrl);
-        
-                return [
-                    {
-                        url: calendarUrl,
-                        type: 'text'
-                    },
-                    {
-                        url: `https://api.allorigins.win/raw?url=${encoded}`,
-                        type: 'text'
-                    },
-                    {
-                        url: `https://api.allorigins.win/get?url=${encoded}`,
-                        type: 'allorigins-json'
-                    },
-                    {
-                        url: `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
-                        type: 'text'
-                    },
-                    {
-                        url: `https://corsproxy.io/?${encoded}`,
-                        type: 'text'
+                };
+            
+                const readIcs = async () => {
+                    const urlCandidates = normalizeUrlCandidates(rawUrl);
+                    let lastErr = null;
+            
+                    for (const candidate of urlCandidates) {
+                        const attempts = buildAttempts(candidate);
+            
+                        for (const attempt of attempts) {
+                            try {
+                                const res = await fetch(attempt.url, {
+                                    cache: 'no-store'
+                                });
+            
+                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+                                if (attempt.type === 'allorigins-json') {
+                                    const json = await res.json();
+                                    if (json && json.contents) return json.contents;
+                                    throw new Error('Leere Proxy-Antwort');
+                                }
+            
+                                const txt = await res.text();
+            
+                                if (txt && (txt.includes('BEGIN:VCALENDAR') || txt.includes('BEGIN:VEVENT'))) {
+                                    return txt;
+                                }
+            
+                                if (txt && txt.length > 50) {
+                                    return txt;
+                                }
+            
+                                throw new Error('Keine ICS-Daten erhalten');
+                            } catch (err) {
+                                lastErr = err;
+                            }
+                        }
                     }
-                ];
-            };
-        
-            const readIcs = async () => {
-                const urlCandidates = normalizeUrlCandidates(rawUrl);
-                let lastErr = null;
-        
-                for (const candidate of urlCandidates) {
-                    const attempts = buildAttempts(candidate);
-        
-                    for (const attempt of attempts) {
-                        try {
-                            const res = await fetch(attempt.url, {
-                                cache: 'no-store'
+            
+                    throw lastErr || new Error('Kalender konnte nicht geladen werden');
+                };
+            
+                const parseDateFromIcsValue = (value) => {
+                    if (!value) return '';
+            
+                    const clean = String(value).trim();
+                    const m = clean.match(/^(\d{4})(\d{2})(\d{2})/);
+            
+                    if (!m) return '';
+            
+                    return `${m[1]}-${m[2]}-${m[3]}`;
+                };
+            
+                const extractPersonAndType = (summaryRaw) => {
+                    const summary = decodeIcsText(summaryRaw).replace(/\s+/g, ' ').trim();
+                    if (!summary) return null;
+            
+                    let match =
+                        summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+(?:\d+\.\s+)?Geburtstag/i) ||
+                        summary.match(/Geburtstag\s+(?:von\s+)?(.+)/i) ||
+                        summary.match(/^(.+?)\s*\(\s*Geburtstag\s*\)/i) ||
+                        summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+(?:\d+(?:th|st|nd|rd)\s+)?Birthday/i) ||
+                        summary.match(/Birthday\s+(?:of\s+)?(.+)/i);
+            
+                    if (match) return { type: 'birthdate', name: match[1].trim() };
+            
+                    match =
+                        summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+Namenstag/i) ||
+                        summary.match(/Namenstag\s+(?:von\s+)?(.+)/i) ||
+                        summary.match(/^(.+?)\s*\(\s*Namenstag\s*\)/i);
+            
+                    if (match) return { type: 'nameday', name: match[1].trim() };
+            
+                    return null;
+                };
+            
+                try {
+                    const icsRaw = await readIcs();
+                    const icsData = unfoldIcs(icsRaw);
+                    const lines = icsData.split(/\r?\n/);
+            
+                    let inEvent = false;
+                    let summary = '';
+                    let dtstart = '';
+            
+                    let newPersons = [...safeGiftPersons];
+                    let changed = false;
+                    let foundCount = 0;
+            
+                    const memberNames = new Set(activeMembersList.map(m => m.name.toLowerCase()));
+            
+                    const finishEvent = () => {
+                        if (!summary || !dtstart) return;
+            
+                        const extracted = extractPersonAndType(summary);
+                        if (!extracted || !extracted.name) return;
+            
+                        const dStr = parseDateFromIcsValue(dtstart);
+                        if (!dStr) return;
+            
+                        foundCount++;
+            
+                        const existingIndex = newPersons.findIndex(x =>
+                            x.name && x.name.toLowerCase().trim() === extracted.name.toLowerCase().trim()
+                        );
+            
+                        if (existingIndex === -1) {
+                            newPersons.push({
+                                id: generateId(),
+                                name: extracted.name,
+                                type: memberNames.has(extracted.name.toLowerCase()) ? 'family' : 'custom',
+                                isShared: true,
+                                createdBy: currentUser?.name || 'Kalender',
+                                birthdate: extracted.type === 'birthdate' ? dStr : '',
+                                nameday: extracted.type === 'nameday' ? dStr : '',
+                                birthdayNeedsGift: true,
+                                namedayNeedsGift: false,
+                                christmasNeedsGift: true,
+                                easterNeedsGift: false
                             });
-        
-                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        
-                            if (attempt.type === 'allorigins-json') {
-                                const json = await res.json();
-                                if (json && json.contents) return json.contents;
-                                throw new Error('Leere Proxy-Antwort');
+                            changed = true;
+                        } else {
+                            const p = { ...newPersons[existingIndex] };
+                            if (p.isShared === undefined) p.isShared = true;
+                            if (!p.createdBy) p.createdBy = currentUser?.name || 'Kalender';
+            
+                            if (extracted.type === 'birthdate' && p.birthdate !== dStr) {
+                                p.birthdate = dStr;
+                                changed = true;
                             }
-        
-                            const txt = await res.text();
-        
-                            if (txt && (txt.includes('BEGIN:VCALENDAR') || txt.includes('BEGIN:VEVENT'))) {
-                                return txt;
+            
+                            if (extracted.type === 'nameday' && p.nameday !== dStr) {
+                                p.nameday = dStr;
+                                changed = true;
                             }
-        
-                            if (txt && txt.length > 50) {
-                                return txt;
-                            }
-        
-                            throw new Error('Keine ICS-Daten erhalten');
-                        } catch (err) {
-                            lastErr = err;
+            
+                            newPersons[existingIndex] = p;
+                        }
+                    };
+            
+                    for (let line of lines) {
+                        if (line.startsWith('BEGIN:VEVENT')) {
+                            inEvent = true;
+                            summary = '';
+                            dtstart = '';
+                            continue;
+                        }
+            
+                        if (line.startsWith('END:VEVENT')) {
+                            finishEvent();
+                            inEvent = false;
+                            summary = '';
+                            dtstart = '';
+                            continue;
+                        }
+            
+                        if (!inEvent) continue;
+            
+                        if (line.startsWith('SUMMARY')) {
+                            const idx = line.indexOf(':');
+                            if (idx !== -1) summary = line.substring(idx + 1);
+                        }
+            
+                        if (line.startsWith('DTSTART')) {
+                            const idx = line.indexOf(':');
+                            if (idx !== -1) dtstart = line.substring(idx + 1);
                         }
                     }
-                }
-        
-                throw lastErr || new Error('Kalender konnte nicht geladen werden');
-            };
-        
-            const parseDateFromIcsValue = (value) => {
-                if (!value) return '';
-        
-                const clean = String(value).trim();
-                const m = clean.match(/^(\d{4})(\d{2})(\d{2})/);
-        
-                if (!m) return '';
-        
-                return `${m[1]}-${m[2]}-${m[3]}`;
-            };
-        
-            const extractPersonAndType = (summaryRaw) => {
-                const summary = decodeIcsText(summaryRaw).replace(/\s+/g, ' ').trim();
-                if (!summary) return null;
-        
-                let match =
-                    summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+(?:\d+\.\s+)?Geburtstag/i) ||
-                    summary.match(/Geburtstag\s+(?:von\s+)?(.+)/i) ||
-                    summary.match(/^(.+?)\s*\(\s*Geburtstag\s*\)/i) ||
-                    summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+(?:\d+(?:th|st|nd|rd)\s+)?Birthday/i) ||
-                    summary.match(/Birthday\s+(?:of\s+)?(.+)/i);
-        
-                if (match) return { type: 'birthdate', name: match[1].trim() };
-        
-                match =
-                    summary.match(/(?:^|\s)(.+?)(?:s|'s)?\s+Namenstag/i) ||
-                    summary.match(/Namenstag\s+(?:von\s+)?(.+)/i) ||
-                    summary.match(/^(.+?)\s*\(\s*Namenstag\s*\)/i);
-        
-                if (match) return { type: 'nameday', name: match[1].trim() };
-        
-                return null;
-            };
-        
-            try {
-                const icsRaw = await readIcs();
-                const icsData = unfoldIcs(icsRaw);
-                const lines = icsData.split(/\r?\n/);
-        
-                let inEvent = false;
-                let summary = '';
-                let dtstart = '';
-        
-                let newPersons = [...safeGiftPersons];
-                let changed = false;
-                let foundCount = 0;
-        
-                const memberNames = new Set(activeMembersList.map(m => m.name.toLowerCase()));
-        
-                const finishEvent = () => {
-                    if (!summary || !dtstart) return;
-        
-                    const extracted = extractPersonAndType(summary);
-                    if (!extracted || !extracted.name) return;
-        
-                    const dStr = parseDateFromIcsValue(dtstart);
-                    if (!dStr) return;
-        
-                    foundCount++;
-        
-                    const existingIndex = newPersons.findIndex(x =>
-                        x.name && x.name.toLowerCase() === extracted.name.toLowerCase()
-                    );
-        
-                    if (existingIndex === -1) {
-                        newPersons.push({
-                            id: generateId(),
-                            name: extracted.name,
-                            type: memberNames.has(extracted.name.toLowerCase()) ? 'family' : 'custom',
-                            birthdate: extracted.type === 'birthdate' ? dStr : '',
-                            nameday: extracted.type === 'nameday' ? dStr : '',
-                            birthdayNeedsGift: true,
-                            namedayNeedsGift: false,
-                            christmasNeedsGift: true,
-                            easterNeedsGift: false
-                        });
-                        changed = true;
+            
+                    const updatePayload = {
+                        calendarUrl: rawUrl,
+                        lastCalSync: new Date().toISOString()
+                    };
+            
+                    if (changed) updatePayload.giftPersons = newPersons;
+            
+                    await getFamilyDocRef(currentFamily.id).update(updatePayload);
+            
+                    if (changed) {
+                        showAlert(
+                            'Erfolg',
+                            `Kalender synchronisiert. ${foundCount} passende Einträge gefunden und Personen/Feste aktualisiert.`
+                        );
                     } else {
-                        const p = { ...newPersons[existingIndex] };
-        
-                        if (extracted.type === 'birthdate' && p.birthdate !== dStr) {
-                            p.birthdate = dStr;
-                            changed = true;
-                        }
-        
-                        if (extracted.type === 'nameday' && p.nameday !== dStr) {
-                            p.nameday = dStr;
-                            changed = true;
-                        }
-        
-                        newPersons[existingIndex] = p;
+                        showAlert(
+                            'Hinweis',
+                            foundCount > 0
+                                ? `Kalender gescannt. ${foundCount} passende Einträge gefunden, aber keine neuen Änderungen nötig.`
+                                : 'Kalender geladen, aber keine Geburtstage oder Namenstage erkannt.'
+                        );
                     }
-                };
-        
-                for (let line of lines) {
-                    if (line.startsWith('BEGIN:VEVENT')) {
-                        inEvent = true;
-                        summary = '';
-                        dtstart = '';
-                        continue;
-                    }
-        
-                    if (line.startsWith('END:VEVENT')) {
-                        finishEvent();
-                        inEvent = false;
-                        summary = '';
-                        dtstart = '';
-                        continue;
-                    }
-        
-                    if (!inEvent) continue;
-        
-                    if (line.startsWith('SUMMARY')) {
-                        const idx = line.indexOf(':');
-                        if (idx !== -1) summary = line.substring(idx + 1);
-                    }
-        
-                    if (line.startsWith('DTSTART')) {
-                        const idx = line.indexOf(':');
-                        if (idx !== -1) dtstart = line.substring(idx + 1);
-                    }
-                }
-        
-                const updatePayload = {
-                    calendarUrl: rawUrl,
-                    lastCalSync: new Date().toISOString()
-                };
-        
-                if (changed) updatePayload.giftPersons = newPersons;
-        
-                await getFamilyDocRef(currentFamily.id).update(updatePayload);
-        
-                if (changed) {
+                } catch (e) {
                     showAlert(
-                        'Erfolg',
-                        `Kalender synchronisiert. ${foundCount} passende Einträge gefunden und Personen/Feste aktualisiert.`
-                    );
-                } else {
-                    showAlert(
-                        'Hinweis',
-                        foundCount > 0
-                            ? `Kalender gescannt. ${foundCount} passende Einträge gefunden, aber keine neuen Änderungen nötig.`
-                            : 'Kalender geladen, aber keine Geburtstage oder Namenstage erkannt.'
+                        'Fehler',
+                        `Konnte Kalender nicht laden. Der Kalenderanbieter blockiert möglicherweise den Zugriff. Technischer Hinweis: ${e?.message || e}`
                     );
                 }
-            } catch (e) {
-                showAlert(
-                    'Fehler',
-                    `Konnte Kalender nicht laden. Der Kalenderanbieter blockiert möglicherweise den Zugriff. Technischer Hinweis: ${e?.message || e}`
-                );
-            }
-        };
+            };
 
             const renderGiftHolidayGroupView = () => {
                 if (!activeGiftHolidayGroup) return null;
@@ -1459,7 +1483,7 @@
                         person: safeGiftPersons.find(p => p.id === e.personId)
                     }))
                     .filter(x => {
-                        if(x.person && x.person.type === 'custom' && !x.person.isShared && x.person.createdBy !== currentUser?.name) return false;
+                        if(x.person && x.person.type === 'custom' && x.person.isShared === false && x.person.createdBy && x.person.createdBy !== currentUser?.name) return false;
                         return x.person && x.person.name !== currentUser?.name;
                     })
                     .sort((a, b) => a.person.name.localeCompare(b.person.name));
@@ -1531,7 +1555,7 @@
                 const e = safeGiftEvents.find(x => x.id === activeGiftEventId);
                 const p = safeGiftPersons.find(x => x.id === e?.personId);
                 if (!e || !p) return null;
-                const isSolo = (e.participants || []).length === 1;
+                const isSolo = (e.participants || []).length <= 1;
                 const isPart = (e.participants || []).includes(currentUser.name);
                 const isNeedGift = getGiftNeedValue(e, p);
                 
@@ -1561,7 +1585,7 @@
                             <div className="text-center">
                                 <Icon name={e.type==='birthdate'?'Cake':e.type==='christmas'?'Gift':'Sparkles'} size={48} className={`mx-auto mb-2 ${e.type==='birthdate'?'text-[#AF52DE]':e.type==='christmas'?'text-[#34C759]':e.type==='easter'?'text-[#007AFF]':'text-[#FF9500]'}`} />
                                 <p className="text-[20px] font-bold">{formatDate(e.date)}</p>
-                                <p className="text-[#8E8E93] text-[15px] font-medium">{getDaysLeft(e.date) === 0 ? 'Heute!' : `in ${getDaysLeft(e.date)} Tagen`}</p>
+                                <<p className="text-[#8E8E93] text-[15px] font-medium">{getDaysLeft(e.date) === 0 ? 'Heute!' : `in ${getDaysLeft(e.date)} Tagen`}</p>
                             </div>
 
                             {!isNeedGift ? (
@@ -1720,7 +1744,8 @@
                                                             {e.status !== 'settled' && (
                                                                 <>
                                                                     <Icon name="ShoppingCart" size={32} className="mx-auto text-[#007AFF] mb-2" />
-                                                                    <p className="font-medium text-[16px] mb-4"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
+                                                                    <p className="font-medium text-[16px] mb-2"><span className="font-bold">{e.buyer}</span> besorgt das Geschenk.</p>
+                                                                    <button onClick={() => handleGiftAction(e.id, 'unclaim_buy')} className="text-[13px] font-semibold text-[#FF9500] mb-4 active:opacity-70">Besorgung zurücksetzen / abgeben</button>
                                                                 </>
                                                             )}
                                                             
@@ -1910,7 +1935,7 @@
                                     <button disabled={!selectedReason || selectedMembers.length === 0 || isSending} onClick={() => handleSendNotification()} className={`w-full py-4 rounded-[14px] font-semibold text-[17px] ${!selectedReason || selectedMembers.length === 0 ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#8E8E93]' : 'bg-[#007AFF] text-white'}`}>{isSending ? 'Wird gesendet...' : 'Jetzt rufen'}</button>
                                 </div>
                             )}
-                          {activeTab === 'shopping' && (
+                            {activeTab === 'shopping' && (
                                 <div className={`animate-in fade-in duration-500 ${isShoppingMode ? 'pb-0 h-full flex flex-col' : 'pb-10 space-y-6'}`}>
                                     {shoppingSubTab === 'list' && (
                                         <>
@@ -2205,7 +2230,7 @@
                                                 .filter(e => {
                                                     const p = safeGiftPersons.find(x => x.id === e.personId);
                                                     if (!p) return false;
-                                                    if (p.type === 'custom' && !p.isShared && p.createdBy !== currentUser?.name) {
+                                                    if (p.type === 'custom' && p.isShared === false && p.createdBy && p.createdBy !== currentUser?.name) {
                                                         return false; 
                                                     }
                                                     return p.name !== currentUser?.name;
@@ -2409,7 +2434,7 @@
                                                 {safeGiftPersons
                                                     .filter(p => p.name !== currentUser?.name)
                                                     .filter(p => {
-                                                        if (p.type === 'custom' && !p.isShared && p.createdBy !== currentUser?.name) return false;
+                                                        if (p.type === 'custom' && p.isShared === false && p.createdBy && p.createdBy !== currentUser?.name) return false;
                                                         return true;
                                                     })
                                                     .map(p => (
@@ -2428,7 +2453,7 @@
                                                                         <span className="text-[12px] text-[#8E8E93] font-medium hidden sm:inline">Familie sehen lassen?</span>
                                                                         <span className="text-[12px] text-[#8E8E93] font-medium sm:hidden">Teilen?</span>
                                                                         <div className="relative inline-block w-10 align-middle select-none">
-                                                                            <input type="checkbox" id={`sh-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.isShared} onChange={e => saveGiftPerson(p.id, { isShared: e.target.checked })}/>
+                                                                            <input type="checkbox" id={`sh-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.isShared !== false} onChange={e => saveGiftPerson(p.id, { isShared: e.target.checked })}/>
                                                                             <label htmlFor={`sh-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
                                                                         </div>
                                                                     </div>
@@ -2444,7 +2469,7 @@
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
                                                                         <div className="relative inline-block w-10 align-middle select-none">
-                                                                            <input type="checkbox" id={`bg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.birthdayNeedsGift} onChange={e => saveGiftPerson(p.id, { birthdayNeedsGift: e.target.checked })}/>
+                                                                            <input type="checkbox" id={`bg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.birthdayNeedsGift !== false} onChange={e => saveGiftPerson(p.id, { birthdayNeedsGift: e.target.checked })}/>
                                                                             <label htmlFor={`bg-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
                                                                         </div>
                                                                     </div>
@@ -2458,7 +2483,7 @@
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
                                                                         <div className="relative inline-block w-10 align-middle select-none">
-                                                                            <input type="checkbox" id={`ng-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.namedayNeedsGift} onChange={e => saveGiftPerson(p.id, { namedayNeedsGift: e.target.checked })}/>
+                                                                            <input type="checkbox" id={`ng-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={Boolean(p.namedayNeedsGift)} onChange={e => saveGiftPerson(p.id, { namedayNeedsGift: e.target.checked })}/>
                                                                             <label htmlFor={`ng-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
                                                                         </div>
                                                                     </div>
@@ -2472,7 +2497,7 @@
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
                                                                         <div className="relative inline-block w-10 align-middle select-none">
-                                                                            <input type="checkbox" id={`cg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.christmasNeedsGift} onChange={e => saveGiftPerson(p.id, { christmasNeedsGift: e.target.checked })}/>
+                                                                            <input type="checkbox" id={`cg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.christmasNeedsGift !== false} onChange={e => saveGiftPerson(p.id, { christmasNeedsGift: e.target.checked })}/>
                                                                             <label htmlFor={`cg-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
                                                                         </div>
                                                                     </div>
@@ -2482,7 +2507,7 @@
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-[12px] text-[#8E8E93]">Geschenk?</span>
                                                                         <div className="relative inline-block w-10 align-middle select-none">
-                                                                            <input type="checkbox" id={`eg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={p.easterNeedsGift} onChange={e => saveGiftPerson(p.id, { easterNeedsGift: e.target.checked })}/>
+                                                                            <input type="checkbox" id={`eg-${p.id}`} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" checked={Boolean(p.easterNeedsGift)} onChange={e => saveGiftPerson(p.id, { easterNeedsGift: e.target.checked })}/>
                                                                             <label htmlFor={`eg-${p.id}`} className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
                                                                         </div>
                                                                     </div>
